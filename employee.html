@@ -46,12 +46,23 @@
         ::-webkit-scrollbar-track { background: #f1f1f1; }
         ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
         ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+        /* Desktop Sidebar Collapse Styles */
+        @media (min-width: 768px) {
+            #main-sidebar { transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1), transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); overflow-x: hidden; }
+            #main-sidebar.sidebar-collapsed { width: 5rem; }
+            #main-sidebar.sidebar-collapsed span { display: none; }
+            #main-sidebar.sidebar-collapsed .h-16 { padding-left: 0 !important; padding-right: 0 !important; justify-content: center; }
+            #main-sidebar.sidebar-collapsed .mr-3 { margin-right: 0 !important; }
+            #main-sidebar.sidebar-collapsed .nav-btn { padding-left: 0 !important; padding-right: 0 !important; justify-content: center; }
+            #main-sidebar.sidebar-collapsed .p-4 { padding-left: 0.5rem !important; padding-right: 0.5rem !important; }
+        }
     </style>
 </head>
 <body class="text-slate-800 antialiased h-screen w-screen overflow-hidden">
 
     <!-- Toast Notification Container -->
-    <div id="toast-container" class="fixed top-4 right-4 z-50 flex flex-col gap-2 w-full max-w-sm pointer-events-none"></div>
+    <div id="toast-container" class="fixed top-4 right-4 z-[9999] flex flex-col gap-2 w-full max-w-sm pointer-events-none"></div>
 
     <!-- Global Modal -->
     <div id="globalModal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
@@ -73,9 +84,9 @@
          */
 
         const CONFIG = {
-            API_BASE_URL: 'https://yana-tech-project-backend.onrender.com', 
+            API_BASE_URL: "https://yana-tech-project-backend-d0sj.onrender.com", 
             TOKEN_KEY: 'yana_os_token',
-            LOGIN_URL: 'index.html'
+            LOGIN_URL: 'login.html'
         };
 
         const state = {
@@ -84,6 +95,7 @@
             employeeData: null,
             employeeTasks: [],
             projects: [],
+            myAttendance: [], // ADDED FOR ATTENDANCE
             isEditingProfile: false, 
             editSkills: [], 
             devTechStack: [], 
@@ -131,6 +143,66 @@
             if(m) m.classList.add('hidden');
         }
 
+        function customConfirm(title, message, confirmText = 'Confirm', cancelText = 'Cancel', isDanger = false) {
+            return new Promise((resolve) => {
+                const btnClass = isDanger ? 'bg-rose-500 hover:bg-rose-600 text-white shadow-rose-500/20' : 'bg-brand-primary hover:bg-indigo-600 text-white shadow-indigo-500/20';
+                const iconStr = isDanger ? '<i data-lucide="alert-triangle" class="w-6 h-6 text-rose-500"></i>' : '<i data-lucide="help-circle" class="w-6 h-6 text-brand-primary"></i>';
+                
+                const html = `
+                    <div class="flex items-start gap-4">
+                        <div class="w-12 h-12 rounded-full ${isDanger ? 'bg-rose-100' : 'bg-indigo-50'} flex items-center justify-center shrink-0">
+                            ${iconStr}
+                        </div>
+                        <div class="flex-1">
+                            <p class="text-slate-600 mb-6 text-sm">${message}</p>
+                            <div class="flex justify-end gap-3 pt-4 border-t border-slate-100">
+                                <button type="button" id="confirm-cancel-btn" class="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg font-medium transition-colors">${cancelText}</button>
+                                <button type="button" id="confirm-ok-btn" class="px-5 py-2 ${btnClass} rounded-lg font-medium shadow-sm transition-all flex items-center gap-2">
+                                    ${confirmText}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                openModal(title, html);
+
+                document.getElementById('confirm-cancel-btn').addEventListener('click', () => {
+                    closeModal();
+                    resolve(false);
+                });
+                document.getElementById('confirm-ok-btn').addEventListener('click', () => {
+                    closeModal();
+                    resolve(true);
+                });
+            });
+        }
+
+        function customAlert(title, message) {
+            return new Promise((resolve) => {
+                const html = `
+                    <div class="flex items-start gap-4">
+                        <div class="w-12 h-12 rounded-full bg-indigo-50 flex items-center justify-center shrink-0">
+                            <i data-lucide="info" class="w-6 h-6 text-brand-primary"></i>
+                        </div>
+                        <div class="flex-1">
+                            <p class="text-slate-600 mb-6 text-sm">${message}</p>
+                            <div class="flex justify-end gap-3 pt-4 border-t border-slate-100">
+                                <button type="button" id="alert-ok-btn" class="px-5 py-2 bg-brand-primary hover:bg-indigo-600 text-white shadow-indigo-500/20 rounded-lg font-medium shadow-sm transition-all">
+                                    OK
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                openModal(title, html);
+
+                document.getElementById('alert-ok-btn').addEventListener('click', () => {
+                    closeModal();
+                    resolve(true);
+                });
+            });
+        }
+
         async function apiFetch(endpoint, options = {}) {
             const token = sessionStorage.getItem(CONFIG.TOKEN_KEY);
             const headers = { ...options.headers };
@@ -144,7 +216,19 @@
                 const response = await fetch(`${CONFIG.API_BASE_URL}${endpoint}`, { ...options, headers });
                 if (response.status === 401) { logout(false); throw new Error("Session expired."); }
                 const data = await response.json().catch(() => ({}));
-                if (!response.ok) throw new Error(data.detail || data.error || data.critical_error || "An unexpected error occurred.");
+                if (!response.ok) {
+                    let errMsg = "An unexpected error occurred.";
+                    if (Array.isArray(data.detail)) {
+                        errMsg = data.detail.map(e => `${e.loc.join('.')} - ${e.msg}`).join(', ');
+                    } else if (data.detail) {
+                        errMsg = typeof data.detail === 'string' ? data.detail : JSON.stringify(data.detail);
+                    } else if (data.error) {
+                        errMsg = typeof data.error === 'string' ? data.error : JSON.stringify(data.error);
+                    } else if (data.critical_error) {
+                        errMsg = typeof data.critical_error === 'string' ? data.critical_error : JSON.stringify(data.critical_error);
+                    }
+                    throw new Error(errMsg);
+                }
                 return data;
             } catch (error) {
                 if(error.message === "Failed to fetch") showToast("Unable to connect to the server.", "error");
@@ -152,33 +236,55 @@
             }
         }
 
-        function logout(showNotification = true) {
+        async function logout(showNotification = true) {
             sessionStorage.removeItem(CONFIG.TOKEN_KEY);
-            if (showNotification) alert("Logged out successfully");
+            if (showNotification) await customAlert("Logged Out", "Logged out successfully");
             window.location.href = CONFIG.LOGIN_URL;
         }
 
         // --- Data Loaders ---
         async function loadEmployeeWorkspaceData() {
             try {
-                const [projects, tasks, profile] = await Promise.all([
+                const [projects, tasks, profile, attendance, leaveRequests] = await Promise.all([
                     apiFetch(`/projects/employee/${state.user.id}`).catch(() => []),
                     apiFetch(`/tasks/get_by_employee/${state.user.id}`).catch(() => []),
-                    apiFetch(`/employees/get/${state.user.id}`).catch(() => ({}))
+                    apiFetch(`/employees/get/${state.user.id}`).catch(() => ({})),
+                    apiFetch(`/attendance/me`).catch(() => []),
+                    apiFetch(`/attendance/leave-requests/me`).catch(() => [])
                 ]);
 
-                state.projects = Array.isArray(projects) ? projects : [];                state.employeeTasks = Array.isArray(tasks) ? tasks : [];
+                state.projects = Array.isArray(projects) ? projects : [];
+                state.employeeTasks = Array.isArray(tasks) ? tasks : [];
                 state.employeeData = profile && !profile.error ? profile : {};
+                state.myAttendance = Array.isArray(attendance) ? attendance : [];
+                state.myLeaveRequests = Array.isArray(leaveRequests) ? leaveRequests : [];
+
+                // Fetch timelines for all assigned projects
+                state.projectTimelines = {};
+                if (state.projects.length > 0) {
+                    const timelinePromises = state.projects.map(p => 
+                        apiFetch(`/projects/timeline/${p.id}`).catch(() => [])
+                    );
+                    const timelines = await Promise.all(timelinePromises);
+                    state.projects.forEach((p, index) => {
+                        state.projectTimelines[p.id] = timelines[index];
+                    });
+                }
             } catch (error) {
                 showToast("Failed to load workspace data: " + error.message, "error");
             }
         }
-
         // --- Routing Engine ---
         async function routeApp(view = null) {
             if (view) {
                 state.currentView = view;
                 sessionStorage.setItem('lastEmployeeView', view); // Save View
+                
+                // Close mobile sidebar on navigation
+                const sidebar = document.getElementById('main-sidebar');
+                if (sidebar && !sidebar.classList.contains('-translate-x-full') && window.innerWidth < 768) {
+                    toggleMobileSidebar();
+                }
             }
             
             const appDiv = document.getElementById('app');
@@ -207,12 +313,17 @@
             else if (state.currentView === 'log-dev') contentHtml = getDevTaskFormTemplate();
             else if (state.currentView === 'log-content') contentHtml = getContentTaskFormTemplate();
             else if (state.currentView === 'profile') contentHtml = getEmployeeProfileTemplate();
+            else if (state.currentView === 'leave-requests') contentHtml = getEmployeeLeaveRequestsTemplate(); // ADDED
 
             if (!state.appShellRendered) {
+                const sidebarClass = localStorage.getItem('yanaSidebarCollapsed') === 'true' ? 'sidebar-collapsed' : '';
                 appDiv.innerHTML = `
-                    <div class="flex h-full w-full bg-slate-50 overflow-hidden">
+                    <div class="flex h-full w-full bg-slate-50 overflow-hidden relative">
+                        <!-- Mobile Sidebar Overlay -->
+                        <div id="mobile-sidebar-overlay" class="fixed inset-0 bg-slate-900/50 z-40 hidden md:hidden opacity-0 transition-opacity duration-300" onclick="toggleMobileSidebar()"></div>
+                        
                         <!-- Sidebar -->
-                        <aside class="w-64 bg-brand-dark text-slate-300 flex flex-col shrink-0 transition-all z-20 hidden md:flex">
+                        <aside id="main-sidebar" class="w-64 bg-brand-dark text-slate-300 flex flex-col shrink-0 transition-transform duration-300 z-50 fixed md:relative h-full -translate-x-full md:translate-x-0 ${sidebarClass}">
                             <div class="h-16 flex items-center px-6 bg-slate-900 border-b border-slate-800 shrink-0">
                                 <div class="w-8 h-8 bg-brand-primary rounded-md flex items-center justify-center mr-3 shadow-lg">
                                     <i data-lucide="layers" class="text-white w-5 h-5"></i>
@@ -226,6 +337,9 @@
                                 <button onclick="routeApp('profile')" data-view="profile" class="nav-btn w-full flex items-center px-4 py-3 rounded-xl transition-all">
                                     <i data-lucide="user" class="w-5 h-5 mr-3"></i> <span class="font-medium">My Profile</span>
                                 </button>
+                                <button onclick="routeApp('leave-requests')" data-view="leave-requests" class="nav-btn w-full flex items-center px-4 py-3 rounded-xl transition-all">
+                                    <i data-lucide="calendar" class="w-5 h-5 mr-3"></i> <span class="font-medium">Leave Requests</span>
+                                </button>
                             </nav>
                             <div class="p-4 border-t border-slate-800">
                                 <button onclick="logout()" class="w-full flex items-center px-4 py-3 rounded-xl hover:bg-brand-alert hover:text-white transition-all group">
@@ -238,7 +352,7 @@
                         <div class="flex-1 flex flex-col overflow-hidden relative">
                             <header class="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-6 md:px-8 shrink-0 z-10 shadow-sm">
                                 <div class="flex items-center gap-3">
-                                    <button class="md:hidden text-slate-500 hover:text-brand-primary">
+                                    <button onclick="toggleMobileSidebar()" class="text-slate-500 hover:text-brand-primary transition-colors focus:outline-none">
                                         <i data-lucide="menu" class="w-6 h-6"></i>
                                     </button>
                                     <h2 id="header-title" class="text-xl font-bold text-slate-800 tracking-tight capitalize">${state.currentView.replace('-', ' ')}</h2>
@@ -302,6 +416,56 @@
             const startOfWeek = new Date(now.setDate(now.getDate() - now.getDay()));
             startOfWeek.setHours(0,0,0,0);
 
+            // Determine today's attendance status
+            const todayStr = new Date().toISOString().split('T')[0];
+            let todayAttendance = null;
+            if (state.myAttendance && state.myAttendance.length > 0) {
+                todayAttendance = state.myAttendance.find(a => a.date && a.date.startsWith(todayStr));
+            }
+            
+            let attendanceWidgetHtml = '';
+            if (!todayAttendance) {
+                attendanceWidgetHtml = `
+                    <div class="bg-gradient-to-r from-brand-dark to-slate-800 rounded-2xl p-6 shadow-md flex flex-col sm:flex-row items-center justify-between gap-4 mb-8">
+                        <div>
+                            <h4 class="text-white font-bold text-lg flex items-center gap-2"><i data-lucide="clock" class="w-5 h-5 text-emerald-400"></i> Start Your Day</h4>
+                            <p class="text-slate-300 text-sm mt-1">Remember to check in to record your attendance today.</p>
+                        </div>
+                        <button onclick="handleCheckIn(event)" class="bg-emerald-500 hover:bg-emerald-600 text-white font-bold py-2.5 px-6 rounded-xl shadow-lg transition-all flex items-center shrink-0">
+                            <i data-lucide="log-in" class="w-4 h-4 mr-2"></i> Check In Now
+                        </button>
+                    </div>
+                `;
+            } else if (todayAttendance && !todayAttendance.check_out_time) {
+                const checkInTime = new Date(todayAttendance.check_in_time).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+                attendanceWidgetHtml = `
+                    <div class="bg-gradient-to-r from-emerald-600 to-teal-500 rounded-2xl p-6 shadow-md flex flex-col sm:flex-row items-center justify-between gap-4 mb-8">
+                        <div>
+                            <h4 class="text-white font-bold text-lg flex items-center gap-2"><i data-lucide="check-circle" class="w-5 h-5"></i> You are Checked In</h4>
+                            <p class="text-emerald-50 text-sm mt-1">Checked in at ${checkInTime}. Have a great workday!</p>
+                        </div>
+                        <button onclick="handleCheckOut(event)" class="bg-white/20 hover:bg-white/30 border border-white/30 text-white font-bold py-2.5 px-6 rounded-xl shadow-lg transition-all flex items-center shrink-0 backdrop-blur-sm">
+                            <i data-lucide="log-out" class="w-4 h-4 mr-2"></i> Check Out
+                        </button>
+                    </div>
+                `;
+            } else {
+                const checkInTime = new Date(todayAttendance.check_in_time).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+                const checkOutTime = new Date(todayAttendance.check_out_time).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+                const totalHrs = todayAttendance.total_hours ? todayAttendance.total_hours.toFixed(2) : '--';
+                attendanceWidgetHtml = `
+                    <div class="bg-slate-200/50 border border-slate-200 rounded-2xl p-6 flex flex-col sm:flex-row items-center justify-between gap-4 mb-8">
+                        <div>
+                            <h4 class="text-slate-700 font-bold text-lg flex items-center gap-2"><i data-lucide="check-check" class="w-5 h-5 text-brand-primary"></i> Shift Completed</h4>
+                            <p class="text-slate-500 text-sm mt-1">In: ${checkInTime} &bull; Out: ${checkOutTime} &bull; <span class="font-bold text-slate-700">${totalHrs} hrs</span> total.</p>
+                        </div>
+                        <div class="px-4 py-2 bg-white rounded-lg text-sm font-bold text-slate-600 shadow-sm border border-slate-200">
+                            Done for today
+                        </div>
+                    </div>
+                `;
+            }
+
             let hoursThisWeek = 0;
             let contentThisWeek = 0;
 
@@ -333,11 +497,43 @@
                 }
             });
 
+            // Extract all active milestones across all projects
+            let allActiveMilestones = [];
+            if (state.projectTimelines) {
+                Object.keys(state.projectTimelines).forEach(pid => {
+                    const p = state.projects.find(proj => proj.id === pid);
+                    const pName = p ? p.name : 'Unknown Project';
+                    state.projectTimelines[pid].forEach(m => {
+                        allActiveMilestones.push({ ...m, projectName: pName });
+                    });
+                });
+            }
+
+            const activeMilestonesHtml = allActiveMilestones.map(m => {
+                const isDelayed = m.status === 'Delayed';
+                const dueDate = m.expected_end ? new Date(m.expected_end).toLocaleDateString() : 'N/A';
+                return `
+                    <div class="p-4 border-b border-slate-100 last:border-0 flex items-center justify-between hover:bg-slate-50 transition-colors">
+                        <div>
+                            <p class="font-bold text-slate-800 line-clamp-1">${m.milestone_name}</p>
+                            <p class="text-xs font-medium text-slate-500 mt-1">${m.projectName} &bull; Due: <span class="${isDelayed ? 'text-rose-500 font-bold' : ''}">${dueDate}</span></p>
+                        </div>
+                        <div class="shrink-0 ml-4">
+                            <span class="px-2.5 py-1 text-xs font-bold rounded-md ${isDelayed ? 'bg-rose-50 text-rose-600 border border-rose-200' : 'bg-indigo-50 text-indigo-600 border border-indigo-200'}">
+                                ${m.status}
+                            </span>
+                        </div>
+                    </div>
+                `;
+            }).join('') || '<p class="p-6 text-slate-500 text-center text-sm">No active milestones right now.</p>';
+
             return `
                 <div class="mb-8 mt-2">
                     <h3 class="text-2xl md:text-3xl font-bold text-slate-800 mb-2">Welcome back, ${state.employeeData?.full_name || state.user.sub}</h3>
                     <p class="text-slate-500">Here is your workspace overview for the week.</p>
                 </div>
+
+                ${attendanceWidgetHtml}
 
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-6 mb-8 md:mb-10">
                     <div class="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm flex items-center">
@@ -360,154 +556,457 @@
                     </div>
                 </div>
 
-                <div class="flex items-center justify-between mb-4">
-                    <h4 class="text-lg font-bold text-slate-800">Log Your Work</h4>
-                </div>
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6 mb-10">
-                    <button onclick="routeApp('log-dev')" class="group text-left bg-white border border-slate-200 hover:border-brand-primary rounded-2xl p-5 md:p-6 shadow-sm hover:shadow-md transition-all">
-                        <div class="flex items-center justify-between mb-4">
-                            <div class="w-10 h-10 md:w-12 md:h-12 bg-slate-50 group-hover:bg-indigo-50 rounded-xl flex items-center justify-center transition-colors">
-                                <i data-lucide="terminal" class="w-5 h-5 md:w-6 md:h-6 text-slate-600 group-hover:text-brand-primary"></i>
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+                    <!-- Left Column: Actions & Active Milestones -->
+                    <div class="lg:col-span-2 space-y-8">
+                        <div>
+                            <div class="flex items-center justify-between mb-4">
+                                <h4 class="text-lg font-bold text-slate-800">Log Your Work</h4>
                             </div>
-                            <i data-lucide="arrow-right" class="w-5 h-5 text-slate-400 group-hover:text-brand-primary transform group-hover:translate-x-1 transition-all"></i>
-                        </div>
-                        <h5 class="text-lg md:text-xl font-bold text-slate-800 mb-1 md:mb-2">Engineering Task</h5>
-                        <p class="text-xs md:text-sm text-slate-500">Log dev hours, tech stack, and GitHub commits.</p>
-                    </button>
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <button onclick="routeApp('log-dev')" class="group text-left bg-white border border-slate-200 hover:border-brand-primary rounded-2xl p-5 shadow-sm hover:shadow-md transition-all">
+                                    <div class="flex items-center justify-between mb-4">
+                                        <div class="w-10 h-10 bg-slate-50 group-hover:bg-indigo-50 rounded-xl flex items-center justify-center transition-colors">
+                                            <i data-lucide="terminal" class="w-5 h-5 text-slate-600 group-hover:text-brand-primary"></i>
+                                        </div>
+                                        <i data-lucide="arrow-right" class="w-5 h-5 text-slate-400 group-hover:text-brand-primary transform group-hover:translate-x-1 transition-all"></i>
+                                    </div>
+                                    <h5 class="text-lg font-bold text-slate-800 mb-1">Engineering Task</h5>
+                                    <p class="text-xs text-slate-500">Log dev hours, tech stack, and GitHub commits.</p>
+                                </button>
 
-                    <button onclick="routeApp('log-content')" class="group text-left bg-white border border-slate-200 hover:border-brand-primary rounded-2xl p-5 md:p-6 shadow-sm hover:shadow-md transition-all">
-                        <div class="flex items-center justify-between mb-4">
-                            <div class="w-10 h-10 md:w-12 md:h-12 bg-slate-50 group-hover:bg-indigo-50 rounded-xl flex items-center justify-center transition-colors">
-                                <i data-lucide="video" class="w-5 h-5 md:w-6 md:h-6 text-slate-600 group-hover:text-brand-primary"></i>
+                                <button onclick="routeApp('log-content')" class="group text-left bg-white border border-slate-200 hover:border-brand-primary rounded-2xl p-5 shadow-sm hover:shadow-md transition-all">
+                                    <div class="flex items-center justify-between mb-4">
+                                        <div class="w-10 h-10 bg-slate-50 group-hover:bg-indigo-50 rounded-xl flex items-center justify-center transition-colors">
+                                            <i data-lucide="video" class="w-5 h-5 text-slate-600 group-hover:text-brand-primary"></i>
+                                        </div>
+                                        <i data-lucide="arrow-right" class="w-5 h-5 text-slate-400 group-hover:text-brand-primary transform group-hover:translate-x-1 transition-all"></i>
+                                    </div>
+                                    <h5 class="text-lg font-bold text-slate-800 mb-1">Content Task</h5>
+                                    <p class="text-xs text-slate-500">Log reels, videos, posters, and engagement metrics.</p>
+                                </button>
                             </div>
-                            <i data-lucide="arrow-right" class="w-5 h-5 text-slate-400 group-hover:text-brand-primary transform group-hover:translate-x-1 transition-all"></i>
                         </div>
-                        <h5 class="text-lg md:text-xl font-bold text-slate-800 mb-1 md:mb-2">Content Task</h5>
-                        <p class="text-xs md:text-sm text-slate-500">Log reels, videos, posters, and engagement metrics.</p>
-                    </button>
-                </div>
 
-                <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden mb-8">
-                    <div class="px-6 py-4 border-b border-slate-100 bg-slate-50 flex items-center gap-2">
-                        <i data-lucide="history" class="w-5 h-5 text-slate-500"></i>
-                        <h4 class="font-bold text-slate-800">Recent Submissions</h4>
+                        <!-- Active Milestones Widget -->
+                        <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                            <div class="px-6 py-4 border-b border-slate-100 bg-indigo-50/50 flex items-center justify-between">
+                                <div class="flex items-center gap-2">
+                                    <i data-lucide="target" class="w-5 h-5 text-brand-primary"></i>
+                                    <h4 class="font-bold text-slate-800">Your Active Milestones</h4>
+                                </div>
+                                <span class="px-2 py-0.5 bg-indigo-100 text-brand-primary text-xs font-bold rounded-md">${allActiveMilestones.length}</span>
+                            </div>
+                            <div class="flex flex-col divide-y divide-slate-100 max-h-[300px] overflow-y-auto">
+                                ${activeMilestonesHtml}
+                            </div>
+                        </div>
                     </div>
-                    <div class="flex flex-col divide-y divide-slate-100">
-                        ${recentTasksHtml}
+
+                    <!-- Right Column: Recent Submissions -->
+                    <div class="lg:col-span-1">
+                        <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden h-full flex flex-col">
+                            <div class="px-6 py-4 border-b border-slate-100 bg-slate-50 flex items-center gap-2 shrink-0">
+                                <i data-lucide="history" class="w-5 h-5 text-slate-500"></i>
+                                <h4 class="font-bold text-slate-800">Recent Submissions</h4>
+                            </div>
+                            <div class="flex flex-col divide-y divide-slate-100 overflow-y-auto flex-1">
+                                ${recentTasksHtml}
+                            </div>
+                        </div>
                     </div>
                 </div>
             `;
         }
 
-        function getProjectOptions() {
-            return '<option value="">-- General / No Project --</option>' + 
-                   state.projects.map(p => `<option value="${p.id}">${p.name}</option>`).join('');
+        function getProjectOptions(type) {
+            const projects = (state.projects || []).filter(p => type === 'All' ? true : p.project_type === type || p.project_type === 'Both');
+            let options = `<option value="">-- General / No Project --</option>`;
+            projects.forEach(p => {
+                options += `<option value="${p.id}">${p.name}</option>`;
+            });
+            return options;
         }
 
-        function getDevTaskFormTemplate() {
-            return `
-                <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 md:p-8 max-w-3xl mx-auto mt-2">
-                    <div class="flex flex-col sm:flex-row sm:items-center gap-4 mb-8 pb-6 border-b border-slate-100">
-                        <button onclick="routeApp('dashboard')" class="w-10 h-10 rounded-full hover:bg-slate-100 flex items-center justify-center text-slate-500 transition-colors shrink-0">
-                            <i data-lucide="arrow-left" class="w-5 h-5"></i>
-                        </button>
+        function getMilestoneOptions(projectId) {
+            let options = `<option value="">General Task (No Milestone)</option>`;
+            if (!projectId) return options;
+            
+            const timelines = state.projectTimelines ? state.projectTimelines[projectId] : null;
+            if (timelines && timelines.length > 0) {
+                timelines.forEach(m => {
+                    options += `<option value="${m.id}">${m.milestone_name} (${m.status})</option>`;
+                });
+            }
+            return options;
+        }
+
+        window.updateMilestones = function(selectElement) {
+            const projectId = selectElement.value;
+            
+            // Find the closest task row container (works for both Dev and Content forms)
+            const container = selectElement.closest('.dev-task-item') || selectElement.closest('.con-task-item');
+            
+            if (container) {
+                const milestoneSelect = container.querySelector('.col-milestone');
+                if (milestoneSelect) {
+                    milestoneSelect.innerHTML = getMilestoneOptions(projectId);
+                }
+            }
+        };
+
+        window.addDevTaskRow = function(btnElement = null) {
+            const container = document.getElementById('dev-task-container');
+            const item = document.createElement('div');
+            item.className = "dev-task-item relative bg-white border border-slate-200 rounded-2xl p-5 sm:p-6 shadow-sm hover:shadow-md hover:border-brand-primary/30 transition-all group";
+            item.innerHTML = `
+                <button type="button" onclick="this.closest('.dev-task-item').remove()" class="absolute -top-3 -right-3 w-8 h-8 bg-white border border-slate-200 text-slate-400 hover:text-rose-500 hover:bg-rose-50 hover:border-rose-200 rounded-full flex items-center justify-center shadow-sm transition-all opacity-0 group-hover:opacity-100 z-10" title="Remove Task">
+                    <i data-lucide="x" class="w-4 h-4"></i>
+                </button>
+                <div class="grid grid-cols-1 md:grid-cols-12 gap-6">
+                    <div class="md:col-span-3 space-y-4">
                         <div>
-                            <h3 class="text-xl md:text-2xl font-bold text-slate-800">Log Engineering Task</h3>
+                            <label class="block text-[11px] font-black uppercase tracking-wider text-slate-400 mb-2">Workspace</label>
+                            <div class="relative">
+                                <select class="col-project input-field w-full pl-3 pr-8 py-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none text-sm text-slate-700 font-medium appearance-none focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all" onchange="window.updateMilestones(this)">
+                                    ${getProjectOptions('Engineering')}
+                                </select>
+                                <i data-lucide="folder" class="w-4 h-4 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none"></i>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-[11px] font-black uppercase tracking-wider text-slate-400 mb-2">Milestone / Task</label>
+                            <div class="relative">
+                                <select class="col-milestone input-field w-full pl-3 pr-8 py-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none text-sm text-slate-700 font-medium appearance-none focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all">
+                                    <option value="">General Task (No Milestone)</option>
+                                </select>
+                                <i data-lucide="target" class="w-4 h-4 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none"></i>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-[11px] font-black uppercase tracking-wider text-slate-400 mb-2">Time (Hrs) <span class="text-rose-500">*</span></label>
+                            <input type="number" required min="0.5" max="24" step="0.5" class="col-hours input-field w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none text-sm text-slate-700 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all" placeholder="e.g. 2.0">
                         </div>
                     </div>
                     
-                    <form onsubmit="handleTaskSubmit(event, 'developer')" class="space-y-6">
-                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                            <div>
-                                <label class="block text-sm font-semibold text-slate-700 mb-2">Project</label>
-                                <select id="dev-project" class="input-field w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none">
-                                    ${getProjectOptions()}
-                                </select>
-                            </div>
-                            <div>
-                                <label class="block text-sm font-semibold text-slate-700 mb-2">Hours Logged <span class="text-brand-alert">*</span></label>
-                                <input type="number" id="dev-hours" required min="0.5" max="24" step="0.5" class="input-field w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none">
-                            </div>
-                        </div>
-
-                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                            <div>
-                                <label class="block text-sm font-semibold text-slate-700 mb-2">Tech Stack Used</label>
-                                <input type="text" id="dev-tech-input" onkeydown="handleDevTechKeydown(event)" class="input-field w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none" placeholder="Type language/tool and press Enter">
-                                <div id="dev_tech_container" class="flex flex-wrap gap-2 mt-3 mb-1"></div>
-                            </div>
-                            <div>
-                                <label class="block text-sm font-semibold text-slate-700 mb-2">GitHub Link</label>
-                                <input type="url" id="dev-link" class="input-field w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none">
-                            </div>
-                        </div>
-
+                    <div class="md:col-span-5 space-y-4">
                         <div>
-                            <label class="block text-sm font-semibold text-slate-700 mb-2">Task Performed <span class="text-brand-alert">*</span></label>
-                            <textarea id="dev-task" required rows="3" class="input-field w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none resize-none"></textarea>
+                            <label class="block text-[11px] font-black uppercase tracking-wider text-slate-400 mb-2">Execution Details <span class="text-rose-500">*</span></label>
+                            <textarea required minlength="5" class="col-task input-field w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none text-sm resize-none text-slate-700 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all" rows="2" placeholder="What did you build or fix?"></textarea>
                         </div>
-
                         <div>
-                            <label class="block text-sm font-semibold text-slate-700 mb-2">Plan for Tomorrow</label>
-                            <textarea id="dev-plan" rows="2" class="input-field w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none resize-none"></textarea>
+                            <label class="block text-[11px] font-black uppercase tracking-wider text-slate-400 mb-2">Tomorrow's Strategy</label>
+                            <textarea class="col-plan input-field w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none text-sm resize-none text-slate-700 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all" rows="2" placeholder="What are the next steps?"></textarea>
                         </div>
+                    </div>
 
-                        <div class="pt-6 border-t border-slate-100 flex justify-end">
-                            <button type="submit" id="btn-submit-dev" class="w-full sm:w-auto bg-brand-primary hover:bg-indigo-700 text-white font-medium py-3 px-8 rounded-xl shadow-md transition-all flex items-center justify-center">
-                                <span>Submit Timesheet</span><i data-lucide="check" class="ml-2 w-5 h-5"></i>
+                    <div class="md:col-span-4 space-y-4">
+                        <div>
+                            <label class="block text-[11px] font-black uppercase tracking-wider text-slate-400 mb-2">Commits & Links</label>
+                            <div class="relative flex items-center">
+                                <i data-lucide="github" class="w-4 h-4 text-slate-400 absolute left-3"></i>
+                                <input type="url" class="col-link input-field w-full pl-9 pr-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none text-sm text-slate-700 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all" placeholder="https://github.com/...">
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-[11px] font-black uppercase tracking-wider text-slate-400 mb-2">Tech Stack Used</label>
+                            <div class="relative flex items-center">
+                                <i data-lucide="code-2" class="w-4 h-4 text-slate-400 absolute left-3"></i>
+                                <input type="text" class="col-tech input-field w-full pl-9 pr-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none text-sm text-slate-700 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all" placeholder="e.g. React, Python, AWS...">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            container.appendChild(item);
+            if (window.lucide) lucide.createIcons();
+        };
+
+        function getDevTaskFormTemplate() {
+            return `
+                <div class="bg-white rounded-3xl border border-slate-200 shadow-sm max-w-[95%] mx-auto mt-4 overflow-hidden">
+                    <!-- Premium Header -->
+                    <div class="bg-gradient-to-r from-slate-900 to-slate-800 px-6 py-8 sm:px-8 sm:py-10 text-white relative overflow-hidden">
+                        <div class="absolute top-0 right-0 opacity-10 pointer-events-none translate-x-1/4 -translate-y-1/4">
+                            <i data-lucide="terminal-square" class="w-64 h-64"></i>
+                        </div>
+                        <div class="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-6">
+                            <div class="flex items-center gap-5">
+                                <button onclick="routeApp('dashboard')" class="w-11 h-11 rounded-full bg-white/10 hover:bg-white/20 border border-white/10 flex items-center justify-center text-white transition-all backdrop-blur-sm shrink-0 shadow-sm">
+                                    <i data-lucide="arrow-left" class="w-5 h-5"></i>
+                                </button>
+                                <div>
+                                    <h3 class="text-2xl md:text-3xl font-black tracking-tight text-white flex items-center gap-3">
+                                        Engineering Log <span class="px-2.5 py-1 rounded-md bg-indigo-500/20 border border-indigo-400/30 text-indigo-300 text-xs uppercase tracking-widest font-bold">Batch Mode</span>
+                                    </h3>
+                                    <p class="text-slate-400 text-sm mt-1.5 font-medium">Log multiple development tasks across projects in a single fluid motion.</p>
+                                </div>
+                            </div>
+                            <button type="button" onclick="window.addDevTaskRow()" class="bg-white text-slate-900 hover:bg-indigo-50 hover:text-brand-primary px-5 py-2.5 rounded-xl font-bold text-sm transition-all flex items-center shadow-lg shadow-white/5 border border-white/20 whitespace-nowrap">
+                                <i data-lucide="plus-circle" class="w-4 h-4 mr-2"></i> Add New Task
+                            </button>
+                        </div>
+                    </div>
+
+                    <form onsubmit="handleTaskSubmit(event, 'developer')" class="p-4 sm:p-6 bg-slate-50/30">
+                        <div id="dev-task-container" class="space-y-6">
+                            <!-- Initial Task Row -->
+                            <div class="dev-task-item relative bg-white border border-slate-200 rounded-2xl p-5 sm:p-6 shadow-sm hover:shadow-md hover:border-brand-primary/30 transition-all group">
+                                <div class="grid grid-cols-1 md:grid-cols-12 gap-6">
+                                    <div class="md:col-span-3 space-y-4">
+                                        <div>
+                                            <label class="block text-[11px] font-black uppercase tracking-wider text-slate-400 mb-2">Workspace</label>
+                                            <div class="relative">
+                                                <select class="col-project input-field w-full pl-3 pr-8 py-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none text-sm text-slate-700 font-medium appearance-none focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all" onchange="window.updateMilestones(this)">
+                                                    ${getProjectOptions('Engineering')}
+                                                </select>
+                                                <i data-lucide="folder" class="w-4 h-4 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none"></i>
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <label class="block text-[11px] font-black uppercase tracking-wider text-slate-400 mb-2">Milestone / Task</label>
+                                            <div class="relative">
+                                                <select class="col-milestone input-field w-full pl-3 pr-8 py-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none text-sm text-slate-700 font-medium appearance-none focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all">
+                                                    <option value="">General Task (No Milestone)</option>
+                                                </select>
+                                                <i data-lucide="target" class="w-4 h-4 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none"></i>
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <label class="block text-[11px] font-black uppercase tracking-wider text-slate-400 mb-2">Time (Hrs) <span class="text-rose-500">*</span></label>
+                                            <input type="number" required min="0.5" max="24" step="0.5" class="col-hours input-field w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none text-sm text-slate-700 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all" placeholder="e.g. 2.0">
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="md:col-span-5 space-y-4">
+                                        <div>
+                                            <label class="block text-[11px] font-black uppercase tracking-wider text-slate-400 mb-2">Execution Details <span class="text-rose-500">*</span></label>
+                                            <textarea required minlength="5" class="col-task input-field w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none text-sm resize-none text-slate-700 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all" rows="2" placeholder="What did you build or fix?"></textarea>
+                                        </div>
+                                        <div>
+                                            <label class="block text-[11px] font-black uppercase tracking-wider text-slate-400 mb-2">Tomorrow's Strategy</label>
+                                            <textarea class="col-plan input-field w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none text-sm resize-none text-slate-700 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all" rows="2" placeholder="What are the next steps?"></textarea>
+                                        </div>
+                                    </div>
+
+                                    <div class="md:col-span-4 space-y-4">
+                                        <div>
+                                            <label class="block text-[11px] font-black uppercase tracking-wider text-slate-400 mb-2">Commits & Links</label>
+                                            <div class="relative flex items-center">
+                                                <i data-lucide="github" class="w-4 h-4 text-slate-400 absolute left-3"></i>
+                                                <input type="url" class="col-link input-field w-full pl-9 pr-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none text-sm text-slate-700 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all" placeholder="https://github.com/...">
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <label class="block text-[11px] font-black uppercase tracking-wider text-slate-400 mb-2">Tech Stack Used</label>
+                                            <div class="relative flex items-center">
+                                                <i data-lucide="code-2" class="w-4 h-4 text-slate-400 absolute left-3"></i>
+                                                <input type="text" class="col-tech input-field w-full pl-9 pr-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none text-sm text-slate-700 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all" placeholder="e.g. React, Python, AWS...">
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="mt-6 pt-6 bg-transparent border-t border-slate-200 flex flex-col sm:flex-row justify-between items-center gap-4">
+                            <div class="text-sm text-slate-500 flex items-center gap-2">
+                                <i data-lucide="info" class="w-4 h-4"></i> Ensure all required fields <span class="text-rose-500 font-bold">*</span> are filled.
+                            </div>
+                            <button type="submit" id="btn-submit-dev" class="w-full sm:w-auto bg-brand-primary hover:bg-indigo-600 hover:shadow-indigo-500/25 hover:-translate-y-0.5 text-white font-bold py-3 px-8 rounded-xl shadow-lg transition-all flex items-center justify-center gap-2">
+                                <i data-lucide="send" class="w-4 h-4"></i> <span>Submit Batch Timesheet</span>
                             </button>
                         </div>
                     </form>
                 </div>
             `;
         }
+        window.handlePlatformTag = function(event, inputElement) {
+            if (event.key === 'Enter' || event.key === ',') {
+                event.preventDefault();
+                const val = inputElement.value.trim().replace(/,$/, '');
+                if (!val) return;
 
-        function getContentTaskFormTemplate() {
-            return `
-                <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 md:p-8 max-w-3xl mx-auto mt-2">
-                    <div class="flex flex-col sm:flex-row sm:items-center gap-4 mb-8 pb-6 border-b border-slate-100">
-                        <button onclick="routeApp('dashboard')" class="w-10 h-10 rounded-full hover:bg-slate-100 flex items-center justify-center text-slate-500 transition-colors shrink-0">
-                            <i data-lucide="arrow-left" class="w-5 h-5"></i>
-                        </button>
+                const container = inputElement.closest('.platform-tag-wrapper');
+                const tagDisplay = container.querySelector('.platform-tags-container');
+                const hiddenInput = container.querySelector('.col-platform-hidden');
+
+                // Update UI
+                const tag = document.createElement('span');
+                tag.className = 'inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200 mr-2 mb-2 shadow-sm transition-all';
+                tag.innerHTML = `
+                    ${val}
+                    <button type="button" class="ml-1.5 hover:text-rose-500 focus:outline-none" onclick="window.removePlatformTag(this, '${val}')">
+                        <i data-lucide="x" class="w-3 h-3"></i>
+                    </button>
+                `;
+                tagDisplay.appendChild(tag);
+
+                // Update Hidden Input
+                let currentTags = hiddenInput.value ? hiddenInput.value.split(',') : [];
+                currentTags.push(val);
+                hiddenInput.value = currentTags.join(',');
+
+                inputElement.value = '';
+                if (window.lucide) lucide.createIcons();
+            }
+        };
+
+        window.removePlatformTag = function(buttonElement, val) {
+            const container = buttonElement.closest('.platform-tag-wrapper');
+            const hiddenInput = container.querySelector('.col-platform-hidden');
+            let currentTags = hiddenInput.value ? hiddenInput.value.split(',') : [];
+            currentTags = currentTags.filter(t => t !== val);
+            hiddenInput.value = currentTags.join(',');
+            buttonElement.parentElement.remove();
+        };
+
+        window.addConTaskRow = function() {
+            const container = document.getElementById('con-task-container');
+            const item = document.createElement('div');
+            item.className = "con-task-item relative bg-white border border-slate-200 rounded-2xl p-5 sm:p-6 shadow-sm hover:shadow-md hover:border-brand-primary/30 transition-all group";
+            item.innerHTML = `
+                <button type="button" onclick="this.closest('.con-task-item').remove()" class="absolute -top-3 -right-3 w-8 h-8 bg-white border border-slate-200 text-slate-400 hover:text-rose-500 hover:bg-rose-50 hover:border-rose-200 rounded-full flex items-center justify-center shadow-sm transition-all opacity-0 group-hover:opacity-100 z-10" title="Remove Task">
+                    <i data-lucide="x" class="w-4 h-4"></i>
+                </button>
+                <div class="grid grid-cols-1 md:grid-cols-12 gap-6">
+                    <div class="md:col-span-4 space-y-4">
                         <div>
-                            <h3 class="text-xl md:text-2xl font-bold text-slate-800">Log Content Task</h3>
+                            <label class="block text-[11px] font-black uppercase tracking-wider text-slate-400 mb-2">Workspace</label>
+                            <div class="relative">
+                                <select class="col-project input-field w-full pl-3 pr-8 py-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none text-sm text-slate-700 font-medium appearance-none focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all" onchange="window.updateMilestones(this)">
+                                    ${getProjectOptions('Content')}
+                                </select>
+                                <i data-lucide="folder" class="w-4 h-4 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none"></i>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-[11px] font-black uppercase tracking-wider text-slate-400 mb-2">Milestone / Task</label>
+                            <div class="relative">
+                                <select class="col-milestone input-field w-full pl-3 pr-8 py-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none text-sm text-slate-700 font-medium appearance-none focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all">
+                                    <option value="">General Task (No Milestone)</option>
+                                </select>
+                                <i data-lucide="target" class="w-4 h-4 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none"></i>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-[11px] font-black uppercase tracking-wider text-slate-400 mb-2">Time (Hrs) <span class="text-rose-500">*</span></label>
+                            <input type="number" required min="0.5" max="24" step="0.5" class="col-hours input-field w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none text-sm text-slate-700 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all" placeholder="e.g. 2.0">
                         </div>
                     </div>
                     
-                    <form onsubmit="handleTaskSubmit(event, 'content')" class="space-y-6">
-                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                            <div>
-                                <label class="block text-sm font-semibold text-slate-700 mb-2">Project</label>
-                                <select id="con-project" class="input-field w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none">
-                                    ${getProjectOptions()}
-                                </select>
-                            </div>
-                            <div>
-                                <label class="block text-sm font-semibold text-slate-700 mb-2">Hours Logged <span class="text-brand-alert">*</span></label>
-                                <input type="number" id="con-hours" required min="0.5" max="24" step="0.5" class="input-field w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none">
-                            </div>
+                    <div class="md:col-span-8 space-y-4">
+                        <div class="grid grid-cols-4 gap-3 bg-slate-50 p-4 rounded-xl border border-slate-100">
+                            <div><label class="block text-[10px] uppercase tracking-wider font-bold text-slate-500 mb-2 text-center">Reels</label><input type="number" min="0" value="0" class="col-reels input-field w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-center outline-none text-sm"></div>
+                            <div><label class="block text-[10px] uppercase tracking-wider font-bold text-slate-500 mb-2 text-center">Videos</label><input type="number" min="0" value="0" class="col-videos input-field w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-center outline-none text-sm"></div>
+                            <div><label class="block text-[10px] uppercase tracking-wider font-bold text-slate-500 mb-2 text-center">Posters</label><input type="number" min="0" value="0" class="col-posters input-field w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-center outline-none text-sm"></div>
+                            <div><label class="block text-[10px] uppercase tracking-wider font-bold text-slate-500 mb-2 text-center">Calls</label><input type="number" min="0" value="0" class="col-calls input-field w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-center outline-none text-sm"></div>
                         </div>
 
-                        <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 bg-slate-50 p-4 md:p-6 rounded-xl border border-slate-100">
-                            <div><label class="block text-xs uppercase tracking-wider font-bold text-slate-500 mb-2 text-center">Reels</label><input type="number" id="con-reels" min="0" value="0" class="input-field w-full px-4 py-2 bg-white border border-slate-200 rounded-lg text-center outline-none"></div>
-                            <div><label class="block text-xs uppercase tracking-wider font-bold text-slate-500 mb-2 text-center">Videos</label><input type="number" id="con-videos" min="0" value="0" class="input-field w-full px-4 py-2 bg-white border border-slate-200 rounded-lg text-center outline-none"></div>
-                            <div><label class="block text-xs uppercase tracking-wider font-bold text-slate-500 mb-2 text-center">Posters</label><input type="number" id="con-posters" min="0" value="0" class="input-field w-full px-4 py-2 bg-white border border-slate-200 rounded-lg text-center outline-none"></div>
-                            <div><label class="block text-xs uppercase tracking-wider font-bold text-slate-500 mb-2 text-center">Calls</label><input type="number" id="con-calls" min="0" value="0" class="input-field w-full px-4 py-2 bg-white border border-slate-200 rounded-lg text-center outline-none"></div>
+                        <div class="platform-tag-wrapper">
+                            <label class="block text-[11px] font-black uppercase tracking-wider text-slate-400 mb-2">Target Platforms</label>
+                            <div class="platform-tags-container flex flex-wrap"></div>
+                            <input type="text" class="input-field w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl outline-none text-sm text-slate-700 focus:bg-white focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary transition-all" placeholder="Type platform and press Enter (e.g., YouTube, TikTok)" onkeydown="window.handlePlatformTag(event, this)">
+                            <input type="hidden" class="col-platform-hidden" value="">
                         </div>
 
                         <div>
-                            <label class="block text-sm font-semibold text-slate-700 mb-2">Target Platform</label>
-                            <input type="text" id="con-platform" class="input-field w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none">
+                            <label class="block text-[11px] font-black uppercase tracking-wider text-slate-400 mb-2">Task Performed <span class="text-rose-500">*</span></label>
+                            <textarea required minlength="5" class="col-task input-field w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none text-sm resize-none text-slate-700 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all" rows="2" placeholder="Description of the content created or tasks performed..."></textarea>
                         </div>
+                    </div>
+                </div>
+            `;
+            container.appendChild(item);
+            if (window.lucide) lucide.createIcons();
+        };
 
-                        <div>
-                            <label class="block text-sm font-semibold text-slate-700 mb-2">Task Performed <span class="text-brand-alert">*</span></label>
-                            <textarea id="con-task" required rows="3" class="input-field w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none resize-none"></textarea>
+        function getContentTaskFormTemplate() {
+            return `
+                <div class="bg-white rounded-3xl border border-slate-200 shadow-sm max-w-[95%] mx-auto mt-4 overflow-hidden">
+                    <!-- Premium Header -->
+                    <div class="bg-gradient-to-r from-rose-900 to-rose-800 px-6 py-8 sm:px-8 sm:py-10 text-white relative overflow-hidden">
+                        <div class="absolute top-0 right-0 opacity-10 pointer-events-none translate-x-1/4 -translate-y-1/4">
+                            <i data-lucide="video" class="w-64 h-64"></i>
                         </div>
+                        <div class="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-6">
+                            <div class="flex items-center gap-5">
+                                <button onclick="routeApp('dashboard')" class="w-11 h-11 rounded-full bg-white/10 hover:bg-white/20 border border-white/10 flex items-center justify-center text-white transition-all backdrop-blur-sm shrink-0 shadow-sm">
+                                    <i data-lucide="arrow-left" class="w-5 h-5"></i>
+                                </button>
+                                <div>
+                                    <h3 class="text-2xl md:text-3xl font-black tracking-tight text-white flex items-center gap-3">
+                                        Content Log <span class="px-2.5 py-1 rounded-md bg-rose-500/20 border border-rose-400/30 text-rose-300 text-xs uppercase tracking-widest font-bold">Batch Mode</span>
+                                    </h3>
+                                    <p class="text-rose-100/70 text-sm mt-1.5 font-medium">Log multiple content tasks, metrics, and platforms in a single fluid motion.</p>
+                                </div>
+                            </div>
+                            <button type="button" onclick="window.addConTaskRow()" class="bg-white text-slate-900 hover:bg-rose-50 hover:text-rose-600 px-5 py-2.5 rounded-xl font-bold text-sm transition-all flex items-center shadow-lg shadow-white/5 border border-white/20 whitespace-nowrap">
+                                <i data-lucide="plus-circle" class="w-4 h-4 mr-2"></i> Add New Task
+                            </button>
+                        </div>
+                    </div>
 
-                        <div class="pt-6 border-t border-slate-100 flex justify-end">
-                            <button type="submit" id="btn-submit-con" class="w-full sm:w-auto bg-brand-primary hover:bg-indigo-700 text-white font-medium py-3 px-8 rounded-xl shadow-md transition-all flex items-center justify-center">
-                                <span>Submit Content Output</span><i data-lucide="check" class="ml-2 w-5 h-5"></i>
+                    <form onsubmit="handleTaskSubmit(event, 'content')" class="p-4 sm:p-6 bg-slate-50/30">
+                        <div id="con-task-container" class="space-y-6">
+                            <!-- Initial Task Row -->
+                            <div class="con-task-item relative bg-white border border-slate-200 rounded-2xl p-5 sm:p-6 shadow-sm hover:shadow-md hover:border-brand-primary/30 transition-all group">
+                                <div class="grid grid-cols-1 md:grid-cols-12 gap-6">
+                                    <div class="md:col-span-4 space-y-4">
+                                        <div>
+                                            <label class="block text-[11px] font-black uppercase tracking-wider text-slate-400 mb-2">Workspace</label>
+                                            <div class="relative">
+                                                <select class="col-project input-field w-full pl-3 pr-8 py-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none text-sm text-slate-700 font-medium appearance-none focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all" onchange="window.updateMilestones(this)">
+                                                    ${getProjectOptions('Content')}
+                                                </select>
+                                                <i data-lucide="folder" class="w-4 h-4 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none"></i>
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <label class="block text-[11px] font-black uppercase tracking-wider text-slate-400 mb-2">Milestone / Task</label>
+                                            <div class="relative">
+                                                <select class="col-milestone input-field w-full pl-3 pr-8 py-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none text-sm text-slate-700 font-medium appearance-none focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all">
+                                                    <option value="">General Task (No Milestone)</option>
+                                                </select>
+                                                <i data-lucide="target" class="w-4 h-4 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none"></i>
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <label class="block text-[11px] font-black uppercase tracking-wider text-slate-400 mb-2">Time (Hrs) <span class="text-rose-500">*</span></label>
+                                            <input type="number" required min="0.5" max="24" step="0.5" class="col-hours input-field w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none text-sm text-slate-700 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all" placeholder="e.g. 2.0">
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="md:col-span-8 space-y-4">
+                                        <div class="grid grid-cols-4 gap-3 bg-slate-50 p-4 rounded-xl border border-slate-100">
+                                            <div><label class="block text-[10px] uppercase tracking-wider font-bold text-slate-500 mb-2 text-center">Reels</label><input type="number" min="0" value="0" class="col-reels input-field w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-center outline-none text-sm"></div>
+                                            <div><label class="block text-[10px] uppercase tracking-wider font-bold text-slate-500 mb-2 text-center">Videos</label><input type="number" min="0" value="0" class="col-videos input-field w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-center outline-none text-sm"></div>
+                                            <div><label class="block text-[10px] uppercase tracking-wider font-bold text-slate-500 mb-2 text-center">Posters</label><input type="number" min="0" value="0" class="col-posters input-field w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-center outline-none text-sm"></div>
+                                            <div><label class="block text-[10px] uppercase tracking-wider font-bold text-slate-500 mb-2 text-center">Calls</label><input type="number" min="0" value="0" class="col-calls input-field w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-center outline-none text-sm"></div>
+                                        </div>
+
+                                        <div class="platform-tag-wrapper">
+                                            <label class="block text-[11px] font-black uppercase tracking-wider text-slate-400 mb-2">Target Platforms</label>
+                                            <div class="platform-tags-container flex flex-wrap"></div>
+                                            <input type="text" class="input-field w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl outline-none text-sm text-slate-700 focus:bg-white focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary transition-all" placeholder="Type platform and press Enter (e.g., YouTube, TikTok)" onkeydown="window.handlePlatformTag(event, this)">
+                                            <input type="hidden" class="col-platform-hidden" value="">
+                                        </div>
+
+                                        <div>
+                                            <label class="block text-[11px] font-black uppercase tracking-wider text-slate-400 mb-2">Task Performed <span class="text-rose-500">*</span></label>
+                                            <textarea required minlength="5" class="col-task input-field w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none text-sm resize-none text-slate-700 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all" rows="2" placeholder="Description of the content created or tasks performed..."></textarea>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="mt-6 pt-6 bg-transparent border-t border-slate-200 flex flex-col sm:flex-row justify-between items-center gap-4">
+                            <div class="text-sm text-slate-500 flex items-center gap-2">
+                                <i data-lucide="info" class="w-4 h-4"></i> Ensure all required fields <span class="text-rose-500 font-bold">*</span> are filled.
+                            </div>
+                            <button type="submit" id="btn-submit-con" class="w-full sm:w-auto bg-rose-600 hover:bg-rose-700 hover:shadow-rose-500/25 hover:-translate-y-0.5 text-white font-bold py-3 px-8 rounded-xl shadow-lg transition-all flex items-center justify-center gap-2">
+                                <i data-lucide="send" class="w-4 h-4"></i> <span>Submit Batch Timesheet</span>
                             </button>
                         </div>
                     </form>
@@ -698,9 +1197,9 @@
                                     <div class="grid grid-cols-2 md:grid-cols-5 gap-3">
                                         ${getUploadBoxHtml('Aadhar Front', 'adhar', 'front', emp.adhar_front)}
                                         ${getUploadBoxHtml('Aadhar Back', 'adhar', 'back', emp.adhar_back)}
-                                        ${getUploadBoxHtml('PAN Front', 'pan', 'front', emp.pan_front)}
-                                        ${getUploadBoxHtml('PAN Back', 'pan', 'back', emp.pan_back)}
-                                        ${getUploadBoxHtml('Bank QR Code', 'qr', 'code', emp.qr_code)}
+                                        ${getUploadBoxHtml('PAN Front', 'pancard', 'front', emp.pan_front)}
+                                        ${getUploadBoxHtml('PAN Back', 'pancard', 'back', emp.pan_back)}
+                                        ${getUploadBoxHtml('Bank QR Code', 'qr_code', 'code', emp.qr_code)}
                                     </div>
                                 </div>
 
@@ -720,6 +1219,9 @@
                     <input type="file" id="${inputId}" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" accept="image/*" onchange="handleFileUpload(event, '${type}', '${subType}')">
                     
                     ${isUploaded ? `
+                        <button onclick="event.stopPropagation(); handleFileDelete('${type}', '${subType}')" class="absolute top-2 right-2 w-6 h-6 bg-rose-500 hover:bg-rose-600 text-white rounded-full flex items-center justify-center shadow-lg transition-all z-20 opacity-0 group-hover:opacity-100" title="Delete File">
+                            <i data-lucide="trash-2" class="w-3 h-3"></i>
+                        </button>
                         <i data-lucide="check-circle" class="w-5 h-5 text-emerald-400 mb-1.5"></i>
                         <span class="text-[10px] font-bold text-slate-200 leading-tight">${label}</span>
                         <span class="text-[9px] text-emerald-400 mt-1 uppercase tracking-wider font-bold">Uploaded</span>
@@ -733,6 +1235,50 @@
         }
 
         // --- Action Handlers ---
+        async function handleCheckIn(event) {
+            event.preventDefault();
+            const btn = event.currentTarget;
+            const originalHtml = btn.innerHTML;
+            btn.innerHTML = '<i data-lucide="loader-2" class="w-4 h-4 mr-2 animate-spin"></i> Checking in...';
+            btn.disabled = true;
+
+            try {
+                await apiFetch('/attendance/check-in', { method: 'POST', body: {} });
+                showToast('Successfully checked in for today!', 'success');
+                await loadEmployeeWorkspaceData();
+                renderEmployeeApp();
+            } catch (error) {
+                showToast('Check-in failed: ' + error.message, 'error');
+                btn.innerHTML = originalHtml;
+                btn.disabled = false;
+                lucide.createIcons();
+            }
+        }
+
+        async function handleCheckOut(event) {
+            event.preventDefault();
+            const btn = event.currentTarget;
+            const originalHtml = btn.innerHTML;
+            
+            const isConfirmed = await customConfirm("Check Out", "Are you sure you want to check out? You cannot check back in today.", "Check Out", "Cancel", true);
+            if (!isConfirmed) return;
+            
+            btn.innerHTML = '<i data-lucide="loader-2" class="w-4 h-4 mr-2 animate-spin"></i> Checking out...';
+            btn.disabled = true;
+
+            try {
+                await apiFetch('/attendance/check-out', { method: 'POST', body: {} });
+                showToast('Successfully checked out. Have a great rest of your day!', 'success');
+                await loadEmployeeWorkspaceData();
+                renderEmployeeApp();
+            } catch (error) {
+                showToast('Check-out failed: ' + error.message, 'error');
+                btn.innerHTML = originalHtml;
+                btn.disabled = false;
+                lucide.createIcons();
+            }
+        }
+
         async function handleTaskSubmit(event, type) {
             event.preventDefault();
             const btn = document.getElementById(`btn-submit-${type === 'developer' ? 'dev' : 'con'}`);
@@ -741,39 +1287,87 @@
             btn.disabled = true;
 
             try {
-                let payload = {
-                    employee_id: state.user.id,
-                    project_id: document.getElementById(`${type === 'developer' ? 'dev' : 'con'}-project`).value || null,
-                    hours_logged: parseFloat(document.getElementById(`${type === 'developer' ? 'dev' : 'con'}-hours`).value)
-                };
-
                 if (type === 'developer') {
-                    payload.tech_stack = state.devTechStack.length > 0 ? JSON.stringify(state.devTechStack) : 'N/A';
-                    payload.github_link = document.getElementById('dev-link').value || 'N/A';
-                    payload.task_performed = document.getElementById('dev-task').value;
-                    payload.tomorrow_plan = document.getElementById('dev-plan').value || 'N/A';
+                    const rows = document.querySelectorAll('.dev-task-item');
+                    const batchPayload = [];
+                    for (const row of rows) {
+                        const projectId = row.querySelector('.col-project').value || null;
+                        const milestoneId = row.querySelector('.col-milestone').value || null;
+                        
+                        const hours = parseFloat(row.querySelector('.col-hours').value) || 0;
+                        const taskPerformed = row.querySelector('.col-task').value || '';
+                        const tomorrowPlan = row.querySelector('.col-plan').value || 'N/A';
+                        const githubLink = row.querySelector('.col-link').value || 'N/A';
+                        const techStack = row.querySelector('.col-tech').value || 'N/A';
+
+                        if (!hours || taskPerformed.length < 5) {
+                            throw new Error("Each task must have valid hours and at least 5 characters for Task Performed.");
+                        }
+
+                        batchPayload.push({
+                            employee_id: state.user.id,
+                            project_id: projectId || null,
+                            milestone_id: milestoneId || null,
+                            hours_logged: hours,
+                            tech_stack: techStack,
+                            github_link: githubLink,
+                            task_performed: taskPerformed,
+                            tomorrow_plan: tomorrowPlan
+                        });
+                    }
+
+                    if (batchPayload.length === 0) {
+                        throw new Error("No tasks to submit.");
+                    }
+
+                    await apiFetch(`/tasks/developer/batch-create`, { method: 'POST', body: batchPayload });
+                    showToast("Batch Timesheet submitted successfully!", "success");
                 } else {
-                    payload.reels_count = parseInt(document.getElementById('con-reels').value) || 0;
-                    payload.long_video_count = parseInt(document.getElementById('con-videos').value) || 0;
-                    payload.poster_count = parseInt(document.getElementById('con-posters').value) || 0;
-                    payload.calls_made = parseInt(document.getElementById('con-calls').value) || 0;
-                    payload.platform = document.getElementById('con-platform').value || 'N/A';
-                    payload.task_performed = document.getElementById('con-task').value;
+                    const rows = document.querySelectorAll('.con-task-item');
+                    const batchPayload = [];
+                    for (const row of rows) {
+                        const projectId = row.querySelector('.col-project').value || null;
+                        const milestoneId = row.querySelector('.col-milestone').value || null;
+                        
+                        const hours = parseFloat(row.querySelector('.col-hours').value) || 0;
+                        const taskPerformed = row.querySelector('.col-task').value || '';
+                        
+                        if (!hours || taskPerformed.length < 5) {
+                            throw new Error("Each task must have valid hours and at least 5 characters for Task Performed.");
+                        }
+
+                        let payload = {
+                            employee_id: state.user.id,
+                            project_id: projectId,
+                            milestone_id: milestoneId,
+                            hours_logged: hours,
+                            task_performed: taskPerformed,
+                            reels_count: parseInt(row.querySelector('.col-reels').value) || 0,
+                            long_video_count: parseInt(row.querySelector('.col-videos').value) || 0,
+                            poster_count: parseInt(row.querySelector('.col-posters').value) || 0,
+                            calls_made: parseInt(row.querySelector('.col-calls').value) || 0,
+                            platform: row.querySelector('.col-platform-hidden').value || 'N/A'
+                        };
+                        batchPayload.push(payload);
+                    }
+
+                    if (batchPayload.length === 0) {
+                        throw new Error("No tasks to submit.");
+                    }
+
+                    await apiFetch(`/tasks/content/batch-create`, { method: 'POST', body: batchPayload });
+                    showToast("Batch Content Timesheet submitted successfully!", "success");
                 }
 
-                await apiFetch(`/tasks/${type}/create`, { method: 'POST', body: payload });
-                showToast("Timesheet submitted successfully!", "success");
-                if (type === 'developer') state.devTechStack = []; // Clear tech stack tags
                 await loadEmployeeWorkspaceData();
                 routeApp('dashboard');
-                
+
             } catch (error) {
                 showToast("Submission failed: " + error.message, "error");
                 btn.innerHTML = originalText; btn.disabled = false;
                 lucide.createIcons();
             }
         }
-
         async function handleFileUpload(event, type, subType) {
             const file = event.target.files[0];
             if (!file) return;
@@ -800,6 +1394,24 @@
             }
         }
 
+        async function handleFileDelete(type, subType) {
+            const isConfirmed = await customConfirm("Delete File", `Are you sure you want to delete this ${type} ${subType} document? This action cannot be undone.`, "Delete", "Cancel", true);
+            if (!isConfirmed) return;
+
+            try {
+                showToast("Deleting file...", "info");
+                await apiFetch(`/uploads/image/?image_type=${type}&sub_type=${subType}`, {
+                    method: 'DELETE'
+                });
+
+                showToast("File deleted successfully", "success");
+                await loadEmployeeWorkspaceData();
+                routeApp('profile');
+            } catch (error) {
+                showToast("Deletion failed: " + error.message, "error");
+            }
+        }
+
         function openChangePasswordModal() {
             const html = `
                 <form onsubmit="handleChangePassword(event)" class="space-y-4">
@@ -821,6 +1433,7 @@
             `;
             openModal('Change Password', html);
         }
+
 
         async function handleChangePassword(e) {
             e.preventDefault();
@@ -984,6 +1597,150 @@
             }
         }
 
+        function getEmployeeLeaveRequestsTemplate() {
+            const sortedRequests = [...(state.myLeaveRequests || [])].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+            let tableRows = '';
+            
+            if (sortedRequests.length === 0) {
+                tableRows = '<tr><td colspan="4" class="px-6 py-8 text-center text-slate-500">No leave requests found.</td></tr>';
+            } else {
+                tableRows = sortedRequests.map(req => {
+                    const startStr = new Date(req.start_date).toLocaleDateString();
+                    const endStr = new Date(req.end_date).toLocaleDateString();
+                    
+                    let statusColor = 'bg-slate-100 text-slate-700';
+                    if (req.status === 'Approved') statusColor = 'bg-emerald-100 text-emerald-800';
+                    if (req.status === 'Rejected') statusColor = 'bg-rose-100 text-rose-800';
+                    if (req.status === 'Pending') statusColor = 'bg-amber-100 text-amber-800';
+                    
+                    const statusBadge = `<span class="px-2.5 py-1 ${statusColor} rounded-full text-xs font-bold border border-white/20 shadow-sm">${req.status}</span>`;
+                    
+                    return `
+                        <tr class="border-b border-slate-100 hover:bg-slate-50 transition-colors">
+                            <td class="px-6 py-4 text-sm font-medium text-slate-800">${startStr} - ${endStr}</td>
+                            <td class="px-6 py-4 text-sm text-slate-600 truncate max-w-xs" title="${req.reason}">${req.reason}</td>
+                            <td class="px-6 py-4 text-sm text-slate-500">${new Date(req.created_at).toLocaleDateString()}</td>
+                            <td class="px-6 py-4">${statusBadge}</td>
+                        </tr>
+                    `;
+                }).join('');
+            }
+
+            return `
+                <div class="max-w-5xl mx-auto space-y-6 fade-in">
+                    <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
+                        <h3 class="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2">
+                            <i data-lucide="calendar-plus" class="w-5 h-5 text-brand-primary"></i> Apply for Leave
+                        </h3>
+                        <form onsubmit="handleLeaveRequestSubmit(event)" class="space-y-4">
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Start Date *</label>
+                                    <input type="date" id="leave-start" required class="input-field w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg outline-none text-sm text-slate-800 focus:bg-white focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">End Date *</label>
+                                    <input type="date" id="leave-end" required class="input-field w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg outline-none text-sm text-slate-800 focus:bg-white focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary">
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Reason *</label>
+                                <textarea id="leave-reason" required rows="3" class="input-field w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg outline-none text-sm text-slate-800 focus:bg-white focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary resize-y" placeholder="Please describe the reason for your leave..."></textarea>
+                            </div>
+                            <div class="flex justify-end">
+                                <button type="submit" id="btn-submit-leave" class="bg-brand-primary hover:bg-indigo-600 text-white font-bold py-2 px-6 rounded-lg shadow-md transition-all flex items-center">
+                                    <i data-lucide="send" class="w-4 h-4 mr-2"></i> Submit Request
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                        <div class="px-6 py-4 border-b border-slate-100 bg-slate-50 flex items-center justify-between">
+                            <h4 class="font-bold text-slate-800 flex items-center gap-2">
+                                <i data-lucide="history" class="w-5 h-5 text-slate-500"></i> My Leave History
+                            </h4>
+                            <span class="px-2.5 py-1 bg-indigo-100 text-brand-primary text-xs font-bold rounded-md">${sortedRequests.length} Total</span>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left whitespace-nowrap">
+                                <thead>
+                                    <tr class="bg-slate-50/50 border-b border-slate-200">
+                                        <th class="px-6 py-3 text-[11px] font-black uppercase tracking-wider text-slate-400">Duration</th>
+                                        <th class="px-6 py-3 text-[11px] font-black uppercase tracking-wider text-slate-400">Reason</th>
+                                        <th class="px-6 py-3 text-[11px] font-black uppercase tracking-wider text-slate-400">Applied On</th>
+                                        <th class="px-6 py-3 text-[11px] font-black uppercase tracking-wider text-slate-400">Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${tableRows}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        async function handleLeaveRequestSubmit(event) {
+            event.preventDefault();
+            const btn = document.getElementById('btn-submit-leave');
+            const ogHtml = btn.innerHTML;
+            btn.innerHTML = '<i data-lucide="loader-2" class="w-4 h-4 animate-spin mr-2"></i> Submitting...';
+            btn.disabled = true;
+
+            const payload = {
+                start_date: document.getElementById('leave-start').value,
+                end_date: document.getElementById('leave-end').value,
+                reason: document.getElementById('leave-reason').value
+            };
+
+            if (new Date(payload.start_date) > new Date(payload.end_date)) {
+                showToast("End Date cannot be before Start Date.", "error");
+                btn.innerHTML = ogHtml;
+                btn.disabled = false;
+                return;
+            }
+
+            try {
+                await apiFetch('/attendance/leave-requests', {
+                    method: 'POST',
+                    body: payload
+                });
+                showToast("Leave request submitted successfully!", "success");
+                await loadEmployeeWorkspaceData();
+                routeApp('leave-requests'); // Re-render to show updated list
+            } catch (error) {
+                showToast("Failed to submit request: " + error.message, "error");
+                btn.innerHTML = ogHtml;
+                btn.disabled = false;
+                lucide.createIcons();
+            }
+        }
+
+        let ws;
+        function setupWebSocket() {
+            if (ws && (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING)) return;
+            const wsUrl = CONFIG.API_BASE_URL.replace('http', 'ws') + '/ws';
+            ws = new WebSocket(wsUrl);
+
+            ws.onopen = () => console.log('WebSocket connected for real-time updates');
+            ws.onmessage = async (event) => {
+                try {
+                    const data = JSON.parse(event.data);
+                    if (data.action === "REFRESH_WORKSPACE") {
+                        console.log("WebSocket update received. Reloading workspace data.");
+                        await loadEmployeeWorkspaceData();
+                        routeApp(state.currentView);
+                    }
+                } catch (e) {
+                    console.error("Error processing websocket message", e);
+                }
+            };
+            ws.onclose = () => setTimeout(setupWebSocket, 3000);
+            ws.onerror = () => ws.close();
+        }
+
         // --- Bootstrap Application ---
         document.addEventListener('DOMContentLoaded', () => {
             const token = sessionStorage.getItem(CONFIG.TOKEN_KEY);
@@ -1010,8 +1767,44 @@
 
             // Restore the last visited view, or default to dashboard
             const lastView = sessionStorage.getItem('lastEmployeeView') || 'dashboard';
+            setupWebSocket();
             routeApp(lastView);
         });
+
+        // Mobile & Desktop Sidebar Toggle Logic
+        window.toggleMobileSidebar = function() {
+            const sidebar = document.getElementById('main-sidebar');
+            const overlay = document.getElementById('mobile-sidebar-overlay');
+            if (!sidebar) return;
+
+            if (window.innerWidth < 768) {
+                if (!overlay) return;
+                const isOpen = !sidebar.classList.contains('-translate-x-full');
+                if (isOpen) {
+                    // Close it
+                    sidebar.classList.add('-translate-x-full');
+                    overlay.classList.add('opacity-0');
+                    setTimeout(() => overlay.classList.add('hidden'), 300);
+                } else {
+                    // Open it
+                    overlay.classList.remove('hidden');
+                    // Small delay to allow display:block to apply before animating opacity
+                    setTimeout(() => {
+                        overlay.classList.remove('opacity-0');
+                        sidebar.classList.remove('-translate-x-full');
+                    }, 10);
+                }
+            } else {
+                // Desktop collapse
+                const isCollapsed = sidebar.classList.toggle('sidebar-collapsed');
+                localStorage.setItem('yanaSidebarCollapsed', isCollapsed ? 'true' : 'false');
+                
+                // Trigger window resize to auto-adjust charts
+                setTimeout(() => {
+                    window.dispatchEvent(new Event('resize'));
+                }, 310);
+            }
+        };
     </script>
 </body>
 </html>
