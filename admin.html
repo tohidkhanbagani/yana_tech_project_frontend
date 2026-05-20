@@ -347,6 +347,19 @@
     <div id="app" class="h-full w-full"></div>
 
     <script>
+      // Global Error Handling for Unexpected Exceptions
+      window.addEventListener('error', function(event) {
+          if (!event.error) return; 
+          const errMessage = event.error.message || event.message;
+          console.error("Redirecting to 404 due to unexpected error:", errMessage);
+          window.location.href = `404.html?error=${encodeURIComponent(errMessage)}&from=${encodeURIComponent(window.location.pathname)}`;
+      });
+      window.addEventListener('unhandledrejection', function(event) {
+          const errMessage = event.reason ? (event.reason.message || event.reason) : "Unhandled Promise Rejection";
+          console.error("Redirecting to 404 due to unexpected rejection:", errMessage);
+          window.location.href = `404.html?error=${encodeURIComponent(errMessage)}&from=${encodeURIComponent(window.location.pathname)}`;
+      });
+
       /**
        * YANA OS - ADMIN PORTAL ENGINE (Phases 3 & 4)
        */
@@ -725,6 +738,14 @@
           sessionStorage.setItem("lastWorkforceTab", tab); // Save Tab
           state.activeEmployee = null; // Clear active employee when switching workforce tabs
         }
+
+        // Validate view exists
+        const validViews = ["dashboard", "projects", "clients", "workforce", "attendance", "timesheets", "profile"];
+        if (!validViews.includes(state.adminView)) {
+          window.location.href = `404.html?error=${encodeURIComponent("Invalid Admin View: " + state.adminView)}&from=${encodeURIComponent(window.location.pathname)}`;
+          return;
+        }
+
         const appDiv = document.getElementById("app");
         const renderLoader = (msg) => {
           appDiv.innerHTML = `<div class="h-full w-full flex items-center justify-center bg-slate-50"><div class="flex flex-col items-center"><i data-lucide="loader-2" class="w-10 h-10 animate-spin text-brand-primary mb-4"></i><p class="text-slate-500 font-medium">${msg}</p></div></div>`;
@@ -733,7 +754,12 @@
 
         if (!state.adminDataLoaded) {
           renderLoader("Initializing Executive Control Center...");
-          await loadAdminWorkspaceData();
+          try {
+            await loadAdminWorkspaceData();
+          } catch (error) {
+            window.location.href = `404.html?error=${encodeURIComponent("Failed to load admin framework data: " + error.message)}&from=${encodeURIComponent(window.location.pathname)}`;
+            return;
+          }
         }
 
         // Phase 4: Non-Blocking Dashboard Hydration

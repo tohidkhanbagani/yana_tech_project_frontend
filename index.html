@@ -140,6 +140,19 @@
     </div>
 
     <script>
+        // Global Error Handling for Unexpected Exceptions
+        window.addEventListener('error', function(event) {
+            if (!event.error) return; 
+            const errMessage = event.error.message || event.message;
+            console.error("Redirecting to 404 due to unexpected error:", errMessage);
+            window.location.href = `404.html?error=${encodeURIComponent(errMessage)}&from=${encodeURIComponent(window.location.pathname)}`;
+        });
+        window.addEventListener('unhandledrejection', function(event) {
+            const errMessage = event.reason ? (event.reason.message || event.reason) : "Unhandled Promise Rejection";
+            console.error("Redirecting to 404 due to unexpected rejection:", errMessage);
+            window.location.href = `404.html?error=${encodeURIComponent(errMessage)}&from=${encodeURIComponent(window.location.pathname)}`;
+        });
+
         document.getElementById('year').textContent = new Date().getFullYear();
         lucide.createIcons();
 
