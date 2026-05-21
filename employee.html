@@ -1,15 +1,16 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Yana OS | Employee Workspace</title>
-    
+
     <!-- Google Fonts: Inter -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    
+
     <!-- Lucide Icons -->
     <script src="https://unpkg.com/lucide@latest"></script>
 
@@ -22,8 +23,8 @@
                     fontFamily: { sans: ['Inter', 'sans-serif'] },
                     colors: {
                         brand: {
-                            dark: '#0f172a',    primary: '#4f46e5',
-                            accent: '#10b981',  alert: '#f43f5e',
+                            dark: '#0f172a', primary: '#4f46e5',
+                            accent: '#10b981', alert: '#f43f5e',
                             surface: '#f8fafc'
                         }
                     }
@@ -33,43 +34,123 @@
     </script>
 
     <style>
-        body { font-family: 'Inter', sans-serif; background-color: #f8fafc; overflow-x: hidden; }
-        .input-field { transition: all 0.3s ease; }
-        .input-field:focus { box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.2); border-color: #4f46e5; }
-        
-        @keyframes slideInRight { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
-        @keyframes fadeOut { from { opacity: 1; } to { opacity: 0; } }
-        .toast-enter { animation: slideInRight 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
-        .toast-exit { animation: fadeOut 0.4s ease forwards; }
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f8fafc;
+            overflow-x: hidden;
+        }
 
-        ::-webkit-scrollbar { width: 8px; height: 8px; }
-        ::-webkit-scrollbar-track { background: #f1f1f1; }
-        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
-        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        .input-field {
+            transition: all 0.3s ease;
+        }
+
+        .input-field:focus {
+            box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.2);
+            border-color: #4f46e5;
+        }
+
+        @keyframes slideInRight {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        @keyframes fadeOut {
+            from {
+                opacity: 1;
+            }
+
+            to {
+                opacity: 0;
+            }
+        }
+
+        .toast-enter {
+            animation: slideInRight 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+
+        .toast-exit {
+            animation: fadeOut 0.4s ease forwards;
+        }
+
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
 
         /* Desktop Sidebar Collapse Styles */
         @media (min-width: 768px) {
-            #main-sidebar { transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1), transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); overflow-x: hidden; }
-            #main-sidebar.sidebar-collapsed { width: 5rem; }
-            #main-sidebar.sidebar-collapsed span { display: none; }
-            #main-sidebar.sidebar-collapsed .h-16 { padding-left: 0 !important; padding-right: 0 !important; justify-content: center; }
-            #main-sidebar.sidebar-collapsed .mr-3 { margin-right: 0 !important; }
-            #main-sidebar.sidebar-collapsed .nav-btn { padding-left: 0 !important; padding-right: 0 !important; justify-content: center; }
-            #main-sidebar.sidebar-collapsed .p-4 { padding-left: 0.5rem !important; padding-right: 0.5rem !important; }
+            #main-sidebar {
+                transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1), transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+                overflow-x: hidden;
+            }
+
+            #main-sidebar.sidebar-collapsed {
+                width: 5rem;
+            }
+
+            #main-sidebar.sidebar-collapsed span {
+                display: none;
+            }
+
+            #main-sidebar.sidebar-collapsed .h-16 {
+                padding-left: 0 !important;
+                padding-right: 0 !important;
+                justify-content: center;
+            }
+
+            #main-sidebar.sidebar-collapsed .mr-3 {
+                margin-right: 0 !important;
+            }
+
+            #main-sidebar.sidebar-collapsed .nav-btn {
+                padding-left: 0 !important;
+                padding-right: 0 !important;
+                justify-content: center;
+            }
+
+            #main-sidebar.sidebar-collapsed .p-4 {
+                padding-left: 0.5rem !important;
+                padding-right: 0.5rem !important;
+            }
         }
     </style>
 </head>
+
 <body class="text-slate-800 antialiased h-screen w-screen overflow-hidden">
 
     <!-- Toast Notification Container -->
-    <div id="toast-container" class="fixed top-4 right-4 z-[9999] flex flex-col gap-2 w-full max-w-sm pointer-events-none"></div>
+    <div id="toast-container"
+        class="fixed top-4 right-4 z-[9999] flex flex-col gap-2 w-full max-w-sm pointer-events-none"></div>
 
     <!-- Global Modal -->
-    <div id="globalModal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div id="globalModal"
+        class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
         <div class="bg-white rounded-2xl shadow-xl w-full max-w-lg overflow-hidden flex flex-col max-h-[90vh]">
             <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50 shrink-0">
                 <h3 id="modalTitle" class="text-lg font-bold text-slate-800 tracking-tight"></h3>
-                <button onclick="closeModal()" class="text-slate-400 hover:text-slate-600 transition-colors p-1 rounded-lg"><i data-lucide="x" class="w-5 h-5"></i></button>
+                <button onclick="closeModal()"
+                    class="text-slate-400 hover:text-slate-600 transition-colors p-1 rounded-lg"><i data-lucide="x"
+                        class="w-5 h-5"></i></button>
             </div>
             <div id="modalBody" class="p-6 overflow-y-auto"></div>
         </div>
@@ -79,27 +160,14 @@
     <div id="app" class="h-full w-full"></div>
 
     <script>
-        // Global Error Handling for Unexpected Exceptions
-        window.addEventListener('error', function(event) {
-            if (!event.error) return; 
-            const errMessage = event.error.message || event.message;
-            console.error("Redirecting to 404 due to unexpected error:", errMessage);
-            window.location.href = `404.html?error=${encodeURIComponent(errMessage)}&from=${encodeURIComponent(window.location.pathname)}`;
-        });
-        window.addEventListener('unhandledrejection', function(event) {
-            const errMessage = event.reason ? (event.reason.message || event.reason) : "Unhandled Promise Rejection";
-            console.error("Redirecting to 404 due to unexpected rejection:", errMessage);
-            window.location.href = `404.html?error=${encodeURIComponent(errMessage)}&from=${encodeURIComponent(window.location.pathname)}`;
-        });
-
         /**
          * YANA OS - EMPLOYEE PORTAL ENGINE
          */
 
         const CONFIG = {
-            API_BASE_URL: "https://yana-tech-project-backend-d0sj.onrender.com", 
-            TOKEN_KEY: 'yana_os_token',
-            LOGIN_URL: 'index.html'
+            API_BASE_URL: "https://yana-tech-project-backend-d0sj.onrender.com",
+            TOKEN_KEY: "yana_os_token",
+            LOGIN_URL: "index.html",
         };
 
         const state = {
@@ -109,9 +177,9 @@
             employeeTasks: [],
             projects: [],
             myAttendance: [], // ADDED FOR ATTENDANCE
-            isEditingProfile: false, 
-            editSkills: [], 
-            devTechStack: [], 
+            isEditingProfile: false,
+            editSkills: [],
+            devTechStack: [],
             appShellRendered: false // ARCHITECTURE FIX: Prevents full-page reloading
         };
 
@@ -120,9 +188,9 @@
             const container = document.getElementById('toast-container');
             const toast = document.createElement('div');
             let iconSvg = ''; let bgColor = '';
-            
-            if (type === 'error') { bgColor = 'bg-brand-alert'; iconSvg = `<i data-lucide="alert-circle" class="w-5 h-5 text-white"></i>`; } 
-            else if (type === 'success') { bgColor = 'bg-brand-accent'; iconSvg = `<i data-lucide="check-circle-2" class="w-5 h-5 text-white"></i>`; } 
+
+            if (type === 'error') { bgColor = 'bg-brand-alert'; iconSvg = `<i data-lucide="alert-circle" class="w-5 h-5 text-white"></i>`; }
+            else if (type === 'success') { bgColor = 'bg-brand-accent'; iconSvg = `<i data-lucide="check-circle-2" class="w-5 h-5 text-white"></i>`; }
             else { bgColor = 'bg-slate-800'; iconSvg = `<i data-lucide="info" class="w-5 h-5 text-white"></i>`; }
 
             toast.className = `toast-enter flex items-center p-4 rounded-lg shadow-lg text-white pointer-events-auto ${bgColor}`;
@@ -144,7 +212,7 @@
         // --- Modals ---
         function openModal(title, content) {
             const m = document.getElementById('globalModal');
-            if(m) {
+            if (m) {
                 document.getElementById('modalTitle').innerText = title;
                 document.getElementById('modalBody').innerHTML = content;
                 m.classList.remove('hidden');
@@ -153,14 +221,14 @@
         }
         function closeModal() {
             const m = document.getElementById('globalModal');
-            if(m) m.classList.add('hidden');
+            if (m) m.classList.add('hidden');
         }
 
         function customConfirm(title, message, confirmText = 'Confirm', cancelText = 'Cancel', isDanger = false) {
             return new Promise((resolve) => {
                 const btnClass = isDanger ? 'bg-rose-500 hover:bg-rose-600 text-white shadow-rose-500/20' : 'bg-brand-primary hover:bg-indigo-600 text-white shadow-indigo-500/20';
                 const iconStr = isDanger ? '<i data-lucide="alert-triangle" class="w-6 h-6 text-rose-500"></i>' : '<i data-lucide="help-circle" class="w-6 h-6 text-brand-primary"></i>';
-                
+
                 const html = `
                     <div class="flex items-start gap-4">
                         <div class="w-12 h-12 rounded-full ${isDanger ? 'bg-rose-100' : 'bg-indigo-50'} flex items-center justify-center shrink-0">
@@ -244,7 +312,7 @@
                 }
                 return data;
             } catch (error) {
-                if(error.message === "Failed to fetch") showToast("Unable to connect to the server.", "error");
+                if (error.message === "Failed to fetch") showToast("Unable to connect to the server.", "error");
                 throw error;
             }
         }
@@ -275,7 +343,7 @@
                 // Fetch timelines for all assigned projects
                 state.projectTimelines = {};
                 if (state.projects.length > 0) {
-                    const timelinePromises = state.projects.map(p => 
+                    const timelinePromises = state.projects.map(p =>
                         apiFetch(`/projects/timeline/${p.id}`).catch(() => [])
                     );
                     const timelines = await Promise.all(timelinePromises);
@@ -292,21 +360,14 @@
             if (view) {
                 state.currentView = view;
                 sessionStorage.setItem('lastEmployeeView', view); // Save View
-                
+
                 // Close mobile sidebar on navigation
                 const sidebar = document.getElementById('main-sidebar');
                 if (sidebar && !sidebar.classList.contains('-translate-x-full') && window.innerWidth < 768) {
                     toggleMobileSidebar();
                 }
             }
-            
-            // Validate view exists
-            const validViews = ['dashboard', 'log-dev', 'log-content', 'profile', 'leave-requests'];
-            if (!validViews.includes(state.currentView)) {
-                window.location.href = `404.html?error=${encodeURIComponent("Invalid Employee View: " + state.currentView)}&from=${encodeURIComponent(window.location.pathname)}`;
-                return;
-            }
-            
+
             const appDiv = document.getElementById('app');
 
             if (!state.employeeData) {
@@ -319,12 +380,7 @@
                     </div>
                 `;
                 lucide.createIcons();
-                try {
-                    await loadEmployeeWorkspaceData();
-                } catch (error) {
-                    window.location.href = `404.html?error=${encodeURIComponent("Failed to load workspace data: " + error.message)}&from=${encodeURIComponent(window.location.pathname)}`;
-                    return;
-                }
+                await loadEmployeeWorkspaceData();
             }
             renderEmployeeApp();
         }
@@ -332,7 +388,7 @@
         // --- UI Rendering ---
         function renderEmployeeApp() {
             const appDiv = document.getElementById('app');
-            
+
             let contentHtml = '';
             if (state.currentView === 'dashboard') contentHtml = getEmployeeDashboardTemplate();
             else if (state.currentView === 'log-dev') contentHtml = getDevTaskFormTemplate();
@@ -407,9 +463,9 @@
                     setTimeout(() => {
                         dynamicArea.innerHTML = contentHtml;
                         dynamicArea.style.opacity = '1';
-                        
+
                         document.getElementById('header-title').innerText = state.currentView.replace('-', ' ');
-                        
+
                         document.querySelectorAll('.nav-btn').forEach(btn => {
                             if (btn.getAttribute('data-view') === state.currentView) {
                                 btn.className = "nav-btn w-full flex items-center px-4 py-3 rounded-xl transition-all bg-brand-primary text-white shadow-md";
@@ -417,10 +473,10 @@
                                 btn.className = "nav-btn w-full flex items-center px-4 py-3 rounded-xl transition-all hover:bg-slate-800 hover:text-white text-slate-300";
                             }
                         });
-                        
+
                         if (window.lucide) lucide.createIcons();
                     }, 150);
-                    return; 
+                    return;
                 }
             }
 
@@ -439,7 +495,7 @@
         function getEmployeeDashboardTemplate() {
             const now = new Date();
             const startOfWeek = new Date(now.setDate(now.getDate() - now.getDay()));
-            startOfWeek.setHours(0,0,0,0);
+            startOfWeek.setHours(0, 0, 0, 0);
 
             // Determine today's attendance status
             const todayStr = new Date().toISOString().split('T')[0];
@@ -447,7 +503,7 @@
             if (state.myAttendance && state.myAttendance.length > 0) {
                 todayAttendance = state.myAttendance.find(a => a.date && a.date.startsWith(todayStr));
             }
-            
+
             let attendanceWidgetHtml = '';
             if (!todayAttendance) {
                 attendanceWidgetHtml = `
@@ -462,7 +518,7 @@
                     </div>
                 `;
             } else if (todayAttendance && !todayAttendance.check_out_time) {
-                const checkInTime = new Date(todayAttendance.check_in_time).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+                const checkInTime = new Date(todayAttendance.check_in_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
                 attendanceWidgetHtml = `
                     <div class="bg-gradient-to-r from-emerald-600 to-teal-500 rounded-2xl p-6 shadow-md flex flex-col sm:flex-row items-center justify-between gap-4 mb-8">
                         <div>
@@ -475,8 +531,8 @@
                     </div>
                 `;
             } else {
-                const checkInTime = new Date(todayAttendance.check_in_time).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-                const checkOutTime = new Date(todayAttendance.check_out_time).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+                const checkInTime = new Date(todayAttendance.check_in_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                const checkOutTime = new Date(todayAttendance.check_out_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
                 const totalHrs = todayAttendance.total_hours ? todayAttendance.total_hours.toFixed(2) : '--';
                 attendanceWidgetHtml = `
                     <div class="bg-slate-200/50 border border-slate-200 rounded-2xl p-6 flex flex-col sm:flex-row items-center justify-between gap-4 mb-8">
@@ -498,7 +554,7 @@
                 const dateLabel = new Date(task.date || task.created_at).toLocaleDateString();
                 const projectLabel = task.project_id ? (state.projects.find(p => p.id === task.project_id)?.name || 'Project Attached') : 'General Task';
                 const metricLabel = task.task_type === 'developer' ? `${task.hours_logged} hrs` : `${task.total_content} items`;
-                
+
                 return `
                     <div class="flex items-center justify-between p-4 border-b border-slate-100 last:border-0 hover:bg-slate-50 transition-colors">
                         <div>
@@ -656,7 +712,7 @@
         function getMilestoneOptions(projectId) {
             let options = `<option value="">General Task (No Milestone)</option>`;
             if (!projectId) return options;
-            
+
             const timelines = state.projectTimelines ? state.projectTimelines[projectId] : null;
             if (timelines && timelines.length > 0) {
                 timelines.forEach(m => {
@@ -666,12 +722,12 @@
             return options;
         }
 
-        window.updateMilestones = function(selectElement) {
+        window.updateMilestones = function (selectElement) {
             const projectId = selectElement.value;
-            
+
             // Find the closest task row container (works for both Dev and Content forms)
             const container = selectElement.closest('.dev-task-item') || selectElement.closest('.con-task-item');
-            
+
             if (container) {
                 const milestoneSelect = container.querySelector('.col-milestone');
                 if (milestoneSelect) {
@@ -680,7 +736,7 @@
             }
         };
 
-        window.addDevTaskRow = function(btnElement = null) {
+        window.addDevTaskRow = function (btnElement = null) {
             const container = document.getElementById('dev-task-container');
             const item = document.createElement('div');
             item.className = "dev-task-item relative bg-white border border-slate-200 rounded-2xl p-5 sm:p-6 shadow-sm hover:shadow-md hover:border-brand-primary/30 transition-all group";
@@ -846,7 +902,7 @@
                 </div>
             `;
         }
-        window.handlePlatformTag = function(event, inputElement) {
+        window.handlePlatformTag = function (event, inputElement) {
             if (event.key === 'Enter' || event.key === ',') {
                 event.preventDefault();
                 const val = inputElement.value.trim().replace(/,$/, '');
@@ -877,7 +933,7 @@
             }
         };
 
-        window.removePlatformTag = function(buttonElement, val) {
+        window.removePlatformTag = function (buttonElement, val) {
             const container = buttonElement.closest('.platform-tag-wrapper');
             const hiddenInput = container.querySelector('.col-platform-hidden');
             let currentTags = hiddenInput.value ? hiddenInput.value.split(',') : [];
@@ -886,7 +942,7 @@
             buttonElement.parentElement.remove();
         };
 
-        window.addConTaskRow = function() {
+        window.addConTaskRow = function () {
             const container = document.getElementById('con-task-container');
             const item = document.createElement('div');
             item.className = "con-task-item relative bg-white border border-slate-200 rounded-2xl p-5 sm:p-6 shadow-sm hover:shadow-md hover:border-brand-primary/30 transition-all group";
@@ -1047,13 +1103,13 @@
             const val = (k) => emp[k] && emp[k] !== 'N/A' ? emp[k] : '';
             const txt = (k) => emp[k] && emp[k] !== 'N/A' ? emp[k] : '<span class="text-slate-300 italic font-normal">Not provided</span>';
 
-            const input = (id, label, key, type="text", placeholder="") => `
+            const input = (id, label, key, type = "text", placeholder = "") => `
                 <div class="flex flex-col">
                     <label class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">${label}</label>
-                    ${isEdit 
-                        ? `<input type="${type}" id="edit_${id}" value="${val(key)}" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-800 text-sm outline-none focus:border-brand-primary focus:ring-1 focus:ring-brand-primary transition-all shadow-sm" placeholder="${placeholder || 'Enter ' + label}">` 
-                        : `<div class="text-sm font-semibold text-slate-800 py-1 border-b border-transparent min-h-[32px]">${txt(key)}</div>`
-                    }
+                    ${isEdit
+                    ? `<input type="${type}" id="edit_${id}" value="${val(key)}" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-800 text-sm outline-none focus:border-brand-primary focus:ring-1 focus:ring-brand-primary transition-all shadow-sm" placeholder="${placeholder || 'Enter ' + label}">`
+                    : `<div class="text-sm font-semibold text-slate-800 py-1 border-b border-transparent min-h-[32px]">${txt(key)}</div>`
+                }
                 </div>
             `;
 
@@ -1061,14 +1117,14 @@
                 <div class="flex flex-col">
                     <label class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Gender</label>
                     ${isEdit
-                        ? `<select id="edit_gender" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-800 text-sm outline-none focus:border-brand-primary focus:ring-1 focus:ring-brand-primary transition-all shadow-sm">
-                            <option value="Male" ${val('gender')==='Male'?'selected':''}>Male</option>
-                            <option value="Female" ${val('gender')==='Female'?'selected':''}>Female</option>
-                            <option value="Other" ${val('gender')==='Other'?'selected':''}>Other</option>
-                            <option value="N/A" ${!val('gender')?'selected':''}>Not Specified</option>
+                    ? `<select id="edit_gender" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-800 text-sm outline-none focus:border-brand-primary focus:ring-1 focus:ring-brand-primary transition-all shadow-sm">
+                            <option value="Male" ${val('gender') === 'Male' ? 'selected' : ''}>Male</option>
+                            <option value="Female" ${val('gender') === 'Female' ? 'selected' : ''}>Female</option>
+                            <option value="Other" ${val('gender') === 'Other' ? 'selected' : ''}>Other</option>
+                            <option value="N/A" ${!val('gender') ? 'selected' : ''}>Not Specified</option>
                            </select>`
-                        : `<div class="text-sm font-semibold text-slate-800 py-1 border-b border-transparent min-h-[32px]">${txt('gender')}</div>`
-                    }
+                    : `<div class="text-sm font-semibold text-slate-800 py-1 border-b border-transparent min-h-[32px]">${txt('gender')}</div>`
+                }
                 </div>
             `;
 
@@ -1173,8 +1229,8 @@
                                     <div class="space-y-4">
                                         <div class="flex flex-col">
                                             <label class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Core Skills & Competencies</label>
-                                            ${isEdit 
-                                                ? `
+                                            ${isEdit
+                    ? `
                                                 <input type="text" id="edit_skills_input" onkeydown="handleSkillKeydown(event)" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-800 text-sm outline-none focus:border-brand-primary focus:ring-1 focus:ring-brand-primary transition-all shadow-sm" placeholder="Type a skill and press Enter to add">
                                                 <div id="edit_skills_container" class="flex flex-wrap gap-2 mt-3 mb-1">
                                                     ${state.editSkills.map((s, i) => `
@@ -1184,20 +1240,20 @@
                                                         </span>
                                                     `).join('')}
                                                 </div>
-                                                ` 
-                                                : `
+                                                `
+                    : `
                                                 <div class="text-sm font-semibold text-slate-800 py-1 min-h-[32px] flex flex-wrap gap-2">
-                                                    ${(function(){
-                                                        try {
-                                                            let s = emp.skills;
-                                                            if(!s || s==='N/A' || s==='[]') return '<span class="text-slate-300 italic font-normal">Not provided</span>';
-                                                            let arr = (typeof s === 'string' && s.startsWith('[')) ? JSON.parse(s) : (typeof s === 'string' ? s.split(',') : s);
-                                                            return arr.map(skill => `<span class="px-2.5 py-1 bg-indigo-50 border border-indigo-100 text-brand-primary text-xs font-bold rounded-md">${skill.trim()}</span>`).join('');
-                                                        } catch(e) { return `<span class="px-2.5 py-1 bg-indigo-50 border border-indigo-100 text-brand-primary text-xs font-bold rounded-md">${emp.skills}</span>`; }
-                                                    })()}
+                                                    ${(function () {
+                        try {
+                            let s = emp.skills;
+                            if (!s || s === 'N/A' || s === '[]') return '<span class="text-slate-300 italic font-normal">Not provided</span>';
+                            let arr = (typeof s === 'string' && s.startsWith('[')) ? JSON.parse(s) : (typeof s === 'string' ? s.split(',') : s);
+                            return arr.map(skill => `<span class="px-2.5 py-1 bg-indigo-50 border border-indigo-100 text-brand-primary text-xs font-bold rounded-md">${skill.trim()}</span>`).join('');
+                        } catch (e) { return `<span class="px-2.5 py-1 bg-indigo-50 border border-indigo-100 text-brand-primary text-xs font-bold rounded-md">${emp.skills}</span>`; }
+                    })()}
                                                 </div>
                                                 `
-                                            }
+                }
                                         </div>
                                         ${input('resume', 'Resume / Portfolio Link', 'resume', 'url', '[https://drive.google.com/](https://drive.google.com/)...')}
                                     </div>
@@ -1238,7 +1294,7 @@
         function getUploadBoxHtml(label, type, subType, currentValue) {
             const isUploaded = currentValue && currentValue !== 'N/A';
             const inputId = `upload-${type}-${subType}`;
-            
+
             return `
                 <div class="border border-dashed ${isUploaded ? 'border-emerald-500 bg-emerald-500/10' : 'border-slate-600 bg-slate-900/50 hover:border-brand-primary'} rounded-xl p-3 flex flex-col items-center justify-center text-center relative transition-colors group h-24">
                     <input type="file" id="${inputId}" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" accept="image/*" onchange="handleFileUpload(event, '${type}', '${subType}')">
@@ -1284,10 +1340,10 @@
             event.preventDefault();
             const btn = event.currentTarget;
             const originalHtml = btn.innerHTML;
-            
+
             const isConfirmed = await customConfirm("Check Out", "Are you sure you want to check out? You cannot check back in today.", "Check Out", "Cancel", true);
             if (!isConfirmed) return;
-            
+
             btn.innerHTML = '<i data-lucide="loader-2" class="w-4 h-4 mr-2 animate-spin"></i> Checking out...';
             btn.disabled = true;
 
@@ -1318,7 +1374,7 @@
                     for (const row of rows) {
                         const projectId = row.querySelector('.col-project').value || null;
                         const milestoneId = row.querySelector('.col-milestone').value || null;
-                        
+
                         const hours = parseFloat(row.querySelector('.col-hours').value) || 0;
                         const taskPerformed = row.querySelector('.col-task').value || '';
                         const tomorrowPlan = row.querySelector('.col-plan').value || 'N/A';
@@ -1353,10 +1409,10 @@
                     for (const row of rows) {
                         const projectId = row.querySelector('.col-project').value || null;
                         const milestoneId = row.querySelector('.col-milestone').value || null;
-                        
+
                         const hours = parseFloat(row.querySelector('.col-hours').value) || 0;
                         const taskPerformed = row.querySelector('.col-task').value || '';
-                        
+
                         if (!hours || taskPerformed.length < 5) {
                             throw new Error("Each task must have valid hours and at least 5 characters for Task Performed.");
                         }
@@ -1408,7 +1464,7 @@
             try {
                 showToast(`Uploading ${subType} image...`, "info");
                 await apiFetch(`/uploads/image/?image_type=${type}&sub_type=${subType}`, {
-                    method: 'POST', body: formData 
+                    method: 'POST', body: formData
                 });
 
                 showToast("Upload successful!", "success");
@@ -1471,7 +1527,7 @@
 
             const btn = document.getElementById('btnChangePwd');
             const og = btn.innerHTML;
-            btn.innerHTML = '<i data-lucide="loader-2" class="w-4 h-4 mr-2 animate-spin"></i> Updating...'; 
+            btn.innerHTML = '<i data-lucide="loader-2" class="w-4 h-4 mr-2 animate-spin"></i> Updating...';
             btn.disabled = true;
 
             try {
@@ -1484,7 +1540,7 @@
             } catch (err) {
                 showToast("Failed to update password: " + err.message, "error");
             } finally {
-                if(btn) { btn.innerHTML = og; btn.disabled = false; lucide.createIcons(); }
+                if (btn) { btn.innerHTML = og; btn.disabled = false; lucide.createIcons(); }
             }
         }
 
@@ -1571,7 +1627,7 @@
                             skillsList = emp.skills;
                         }
                     }
-                } catch(e) {}
+                } catch (e) { }
                 state.editSkills = skillsList;
             }
             renderEmployeeApp();
@@ -1600,7 +1656,7 @@
                 const el = document.getElementById(`edit_${field}`);
                 if (el) payload[field] = el.value || "N/A";
             });
-            
+
             // Gender is a select dropdown
             const genderEl = document.getElementById('edit_gender');
             if (genderEl) payload['gender'] = genderEl.value;
@@ -1625,21 +1681,21 @@
         function getEmployeeLeaveRequestsTemplate() {
             const sortedRequests = [...(state.myLeaveRequests || [])].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
             let tableRows = '';
-            
+
             if (sortedRequests.length === 0) {
                 tableRows = '<tr><td colspan="4" class="px-6 py-8 text-center text-slate-500">No leave requests found.</td></tr>';
             } else {
                 tableRows = sortedRequests.map(req => {
                     const startStr = new Date(req.start_date).toLocaleDateString();
                     const endStr = new Date(req.end_date).toLocaleDateString();
-                    
+
                     let statusColor = 'bg-slate-100 text-slate-700';
                     if (req.status === 'Approved') statusColor = 'bg-emerald-100 text-emerald-800';
                     if (req.status === 'Rejected') statusColor = 'bg-rose-100 text-rose-800';
                     if (req.status === 'Pending') statusColor = 'bg-amber-100 text-amber-800';
-                    
+
                     const statusBadge = `<span class="px-2.5 py-1 ${statusColor} rounded-full text-xs font-bold border border-white/20 shadow-sm">${req.status}</span>`;
-                    
+
                     return `
                         <tr class="border-b border-slate-100 hover:bg-slate-50 transition-colors">
                             <td class="px-6 py-4 text-sm font-medium text-slate-800">${startStr} - ${endStr}</td>
@@ -1769,7 +1825,7 @@
         // --- Bootstrap Application ---
         document.addEventListener('DOMContentLoaded', () => {
             const token = sessionStorage.getItem(CONFIG.TOKEN_KEY);
-            
+
             // Hard Auth Check
             if (!token) {
                 window.location.href = CONFIG.LOGIN_URL;
@@ -1777,8 +1833,8 @@
             }
 
             state.user = parseJwt(token);
-            
-            // Validate expiration and role isolation (Kick admins back to admin.html, kick expired to login.html)
+
+            // Validate expiration and role isolation (Kick admins back to admin.html, kick expired to index.html)
             if (!state.user || state.user.exp * 1000 < Date.now()) {
                 sessionStorage.removeItem(CONFIG.TOKEN_KEY);
                 window.location.href = CONFIG.LOGIN_URL;
@@ -1797,7 +1853,7 @@
         });
 
         // Mobile & Desktop Sidebar Toggle Logic
-        window.toggleMobileSidebar = function() {
+        window.toggleMobileSidebar = function () {
             const sidebar = document.getElementById('main-sidebar');
             const overlay = document.getElementById('mobile-sidebar-overlay');
             if (!sidebar) return;
@@ -1823,7 +1879,7 @@
                 // Desktop collapse
                 const isCollapsed = sidebar.classList.toggle('sidebar-collapsed');
                 localStorage.setItem('yanaSidebarCollapsed', isCollapsed ? 'true' : 'false');
-                
+
                 // Trigger window resize to auto-adjust charts
                 setTimeout(() => {
                     window.dispatchEvent(new Event('resize'));
@@ -1832,4 +1888,5 @@
         };
     </script>
 </body>
+
 </html>
