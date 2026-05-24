@@ -1219,6 +1219,12 @@
             `);
       }
       if (srsWarnings.length > 0) {
+        let warningText = "";
+        if (srsWarnings.length <= 5) {
+          warningText = `SRS missing or incomplete for: <span class="font-black text-slate-850">${srsWarnings.join(', ')}</span>.`;
+        } else {
+          warningText = `SRS missing or incomplete for <span class="font-black text-slate-850">${srsWarnings.length} projects</span> (including: <span class="font-bold text-slate-700">${srsWarnings.slice(0, 5).join(', ')}...</span>).`;
+        }
         alertsHtmlList.push(`
                 <div onclick="highlightNotificationCenter()" class="cursor-pointer flex items-start gap-3.5 p-4 rounded-2xl bg-amber-50 border border-amber-100 shadow-sm relative overflow-hidden group hover:shadow-md hover:scale-[1.01] active:scale-[0.99] transition-all duration-200">
                     <div class="absolute -right-2 -bottom-2 w-16 h-16 bg-amber-200/30 rounded-full blur-xl"></div>
@@ -1231,13 +1237,19 @@
                             <span class="px-1.5 py-0.5 rounded text-[8px] font-black bg-amber-200/50 text-amber-700">Audit Warning</span>
                         </div>
                         <p class="text-xs font-bold text-amber-900 leading-snug">
-                            SRS missing or incomplete for: <span class="font-black text-slate-850">${srsWarnings.join(', ')}</span>.
+                            ${warningText}
                         </p>
                     </div>
                 </div>
             `);
       }
       if (budgetProjectNames.length > 0) {
+        let warningText = "";
+        if (budgetProjectNames.length <= 5) {
+          warningText = `Overruns flagged in: <span class="font-black text-slate-850">${budgetProjectNames.join(', ')}</span>.`;
+        } else {
+          warningText = `Budget overruns flagged in <span class="font-black text-slate-850">${budgetProjectNames.length} projects</span> (including: <span class="font-bold text-slate-700">${budgetProjectNames.slice(0, 5).join(', ')}...</span>).`;
+        }
         alertsHtmlList.push(`
                 <div onclick="highlightNotificationCenter()" class="cursor-pointer flex items-start gap-3.5 p-4 rounded-2xl bg-rose-50 border border-rose-100 shadow-sm relative overflow-hidden group hover:shadow-md hover:scale-[1.01] active:scale-[0.99] transition-all duration-200">
                     <div class="absolute -right-2 -bottom-2 w-16 h-16 bg-rose-200/30 rounded-full blur-xl"></div>
@@ -1250,7 +1262,7 @@
                             <span class="px-1.5 py-0.5 rounded text-[8px] font-black bg-rose-200/50 text-rose-700">Financial Runaway</span>
                         </div>
                         <p class="text-xs font-bold text-rose-900 leading-snug">
-                            Overruns flagged in: <span class="font-black text-slate-850">${budgetProjectNames.join(', ')}</span>.
+                            ${warningText}
                         </p>
                     </div>
                 </div>
