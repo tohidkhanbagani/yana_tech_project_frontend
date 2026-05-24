@@ -497,15 +497,78 @@
             const startOfWeek = new Date(now.setDate(now.getDate() - now.getDay()));
             startOfWeek.setHours(0, 0, 0, 0);
 
-            // Determine today's attendance status
-            const todayStr = new Date().toISOString().split('T')[0];
-            let todayAttendance = null;
+            // Determine active/today attendance status
+            // First, find if there is an active check-in (no check-out time)
+            let activeAttendance = null;
             if (state.myAttendance && state.myAttendance.length > 0) {
-                todayAttendance = state.myAttendance.find(a => a.date && a.date.startsWith(todayStr));
+                activeAttendance = state.myAttendance.find(a => a.check_in_time && !a.check_out_time);
             }
 
+            // Next, find today's completed attendance (using local date string YYYY-MM-DD)
+            const localTodayStr = new Date().toLocaleDateString('sv-SE'); // Formats as YYYY-MM-DD local time
+            let todayAttendance = null;
+            if (state.myAttendance && state.myAttendance.length > 0) {
+                todayAttendance = state.myAttendance.find(a => {
+                    const checkInDate = a.check_in_time ? a.check_in_time.split(' ')[0] : (a.date ? a.date.split(' ')[0] : '');
+                    return checkInDate === localTodayStr;
+                });
+            }
+
+            // Decide which attendance to show in the widget
             let attendanceWidgetHtml = '';
-            if (!todayAttendance) {
+            if (activeAttendance) {
+                // Show checked-in state
+                const checkInDateObj = new Date(activeAttendance.check_in_time);
+                const checkInTime = checkInDateObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                const isToday = activeAttendance.check_in_time.startsWith(localTodayStr);
+                const dateLabel = isToday ? 'today' : `on ${checkInDateObj.toLocaleDateString([], { month: 'short', day: 'numeric' })}`;
+
+                attendanceWidgetHtml = `
+                    <div class="bg-gradient-to-r from-emerald-600 to-teal-500 rounded-2xl p-6 shadow-md flex flex-col sm:flex-row items-center justify-between gap-4 mb-8">
+                        <div>
+                            <h4 class="text-white font-bold text-lg flex items-center gap-2"><i data-lucide="check-circle" class="w-5 h-5"></i> You are Checked In</h4>
+                            <p class="text-emerald-50 text-sm mt-1">Checked in at ${checkInTime} ${dateLabel}. Have a great workday!</p>
+                        </div>
+                        <button onclick="handleCheckOut(event)" class="bg-white/20 hover:bg-white/30 border border-white/30 text-white font-bold py-2.5 px-6 rounded-xl shadow-lg transition-all flex items-center shrink-0 backdrop-blur-sm">
+                            <i data-lucide="log-out" class="w-4 h-4 mr-2"></i> Check Out
+                        </button>
+                    </div>
+                `;
+            } else if (todayAttendance) {
+                // Show shift completed state or absent state
+                const checkInTime = todayAttendance.check_in_time ? new Date(todayAttendance.check_in_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--:--';
+                const checkOutTime = todayAttendance.check_out_time ? new Date(todayAttendance.check_out_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--:--';
+                const totalHrs = todayAttendance.total_hours ? todayAttendance.total_hours.toFixed(2) : '--';
+                
+                if (todayAttendance.status === 'Absent') {
+                    // Employee was marked absent, but since they have no active attendance, show Check-In button!
+                    // This allows them to check in even if auto-marked absent.
+                    attendanceWidgetHtml = `
+                        <div class="bg-gradient-to-r from-brand-dark to-slate-800 rounded-2xl p-6 shadow-md flex flex-col sm:flex-row items-center justify-between gap-4 mb-8">
+                            <div>
+                                <h4 class="text-white font-bold text-lg flex items-center gap-2"><i data-lucide="clock" class="w-5 h-5 text-rose-400"></i> Marked Absent</h4>
+                                <p class="text-slate-300 text-sm mt-1">You were auto-marked absent today. You can still check in to start your work.</p>
+                            </div>
+                            <button onclick="handleCheckIn(event)" class="bg-emerald-500 hover:bg-emerald-600 text-white font-bold py-2.5 px-6 rounded-xl shadow-lg transition-all flex items-center shrink-0">
+                                <i data-lucide="log-in" class="w-4 h-4 mr-2"></i> Check In Now
+                            </button>
+                        </div>
+                    `;
+                } else {
+                    attendanceWidgetHtml = `
+                        <div class="bg-slate-200/50 border border-slate-200 rounded-2xl p-6 flex flex-col sm:flex-row items-center justify-between gap-4 mb-8">
+                            <div>
+                                <h4 class="text-slate-700 font-bold text-lg flex items-center gap-2"><i data-lucide="check-check" class="w-5 h-5 text-brand-primary"></i> Shift Completed</h4>
+                                <p class="text-slate-500 text-sm mt-1">In: ${checkInTime} &bull; Out: ${checkOutTime} &bull; <span class="font-bold text-slate-700">${totalHrs} hrs</span> total.</p>
+                            </div>
+                            <div class="px-4 py-2 bg-white rounded-lg text-sm font-bold text-slate-600 shadow-sm border border-slate-200">
+                                Done for today
+                            </div>
+                        </div>
+                    `;
+                }
+            } else {
+                // Show default check-in state
                 attendanceWidgetHtml = `
                     <div class="bg-gradient-to-r from-brand-dark to-slate-800 rounded-2xl p-6 shadow-md flex flex-col sm:flex-row items-center justify-between gap-4 mb-8">
                         <div>
@@ -515,34 +578,6 @@
                         <button onclick="handleCheckIn(event)" class="bg-emerald-500 hover:bg-emerald-600 text-white font-bold py-2.5 px-6 rounded-xl shadow-lg transition-all flex items-center shrink-0">
                             <i data-lucide="log-in" class="w-4 h-4 mr-2"></i> Check In Now
                         </button>
-                    </div>
-                `;
-            } else if (todayAttendance && !todayAttendance.check_out_time) {
-                const checkInTime = new Date(todayAttendance.check_in_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-                attendanceWidgetHtml = `
-                    <div class="bg-gradient-to-r from-emerald-600 to-teal-500 rounded-2xl p-6 shadow-md flex flex-col sm:flex-row items-center justify-between gap-4 mb-8">
-                        <div>
-                            <h4 class="text-white font-bold text-lg flex items-center gap-2"><i data-lucide="check-circle" class="w-5 h-5"></i> You are Checked In</h4>
-                            <p class="text-emerald-50 text-sm mt-1">Checked in at ${checkInTime}. Have a great workday!</p>
-                        </div>
-                        <button onclick="handleCheckOut(event)" class="bg-white/20 hover:bg-white/30 border border-white/30 text-white font-bold py-2.5 px-6 rounded-xl shadow-lg transition-all flex items-center shrink-0 backdrop-blur-sm">
-                            <i data-lucide="log-out" class="w-4 h-4 mr-2"></i> Check Out
-                        </button>
-                    </div>
-                `;
-            } else {
-                const checkInTime = new Date(todayAttendance.check_in_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-                const checkOutTime = new Date(todayAttendance.check_out_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-                const totalHrs = todayAttendance.total_hours ? todayAttendance.total_hours.toFixed(2) : '--';
-                attendanceWidgetHtml = `
-                    <div class="bg-slate-200/50 border border-slate-200 rounded-2xl p-6 flex flex-col sm:flex-row items-center justify-between gap-4 mb-8">
-                        <div>
-                            <h4 class="text-slate-700 font-bold text-lg flex items-center gap-2"><i data-lucide="check-check" class="w-5 h-5 text-brand-primary"></i> Shift Completed</h4>
-                            <p class="text-slate-500 text-sm mt-1">In: ${checkInTime} &bull; Out: ${checkOutTime} &bull; <span class="font-bold text-slate-700">${totalHrs} hrs</span> total.</p>
-                        </div>
-                        <div class="px-4 py-2 bg-white rounded-lg text-sm font-bold text-slate-600 shadow-sm border border-slate-200">
-                            Done for today
-                        </div>
                     </div>
                 `;
             }
@@ -902,35 +937,73 @@
                 </div>
             `;
         }
-        window.handlePlatformTag = function (event, inputElement) {
-            if (event.key === 'Enter' || event.key === ',') {
-                event.preventDefault();
-                const val = inputElement.value.trim().replace(/,$/, '');
-                if (!val) return;
-
-                const container = inputElement.closest('.platform-tag-wrapper');
-                const tagDisplay = container.querySelector('.platform-tags-container');
-                const hiddenInput = container.querySelector('.col-platform-hidden');
-
-                // Update UI
-                const tag = document.createElement('span');
-                tag.className = 'inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200 mr-2 mb-2 shadow-sm transition-all';
-                tag.innerHTML = `
-                    ${val}
-                    <button type="button" class="ml-1.5 hover:text-rose-500 focus:outline-none" onclick="window.removePlatformTag(this, '${val}')">
-                        <i data-lucide="x" class="w-3 h-3"></i>
-                    </button>
-                `;
-                tagDisplay.appendChild(tag);
-
-                // Update Hidden Input
-                let currentTags = hiddenInput.value ? hiddenInput.value.split(',') : [];
-                currentTags.push(val);
-                hiddenInput.value = currentTags.join(',');
-
-                inputElement.value = '';
-                if (window.lucide) lucide.createIcons();
+        window.handlePlatformDropdownSelect = function (selectEl) {
+            const val = selectEl.value;
+            const container = selectEl.closest('.platform-tag-wrapper');
+            const otherContainer = container.querySelector('.col-platform-other-container');
+            
+            if (val === 'Other') {
+                otherContainer.classList.remove('hidden');
+                otherContainer.classList.add('flex');
+            } else {
+                otherContainer.classList.add('hidden');
+                otherContainer.classList.remove('flex');
+                
+                if (val) {
+                    window.addPlatformTagValue(container, val);
+                    selectEl.value = ''; // reset
+                }
             }
+        };
+
+        window.handlePlatformOtherKeydown = function (event, inputEl) {
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                window.handleAddOtherPlatformTag(inputEl);
+            }
+        };
+
+        window.handleAddOtherPlatformTag = function (el) {
+            const container = el.closest('.platform-tag-wrapper');
+            const inputEl = container.querySelector('.col-platform-other-input');
+            const val = inputEl.value.trim();
+            if (!val) return;
+            
+            window.addPlatformTagValue(container, val);
+            inputEl.value = ''; // reset custom input
+            
+            // hide custom input and reset main select
+            const otherContainer = container.querySelector('.col-platform-other-container');
+            const selectEl = container.querySelector('.col-platform-select');
+            otherContainer.classList.add('hidden');
+            otherContainer.classList.remove('flex');
+            selectEl.value = '';
+        };
+
+        window.addPlatformTagValue = function (container, val) {
+            const tagDisplay = container.querySelector('.platform-tags-container');
+            const hiddenInput = container.querySelector('.col-platform-hidden');
+
+            // check duplicate
+            let currentTags = hiddenInput.value ? hiddenInput.value.split(',') : [];
+            if (currentTags.includes(val)) return;
+
+            // Update UI tag list
+            const tag = document.createElement('span');
+            tag.className = 'inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200 mr-2 mb-2 shadow-sm transition-all';
+            tag.innerHTML = `
+                ${val}
+                <button type="button" class="ml-1.5 hover:text-rose-500 focus:outline-none flex items-center justify-center" onclick="window.removePlatformTag(this, '${val}')">
+                    <i data-lucide="x" class="w-3 h-3"></i>
+                </button>
+            `;
+            tagDisplay.appendChild(tag);
+
+            // Update Hidden Input
+            currentTags.push(val);
+            hiddenInput.value = currentTags.join(',');
+
+            if (window.lucide) lucide.createIcons();
         };
 
         window.removePlatformTag = function (buttonElement, val) {
@@ -984,10 +1057,29 @@
                             <div><label class="block text-[10px] uppercase tracking-wider font-bold text-slate-500 mb-2 text-center">Calls</label><input type="number" min="0" value="0" class="col-calls input-field w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-center outline-none text-sm"></div>
                         </div>
 
-                        <div class="platform-tag-wrapper">
-                            <label class="block text-[11px] font-black uppercase tracking-wider text-slate-400 mb-2">Target Platforms</label>
-                            <div class="platform-tags-container flex flex-wrap"></div>
-                            <input type="text" class="input-field w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl outline-none text-sm text-slate-700 focus:bg-white focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary transition-all" placeholder="Type platform and press Enter (e.g., YouTube, TikTok)" onkeydown="window.handlePlatformTag(event, this)">
+                        <div class="platform-tag-wrapper mt-3">
+                            <label class="block text-[11px] font-black uppercase tracking-wider text-slate-400 mb-1.5">Target Platform(s)</label>
+                            <div class="platform-tags-container flex flex-wrap mb-2"></div>
+                            
+                            <div class="flex flex-col sm:flex-row gap-2">
+                                <div class="relative flex-1">
+                                    <select class="col-platform-select input-field w-full pl-3 pr-8 py-2 bg-slate-50 border border-slate-200 rounded-xl outline-none text-sm text-slate-700 font-medium appearance-none focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all" onchange="window.handlePlatformDropdownSelect(this)">
+                                        <option value="">-- Select Platform --</option>
+                                        <option value="YouTube">YouTube</option>
+                                        <option value="Instagram">Instagram</option>
+                                        <option value="Facebook">Facebook</option>
+                                        <option value="LinkedIn">LinkedIn</option>
+                                        <option value="Twitter">Twitter / X</option>
+                                        <option value="Pinterest">Pinterest</option>
+                                        <option value="Other">Other (Type Custom)</option>
+                                    </select>
+                                    <i data-lucide="chevron-down" class="w-4 h-4 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none"></i>
+                                </div>
+                                <div class="col-platform-other-container hidden flex gap-2 flex-1">
+                                    <input type="text" class="col-platform-other-input input-field flex-1 px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl outline-none text-sm text-slate-700 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all" placeholder="Enter custom platform..." onkeydown="window.handlePlatformOtherKeydown(event, this)">
+                                    <button type="button" onclick="window.handleAddOtherPlatformTag(this)" class="px-4 py-2 bg-slate-800 hover:bg-black text-white text-xs font-bold rounded-xl shadow-sm transition-colors">Add</button>
+                                </div>
+                            </div>
                             <input type="hidden" class="col-platform-hidden" value="">
                         </div>
 
@@ -1066,10 +1158,29 @@
                                             <div><label class="block text-[10px] uppercase tracking-wider font-bold text-slate-500 mb-2 text-center">Calls</label><input type="number" min="0" value="0" class="col-calls input-field w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-center outline-none text-sm"></div>
                                         </div>
 
-                                        <div class="platform-tag-wrapper">
-                                            <label class="block text-[11px] font-black uppercase tracking-wider text-slate-400 mb-2">Target Platforms</label>
-                                            <div class="platform-tags-container flex flex-wrap"></div>
-                                            <input type="text" class="input-field w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl outline-none text-sm text-slate-700 focus:bg-white focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary transition-all" placeholder="Type platform and press Enter (e.g., YouTube, TikTok)" onkeydown="window.handlePlatformTag(event, this)">
+                                        <div class="platform-tag-wrapper mt-3">
+                                            <label class="block text-[11px] font-black uppercase tracking-wider text-slate-400 mb-1.5">Target Platform(s)</label>
+                                            <div class="platform-tags-container flex flex-wrap mb-2"></div>
+                                            
+                                            <div class="flex flex-col sm:flex-row gap-2">
+                                                <div class="relative flex-1">
+                                                    <select class="col-platform-select input-field w-full pl-3 pr-8 py-2 bg-slate-50 border border-slate-200 rounded-xl outline-none text-sm text-slate-700 font-medium appearance-none focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all" onchange="window.handlePlatformDropdownSelect(this)">
+                                                        <option value="">-- Select Platform --</option>
+                                                        <option value="YouTube">YouTube</option>
+                                                        <option value="Instagram">Instagram</option>
+                                                        <option value="Facebook">Facebook</option>
+                                                        <option value="LinkedIn">LinkedIn</option>
+                                                        <option value="Twitter">Twitter / X</option>
+                                                        <option value="Pinterest">Pinterest</option>
+                                                        <option value="Other">Other (Type Custom)</option>
+                                                    </select>
+                                                    <i data-lucide="chevron-down" class="w-4 h-4 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none"></i>
+                                                </div>
+                                                <div class="col-platform-other-container hidden flex gap-2 flex-1">
+                                                    <input type="text" class="col-platform-other-input input-field flex-1 px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl outline-none text-sm text-slate-700 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all" placeholder="Enter custom platform..." onkeydown="window.handlePlatformOtherKeydown(event, this)">
+                                                    <button type="button" onclick="window.handleAddOtherPlatformTag(this)" class="px-4 py-2 bg-slate-800 hover:bg-black text-white text-xs font-bold rounded-xl shadow-sm transition-colors">Add</button>
+                                                </div>
+                                            </div>
                                             <input type="hidden" class="col-platform-hidden" value="">
                                         </div>
 
