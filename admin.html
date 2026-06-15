@@ -3333,7 +3333,7 @@
       renderAdminProjectsTable();
     }
 
-    function renderAdminProjectsTable() {
+function renderAdminProjectsTable() {
       const tbody = document.getElementById("admin-projects-tbody");
       if (!tbody) return;
 
@@ -3464,7 +3464,8 @@
           const clientCostVal = p.client_cost || 0;
 
           return `
-                <tr class="hover:bg-slate-50 transition-colors group cursor-pointer" onclick="openProjectDetails('${p.id}')">
+                <!-- THE FIX IS ON THE NEXT LINE: Added hideProjectTooltip(); to the onclick event -->
+                <tr class="hover:bg-slate-50 transition-colors group cursor-pointer" onclick="hideProjectTooltip(); openProjectDetails('${p.id}')">
                     <td class="py-4 px-6 whitespace-nowrap">
                         <div class="flex flex-col relative" onmouseenter="showProjectTooltip(event, '${p.id}')" onmouseleave="hideProjectTooltip()">
                             <span class="text-sm font-semibold text-slate-900 hover:text-indigo-600 transition-colors">${p.name !== "N/A" ? p.name : "Unnamed"}</span>
