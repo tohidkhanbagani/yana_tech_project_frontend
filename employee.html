@@ -405,6 +405,7 @@
             else if (state.currentView === 'log-content') contentHtml = getContentTaskFormTemplate();
             else if (state.currentView === 'profile') contentHtml = getEmployeeProfileTemplate();
             else if (state.currentView === 'leave-requests') contentHtml = getEmployeeLeaveRequestsTemplate(); // ADDED
+            else if (state.currentView === 'timesheets') contentHtml = getEmployeeTimesheetsTemplate();
 
             if (!state.appShellRendered) {
                 const sidebarClass = localStorage.getItem('yanaSidebarCollapsed') === 'true' ? 'sidebar-collapsed' : '';
@@ -430,6 +431,9 @@
                                 </button>
                                 <button onclick="routeApp('leave-requests')" data-view="leave-requests" class="nav-btn w-full flex items-center px-4 py-3 rounded-xl transition-all">
                                     <i data-lucide="calendar" class="w-5 h-5 mr-3"></i> <span class="font-medium">Leave Requests</span>
+                                </button>
+                                <button onclick="routeApp('timesheets')" data-view="timesheets" class="nav-btn w-full flex items-center px-4 py-3 rounded-xl transition-all">
+                                    <i data-lucide="clock" class="w-5 h-5 mr-3"></i> <span class="font-medium">Timesheets</span>
                                 </button>
                             </nav>
                             <div class="p-4 border-t border-slate-800">
@@ -613,9 +617,9 @@
                                 <h4 class="text-slate-700 font-bold text-lg flex items-center gap-2"><i data-lucide="check-check" class="w-5 h-5 text-brand-primary"></i> Shift Completed</h4>
                                 <p class="text-slate-500 text-sm mt-1">In: ${checkInTime} &bull; Out: ${checkOutTime} &bull; <span class="font-bold text-slate-700">${totalHrs} hrs</span> total.</p>
                             </div>
-                            <div class="px-4 py-2 bg-white rounded-lg text-sm font-bold text-slate-600 shadow-sm border border-slate-200">
-                                Done for today
-                            </div>
+                            <button onclick="handleCheckIn(event)" class="bg-brand-primary hover:bg-indigo-600 text-white font-bold py-2.5 px-6 rounded-xl shadow-lg transition-all flex items-center shrink-0">
+                                <i data-lucide="log-in" class="w-4 h-4 mr-2"></i> Check In for Overtime
+                            </button>
                         </div>
                     `;
                 }
@@ -733,12 +737,21 @@
                                 </span>
                             </div>
                         </div>
-                        <div class="bg-slate-50 border border-slate-100 rounded-xl p-3.5">
+                         <div class="bg-slate-50 border border-slate-100 rounded-xl p-3.5">
                             <span class="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 flex items-center gap-1">
                                 <i data-lucide="clipboard-list" class="w-3 h-3 text-slate-400"></i>
                                 Handover Task / Pending Work
                             </span>
-                            <p class="text-xs text-slate-600 leading-relaxed font-medium">${cover.pending_work_summary || 'No pending work logged.'}</p>
+                            <p class="text-xs text-slate-600 leading-relaxed font-medium mb-3">${cover.pending_work_summary || 'No pending work logged.'}</p>
+                            
+                            <div class="flex flex-wrap gap-2 pt-2 border-t border-slate-200/60">
+                                <button onclick="window.logHandoverTaskFor('${cover.employee_id}', 'dev')" class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 border border-indigo-200 text-indigo-700 hover:bg-indigo-100 rounded-xl text-xs font-bold transition-all shadow-sm">
+                                    <i data-lucide="terminal" class="w-3.5 h-3.5"></i> Log Engineering Handover
+                                </button>
+                                <button onclick="window.logHandoverTaskFor('${cover.employee_id}', 'content')" class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-rose-50 border border-rose-200 text-rose-700 hover:bg-rose-100 rounded-xl text-xs font-bold transition-all shadow-sm">
+                                    <i data-lucide="video" class="w-3.5 h-3.5"></i> Log Content Handover
+                                </button>
+                            </div>
                         </div>
                     </div>
                 `;
@@ -1503,14 +1516,82 @@
                     if (devContainer.children.length === 0) {
                         window.addDevTaskRow();
                     }
+                    if (state.pendingHandover && state.pendingHandover.type === 'dev') {
+                        const row = devContainer.lastElementChild;
+                        if (row) {
+                            const handoverCheckbox = row.querySelector('.col-is-handover');
+                            if (handoverCheckbox) {
+                                handoverCheckbox.checked = true;
+                                window.toggleHandoverEmployeeSelect(handoverCheckbox);
+                                const select = row.querySelector('.col-handover-employee');
+                                if (select) {
+                                    select.value = state.pendingHandover.employeeId;
+                                }
+                            }
+                        }
+                        delete state.pendingHandover;
+                    }
                     window.updateStickyHours();
                 }
             } else if (state.currentView === 'log-content') {
                 const conContainer = document.getElementById('con-task-container');
-                if (conContainer && conContainer.children.length === 0) {
-                    window.addConTaskRow();
+                if (conContainer) {
+                    if (conContainer.children.length === 0) {
+                        window.addConTaskRow();
+                    }
+                    if (state.pendingHandover && state.pendingHandover.type === 'content') {
+                        const row = conContainer.lastElementChild;
+                        if (row) {
+                            const handoverCheckbox = row.querySelector('.col-is-handover');
+                            if (handoverCheckbox) {
+                                handoverCheckbox.checked = true;
+                                window.toggleHandoverEmployeeSelect(handoverCheckbox);
+                                const select = row.querySelector('.col-handover-employee');
+                                if (select) {
+                                    select.value = state.pendingHandover.employeeId;
+                                }
+                            }
+                        }
+                        delete state.pendingHandover;
+                    }
                 }
             }
+        };
+
+        window.toggleHandoverEmployeeSelect = function(checkbox) {
+            const row = checkbox.closest('.dev-task-item') || checkbox.closest('.con-task-item');
+            if (!row) return;
+            const selectContainer = row.querySelector('.col-handover-select-container');
+            if (!selectContainer) return;
+            if (checkbox.checked) {
+                selectContainer.classList.remove('hidden');
+                window.populateHandoverEmployees(row);
+            } else {
+                selectContainer.classList.add('hidden');
+                const select = row.querySelector('.col-handover-employee');
+                if (select) select.value = '';
+            }
+        };
+
+        window.populateHandoverEmployees = function(row) {
+            const select = row.querySelector('.col-handover-employee');
+            if (!select) return;
+            const backupCoverages = state.backupCoverages || [];
+            select.innerHTML = '<option value="">-- Select Colleague --</option>';
+            backupCoverages.forEach(cover => {
+                const exists = Array.from(select.options).some(opt => opt.value === cover.employee_id);
+                if (!exists) {
+                    const opt = document.createElement('option');
+                    opt.value = cover.employee_id;
+                    opt.textContent = cover.employee_name;
+                    select.appendChild(opt);
+                }
+            });
+        };
+
+        window.logHandoverTaskFor = function(employeeId, type) {
+            state.pendingHandover = { employeeId, type };
+            routeApp(type === 'dev' ? 'log-dev' : 'log-content');
         };
 
         function getMilestoneOptions(projectId) {
@@ -1608,7 +1689,8 @@ window.updateStickyHours = function() {
             const activeContainer = devContainer || conContainer;
             if (!activeContainer) return;
 
-            const limit = parseFloat(state.employeeData?.working_hours) || 8.0;
+            const hasOvertimeChecked = Array.from(activeContainer.querySelectorAll('.col-is-overtime')).some(cb => cb.checked);
+            const limit = hasOvertimeChecked ? 24.0 : (parseFloat(state.employeeData?.working_hours) || 8.0);
             const alreadyLogged = window.getAlreadyLoggedHoursToday();
 
             const hoursSelects = activeContainer.querySelectorAll('.col-hours');
@@ -1733,6 +1815,31 @@ window.addDevTaskRow = function (btnElement = null) {
                     
                     <!-- Column 2: Metadata (Span 4) -->
                     <div class="lg:col-span-4 space-y-5">
+                        <div class="bg-slate-50 border border-slate-200 rounded-xl p-3.5 space-y-3">
+                            <span class="block text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-1">
+                                <i data-lucide="sliders" class="w-3.5 h-3.5 text-slate-400"></i>
+                                Shift & Handover Options
+                            </span>
+                            <div class="flex items-center gap-4 text-xs font-semibold text-slate-700">
+                                <label class="flex items-center gap-2 cursor-pointer">
+                                    <input type="checkbox" class="col-is-overtime rounded border-slate-350 text-brand-primary focus:ring-brand-primary/20 w-4 h-4" onchange="window.updateStickyHours()">
+                                    <span>Overtime</span>
+                                </label>
+                                <label class="flex items-center gap-2 cursor-pointer">
+                                    <input type="checkbox" class="col-is-handover rounded border-slate-350 text-brand-primary focus:ring-brand-primary/20 w-4 h-4" onchange="window.toggleHandoverEmployeeSelect(this)">
+                                    <span>Handover</span>
+                                </label>
+                            </div>
+                            <div class="col-handover-select-container hidden">
+                                <label class="block text-[10px] font-bold text-slate-500 mb-1">Colleague Covered *</label>
+                                <div class="relative">
+                                    <select class="col-handover-employee input-field w-full pl-3 pr-8 py-2 bg-white border border-slate-200 rounded-lg outline-none text-xs font-medium appearance-none">
+                                        <option value="">-- Select Colleague --</option>
+                                    </select>
+                                    <i data-lucide="user" class="w-3.5 h-3.5 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none"></i>
+                                </div>
+                            </div>
+                        </div>
                         <div>
                             <label class="block text-[11px] font-black uppercase tracking-wider text-slate-400 mb-2">Work Type <span class="text-rose-500">*</span></label>
                             <div class="relative">
@@ -2105,6 +2212,31 @@ window.addConTaskRow = function () {
                     
                     <!-- Column 2: Metadata (Span 4) -->
                     <div class="lg:col-span-4 space-y-5">
+                        <div class="bg-slate-50 border border-slate-200 rounded-xl p-3.5 space-y-3">
+                            <span class="block text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-1">
+                                <i data-lucide="sliders" class="w-3.5 h-3.5 text-slate-400"></i>
+                                Shift & Handover Options
+                            </span>
+                            <div class="flex items-center gap-4 text-xs font-semibold text-slate-700">
+                                <label class="flex items-center gap-2 cursor-pointer">
+                                    <input type="checkbox" class="col-is-overtime rounded border-slate-350 text-brand-primary focus:ring-brand-primary/20 w-4 h-4" onchange="window.updateStickyHours()">
+                                    <span>Overtime</span>
+                                </label>
+                                <label class="flex items-center gap-2 cursor-pointer">
+                                    <input type="checkbox" class="col-is-handover rounded border-slate-350 text-brand-primary focus:ring-brand-primary/20 w-4 h-4" onchange="window.toggleHandoverEmployeeSelect(this)">
+                                    <span>Handover</span>
+                                </label>
+                            </div>
+                            <div class="col-handover-select-container hidden">
+                                <label class="block text-[10px] font-bold text-slate-500 mb-1">Colleague Covered *</label>
+                                <div class="relative">
+                                    <select class="col-handover-employee input-field w-full pl-3 pr-8 py-2 bg-white border border-slate-200 rounded-lg outline-none text-xs font-medium appearance-none">
+                                        <option value="">-- Select Colleague --</option>
+                                    </select>
+                                    <i data-lucide="user" class="w-3.5 h-3.5 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none"></i>
+                                </div>
+                            </div>
+                        </div>
                         <div>
                             <label class="block text-[11px] font-black uppercase tracking-wider text-slate-400 mb-2">Work Type <span class="text-rose-500">*</span></label>
                             <div class="relative">
@@ -2817,7 +2949,8 @@ function getContentTaskFormTemplate() {
                 }
 
                 // Check daily limit Target
-                const limit = parseFloat(state.employeeData?.working_hours) || 8.0;
+                const hasOvertimeChecked = Array.from(document.querySelectorAll(type === 'developer' ? '.dev-task-item .col-is-overtime' : '.con-task-item .col-is-overtime')).some(cb => cb.checked);
+                const limit = hasOvertimeChecked ? 24.0 : (parseFloat(state.employeeData?.working_hours) || 8.0);
                 const alreadyLogged = window.getAlreadyLoggedHoursToday();
                 let currentChosen = 0.0;
                 const hoursElements = document.querySelectorAll(type === 'developer' ? '.dev-task-item .col-hours' : '.con-task-item .col-hours');
@@ -2827,7 +2960,7 @@ function getContentTaskFormTemplate() {
 
                 const totalAggregate = alreadyLogged + currentChosen;
                 if (totalAggregate > limit) {
-                    throw new Error(`Daily work limit exceeded. Your daily target/limit is ${limit} hours. You have already logged ${alreadyLogged.toFixed(1)} hours today and are attempting to submit ${currentChosen.toFixed(1)} hours, which totals ${totalAggregate.toFixed(1)} hours. Please adjust your entries.`);
+                    throw new Error(`Daily work limit exceeded. Your daily target/limit is ${limit} hours${hasOvertimeChecked ? ' (Overtime active)' : ''}. You have already logged ${alreadyLogged.toFixed(1)} hours today and are attempting to submit ${currentChosen.toFixed(1)} hours, which totals ${totalAggregate.toFixed(1)} hours. Please adjust your entries.`);
                 }
 
                 if (type === 'developer') {
@@ -2854,6 +2987,14 @@ function getContentTaskFormTemplate() {
                         const noProjectReason = row.querySelector('.col-no-project-reason')?.value || 'N/A';
                         const taskStatus = row.querySelector('.col-status')?.value || 'Completed';
                         const workType = row.querySelector('.col-work-type')?.value || 'Development';
+
+                        const isOvertime = row.querySelector('.col-is-overtime')?.checked || false;
+                        const isHandover = row.querySelector('.col-is-handover')?.checked || false;
+                        const handoverForEmployeeId = isHandover ? (row.querySelector('.col-handover-employee')?.value || null) : null;
+
+                        if (isHandover && !handoverForEmployeeId) {
+                            throw new Error("You must select the colleague being covered for all handover tasks.");
+                        }
 
                         if (!hours) {
                             throw new Error("Each task must have valid hours selected.");
@@ -2921,7 +3062,10 @@ function getContentTaskFormTemplate() {
                             no_project_reason: noProjectReason,
                             task_status: taskStatus,
                             work_type: workType,
-                            was_deployed: row.querySelector('.col-was-deployed')?.value || 'No'
+                            was_deployed: row.querySelector('.col-was-deployed')?.value || 'No',
+                            is_overtime: isOvertime,
+                            is_handover: isHandover,
+                            handover_for_employee_id: handoverForEmployeeId
                         });
                     }
 
@@ -2948,6 +3092,14 @@ function getContentTaskFormTemplate() {
                         const noProjectReason = row.querySelector('.col-no-project-reason')?.value || 'N/A';
                         const taskStatus = row.querySelector('.col-status')?.value || 'Completed';
                         const workType = row.querySelector('.col-work-type')?.value || 'Development';
+
+                        const isOvertime = row.querySelector('.col-is-overtime')?.checked || false;
+                        const isHandover = row.querySelector('.col-is-handover')?.checked || false;
+                        const handoverForEmployeeId = isHandover ? (row.querySelector('.col-handover-employee')?.value || null) : null;
+
+                        if (isHandover && !handoverForEmployeeId) {
+                            throw new Error("You must select the colleague being covered for all handover tasks.");
+                        }
 
                         if (!hours) {
                             throw new Error("Each task must have valid hours selected.");
@@ -2981,7 +3133,10 @@ function getContentTaskFormTemplate() {
                             no_project_reason: noProjectReason,
                             task_status: taskStatus,
                             work_type: workType,
-                            was_deployed: row.querySelector('.col-was-deployed')?.value || 'No'
+                            was_deployed: row.querySelector('.col-was-deployed')?.value || 'No',
+                            is_overtime: isOvertime,
+                            is_handover: isHandover,
+                            handover_for_employee_id: handoverForEmployeeId
                         };
                         batchPayload.push(payload);
                     }
@@ -3959,6 +4114,579 @@ function getContentTaskFormTemplate() {
             `;
         }
 
+        function getEmployeeTimesheetsTemplate() {
+            const milestones = state.myMilestones || [];
+            const tasks = state.employeeTasks || [];
+
+            // Calculate overall metadata
+            const totalMilestones = milestones.length;
+            const totalTasks = tasks.length;
+            let totalHours = 0;
+            tasks.forEach(t => {
+                totalHours += parseFloat(t.hours_logged || 0);
+            });
+
+            // Process milestones with task details
+            const milestonesHtml = milestones.map(m => {
+                // Find tasks logged under this milestone
+                const milestoneTasks = tasks.filter(t => t.milestone_id === m.id);
+                const milestoneTasksCount = milestoneTasks.length;
+                const milestoneHours = milestoneTasks.reduce((sum, t) => sum + parseFloat(t.hours_logged || 0), 0);
+
+                let statusColor = 'bg-slate-100 text-slate-700 border-slate-200';
+                if (m.status === 'Active') statusColor = 'bg-indigo-50 text-indigo-700 border-indigo-200';
+                if (m.status === 'Delayed') statusColor = 'bg-rose-50 text-rose-700 border-rose-200';
+                if (m.status === 'Completed') statusColor = 'bg-emerald-50 text-emerald-700 border-emerald-200';
+
+                const startStr = m.expected_start ? new Date(m.expected_start).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : '--';
+                const endStr = m.expected_end ? new Date(m.expected_end).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : '--';
+                const actualStartStr = m.actual_start ? new Date(m.actual_start).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : '--';
+                const actualEndStr = m.actual_end ? new Date(m.actual_end).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : '--';
+
+                return `
+                    <div class="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm hover:shadow-md transition-all flex flex-col justify-between">
+                        <div>
+                            <div class="flex justify-between items-start gap-4 mb-3">
+                                <div>
+                                    <span class="text-[10px] font-bold text-indigo-600 bg-indigo-50 border border-indigo-100 px-2 py-0.5 rounded">${m.projectName || 'Project'}</span>
+                                    <h4 class="font-bold text-slate-800 text-base mt-1.5 leading-tight">${m.milestone_name}</h4>
+                                </div>
+                                <span class="px-2.5 py-1 ${statusColor} rounded-lg text-xs font-bold border shrink-0">
+                                    ${m.status || 'Pending'}
+                                </span>
+                            </div>
+
+                            <p class="text-xs text-slate-500 leading-relaxed font-medium mb-4">${m.remarks || 'No remarks provided.'}</p>
+                            
+                            <div class="border-t border-slate-100 pt-4 space-y-2.5">
+                                <div class="grid grid-cols-2 gap-2 text-xs">
+                                    <div>
+                                        <span class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider">Expected Start</span>
+                                        <span class="font-semibold text-slate-700">${startStr}</span>
+                                    </div>
+                                    <div>
+                                        <span class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider">Expected End</span>
+                                        <span class="font-semibold text-slate-700">${endStr}</span>
+                                    </div>
+                                </div>
+                                <div class="grid grid-cols-2 gap-2 text-xs">
+                                    <div>
+                                        <span class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider">Actual Start</span>
+                                        <span class="font-semibold text-slate-700">${actualStartStr}</span>
+                                    </div>
+                                    <div>
+                                        <span class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider">Actual End</span>
+                                        <span class="font-semibold text-slate-700">${actualEndStr}</span>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="bg-slate-50 border border-slate-100 rounded-2xl p-3 mt-4 grid grid-cols-2 gap-2 text-[11px] text-slate-600">
+                                <div><span class="font-bold text-slate-400">Sprint:</span> ${m.sprint_name || 'N/A'}</div>
+                                <div><span class="font-bold text-slate-400">Module:</span> ${m.module_name || 'N/A'}</div>
+                                <div><span class="font-bold text-slate-400">Feature:</span> ${m.feature_name || 'N/A'}</div>
+                                <div><span class="font-bold text-slate-400">Type:</span> ${m.work_type || 'N/A'}</div>
+                            </div>
+                        </div>
+
+                        <div class="border-t border-slate-100 pt-4 mt-4 flex items-center justify-between">
+                            <div class="flex items-center gap-1.5 text-xs text-slate-500 font-semibold">
+                                <i data-lucide="clipboard-list" class="w-4 h-4 text-slate-400"></i>
+                                <span>${milestoneTasksCount} task${milestoneTasksCount === 1 ? '' : 's'} logged</span>
+                            </div>
+                            <div class="flex items-center gap-1.5 text-xs text-slate-700 font-bold bg-indigo-50 px-2.5 py-1 rounded-lg">
+                                <i data-lucide="clock" class="w-4 h-4 text-brand-primary"></i>
+                                <span>${milestoneHours.toFixed(1)} hrs</span>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('') || `<div class="col-span-full bg-white border border-slate-200 rounded-3xl p-8 text-center text-slate-500 font-medium">No assigned milestones found.</div>`;
+
+            // Process Raw Tasks Table
+            const sortedTasks = [...tasks].sort((a, b) => new Date(b.date || b.created_at) - new Date(a.date || a.created_at));
+            const tableRows = sortedTasks.map(t => {
+                const d = new Date(t.date || t.created_at);
+                const dateStr = d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+                const timeStr = d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
+                
+                const project = t.project_id ? (state.projects.find(p => p.id === t.project_id)?.name || 'Project Attached') : 'General / No Project';
+                const milestone = t.milestone_id ? (milestones.find(m => m.id === t.milestone_id)?.milestone_name || 'Milestone Attached') : 'General Task';
+                
+                // 24 hour edit permission check
+                const createdTime = new Date(t.created_at).getTime();
+                const elapsedHours = (Date.now() - createdTime) / (1000 * 60 * 60);
+                const canEdit = elapsedHours <= 24;
+
+                let actionBtn = '';
+                if (canEdit) {
+                    actionBtn = `
+                        <button onclick="window.openEditTaskModal('${t.id}', '${t.task_type}')" class="text-indigo-600 hover:text-indigo-900 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shadow-sm">
+                            <i data-lucide="edit-3" class="w-3.5 h-3.5"></i> Edit
+                        </button>
+                    `;
+                } else {
+                    actionBtn = `
+                        <span class="inline-flex items-center gap-1 text-slate-400 text-xs font-semibold bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-xl cursor-not-allowed" title="Editing locked (24h limit expired)">
+                            <i data-lucide="lock" class="w-3.5 h-3.5"></i> Locked
+                        </span>
+                    `;
+                }
+
+                const editedBadge = t.is_edited ? `
+                    <span class="inline-flex items-center gap-1 text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200 px-2 py-0.5 rounded-md shadow-sm ml-2">
+                        <i data-lucide="edit-2" class="w-2.5 h-2.5"></i> Edited
+                    </span>
+                ` : '';
+
+                // Overtime Badge
+                const overtimeBadge = t.is_overtime ? `
+                    <span class="inline-flex items-center gap-1 text-[9px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200 px-1.5 py-0.5 rounded-md mt-1 shadow-sm">
+                        <i data-lucide="clock" class="w-2.5 h-2.5"></i> Overtime
+                    </span>
+                ` : '';
+
+                // Handover Badge
+                let coveredEmpName = '';
+                if (t.handover_for_employee_id) {
+                    const coveredEmp = (state.allEmployees || []).find(e => e.id === t.handover_for_employee_id);
+                    coveredEmpName = coveredEmp ? coveredEmp.full_name : 'Colleague';
+                }
+                const handoverBadge = t.is_handover ? `
+                    <span class="inline-flex items-center gap-1 text-[9px] font-bold bg-amber-50 text-amber-700 border border-amber-200 px-1.5 py-0.5 rounded-md mt-1 shadow-sm block w-fit" title="Covering ${coveredEmpName}">
+                        <i data-lucide="shuffle" class="w-2.5 h-2.5"></i> Handover (${coveredEmpName})
+                    </span>
+                ` : '';
+
+                const detailLabel = t.task_type === 'developer' ? `${t.hours_logged} hrs` : `${t.total_content} items (${t.hours_logged} hrs)`;
+
+                return `
+                    <tr class="border-b border-slate-100 hover:bg-slate-50 transition-colors">
+                        <td class="px-6 py-4 whitespace-nowrap text-left">
+                            <div class="text-xs font-bold text-slate-700">${dateStr}</div>
+                            <div class="text-[10px] text-slate-400 font-medium mt-0.5">${timeStr}</div>
+                        </td>
+                        <td class="px-6 py-4 text-sm font-semibold text-slate-800">
+                            <span class="block">${project}</span>
+                            <span class="block text-[11px] text-slate-400 font-medium">${milestone}</span>
+                        </td>
+                        <td class="px-6 py-4 text-xs font-semibold text-indigo-600 whitespace-nowrap capitalize">
+                            <div class="flex flex-col gap-1">
+                                <span>${t.task_type}</span>
+                                <span class="text-[10px] text-slate-400 font-medium">${t.work_type || 'N/A'}</span>
+                                ${overtimeBadge}
+                                ${handoverBadge}
+                            </div>
+                        </td>
+                        <td class="px-6 py-4 text-sm text-slate-600 max-w-[280px] lg:max-w-md">
+                            <div class="font-medium whitespace-pre-wrap break-all break-words max-h-24 overflow-y-auto pr-2 text-xs leading-relaxed">${t.task_performed || 'N/A'}</div>
+                            ${editedBadge}
+                        </td>
+                        <td class="px-6 py-4 text-sm font-bold text-slate-700 whitespace-nowrap">${detailLabel}</td>
+                        <td class="px-6 py-4 text-right whitespace-nowrap">${actionBtn}</td>
+                    </tr>
+                `;
+            }).join('') || '<tr><td colspan="6" class="px-6 py-8 text-center text-slate-500 font-medium">No tasks logged yet.</td></tr>';
+
+            const rawTasksHiddenClass = state.showRawTasksTable ? '' : 'hidden';
+            const toggleButtonText = state.showRawTasksTable ? 'Hide Raw Tasks Logs' : 'Show Raw Tasks Logs';
+            const toggleButtonIcon = state.showRawTasksTable ? 'eye-off' : 'eye';
+
+            return `
+                <div class="max-w-5xl mx-auto space-y-8 fade-in">
+                    <!-- KPI Cards Row -->
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-5">
+                        <div class="bg-white border border-slate-200 rounded-3xl p-5 shadow-sm relative overflow-hidden group hover:shadow-md transition-all">
+                            <div class="absolute right-0 bottom-0 translate-y-4 translate-x-4 opacity-5 pointer-events-none group-hover:scale-110 transition-transform">
+                                <i data-lucide="target" class="w-24 h-24 text-slate-900"></i>
+                            </div>
+                            <span class="text-xs font-bold uppercase tracking-wider text-slate-400">Assigned Milestones</span>
+                            <div class="text-3xl font-black text-slate-800 mt-2">${totalMilestones}</div>
+                            <div class="text-[11px] font-semibold text-slate-500 mt-2">Active & legacy project milestones</div>
+                        </div>
+                        <div class="bg-white border border-slate-200 rounded-3xl p-5 shadow-sm relative overflow-hidden group hover:shadow-md transition-all">
+                            <div class="absolute right-0 bottom-0 translate-y-4 translate-x-4 opacity-5 pointer-events-none group-hover:scale-110 transition-transform">
+                                <i data-lucide="clipboard-list" class="w-24 h-24 text-slate-900"></i>
+                            </div>
+                            <span class="text-xs font-bold uppercase tracking-wider text-slate-400">Tasks Logged</span>
+                            <div class="text-3xl font-black text-slate-800 mt-2">${totalTasks}</div>
+                            <div class="text-[11px] font-semibold text-slate-500 mt-2">Total timesheet submissions till date</div>
+                        </div>
+                        <div class="bg-gradient-to-br from-brand-primary to-indigo-600 rounded-3xl p-5 text-white shadow-md relative overflow-hidden group hover:shadow-lg transition-all">
+                            <div class="absolute right-0 bottom-0 translate-y-4 translate-x-4 opacity-15 pointer-events-none group-hover:scale-110 transition-transform">
+                                <i data-lucide="clock" class="w-24 h-24"></i>
+                            </div>
+                            <span class="text-xs font-bold uppercase tracking-wider text-indigo-100">Total Hours Logged</span>
+                            <div class="text-3xl font-black mt-2">${totalHours.toFixed(1)} hrs</div>
+                            <div class="text-[11px] font-semibold text-indigo-100/90 mt-2">Accumulated effort logged in workspace</div>
+                        </div>
+                    </div>
+
+                    <!-- Milestones Ledger Section -->
+                    <div>
+                        <div class="flex items-center justify-between mb-4">
+                            <h3 class="text-lg font-black text-slate-800 flex items-center gap-2">
+                                <i data-lucide="target" class="w-5 h-5 text-indigo-600"></i> Assigned Milestones Ledger
+                            </h3>
+                        </div>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            ${milestonesHtml}
+                        </div>
+                    </div>
+
+                    <!-- Togglable Raw Task Logs Section -->
+                    <div class="space-y-4">
+                        <div class="flex justify-between items-center bg-slate-100/60 p-4 border border-slate-200/80 rounded-2xl">
+                            <div>
+                                <h4 class="font-bold text-slate-800 text-sm">Task Entry Logs History</h4>
+                                <p class="text-xs text-slate-500 mt-0.5">Toggle to view all raw logs and make corrections within 24 hours.</p>
+                            </div>
+                            <button id="toggle-raw-tasks-btn" onclick="window.toggleRawTasksTable()" class="px-4 py-2 bg-white border border-slate-200 hover:border-brand-primary hover:text-brand-primary text-slate-700 text-xs font-bold rounded-xl shadow-sm transition-all flex items-center">
+                                <i data-lucide="${toggleButtonIcon}" class="w-4 h-4 mr-2"></i> ${toggleButtonText}
+                            </button>
+                        </div>
+
+                        <!-- Raw Tasks Table Container -->
+                        <div id="raw-tasks-container" class="bg-white border border-slate-200 rounded-3xl overflow-hidden shadow-sm ${rawTasksHiddenClass} transition-all duration-300">
+                            <div class="overflow-x-auto">
+                                <table class="w-full text-left">
+                                    <thead>
+                                        <tr class="bg-slate-50 border-b border-slate-200 text-slate-400 text-[10px] font-black uppercase tracking-wider">
+                                            <th class="px-6 py-4">Logged Time</th>
+                                            <th class="px-6 py-4">Project / Milestone</th>
+                                            <th class="px-6 py-4">Task Type</th>
+                                            <th class="px-6 py-4">Task Performed Details</th>
+                                            <th class="px-6 py-4">Effort Metric</th>
+                                            <th class="px-6 py-4 text-right">Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody class="divide-y divide-slate-100">
+                                        ${tableRows}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        state.showRawTasksTable = state.showRawTasksTable || false;
+
+        window.toggleRawTasksTable = function() {
+            state.showRawTasksTable = !state.showRawTasksTable;
+            const container = document.getElementById('raw-tasks-container');
+            const btn = document.getElementById('toggle-raw-tasks-btn');
+            if (!container || !btn) return;
+            if (state.showRawTasksTable) {
+                container.classList.remove('hidden');
+                btn.innerHTML = `<i data-lucide="eye-off" class="w-4 h-4 mr-2"></i> Hide Raw Tasks Logs`;
+            } else {
+                container.classList.add('hidden');
+                btn.innerHTML = `<i data-lucide="eye" class="w-4 h-4 mr-2"></i> Show Raw Tasks Logs`;
+            }
+            if (window.lucide) lucide.createIcons();
+        };
+
+        window.openEditTaskModal = function(taskId, taskType) {
+            const task = (state.employeeTasks || []).find(t => t.id === taskId);
+            if (!task) {
+                showToast("Task not found locally.", "error");
+                return;
+            }
+
+            const isDev = taskType === 'developer';
+
+            // Common hour options prepopulated
+            let hourOptions = '';
+            for (let h = 0.5; h <= 24; h += 0.5) {
+                const whole = Math.floor(h);
+                const mins = (h % 1) === 0 ? '00' : '30';
+                const label = `${whole}:${mins}`;
+                const selected = parseFloat(task.hours_logged) === h ? 'selected' : '';
+                hourOptions += `<option value="${h}" ${selected}>${label}</option>`;
+            }
+
+            let fieldsHtml = '';
+
+            if (isDev) {
+                fieldsHtml = `
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 mb-1">Hours Logged *</label>
+                            <div class="relative">
+                                <select id="edit-task-hours" required class="input-field w-full pl-3 pr-8 py-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none text-sm font-medium appearance-none">
+                                    ${hourOptions}
+                                </select>
+                                <i data-lucide="chevron-down" class="w-4 h-4 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none"></i>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 mb-1">Task Status *</label>
+                            <div class="relative">
+                                <select id="edit-task-status" required class="input-field w-full pl-3 pr-8 py-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none text-sm font-medium appearance-none">
+                                    <option value="Completed" ${task.task_status === 'Completed' ? 'selected' : ''}>Completed</option>
+                                    <option value="In Progress" ${task.task_status === 'In Progress' ? 'selected' : ''}>In Progress</option>
+                                    <option value="On Hold" ${task.task_status === 'On Hold' ? 'selected' : ''}>On Hold</option>
+                                </select>
+                                <i data-lucide="chevron-down" class="w-4 h-4 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none"></i>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 mb-1">Sprint</label>
+                            <input type="text" id="edit-task-sprint" value="${task.sprint || 'N/A'}" class="input-field w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl outline-none text-sm">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 mb-1">Module</label>
+                            <input type="text" id="edit-task-module" value="${task.module || 'N/A'}" class="input-field w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl outline-none text-sm">
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 mb-1">Feature</label>
+                            <input type="text" id="edit-task-feature" value="${task.feature || 'N/A'}" class="input-field w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl outline-none text-sm">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 mb-1">Ticket ID</label>
+                            <input type="text" id="edit-task-ticket" value="${task.ticket_id || 'N/A'}" class="input-field w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl outline-none text-sm">
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 mb-1">Work Type</label>
+                            <input type="text" id="edit-task-worktype" value="${task.work_type || 'Development'}" class="input-field w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl outline-none text-sm">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 mb-1">GitHub Repo Name</label>
+                            <input type="text" id="edit-task-repo" value="${task.github_repo_name || 'N/A'}" class="input-field w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl outline-none text-sm">
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 mb-1">GitHub Link</label>
+                            <input type="url" id="edit-task-ghlink" value="${task.github_link || 'N/A'}" class="input-field w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl outline-none text-sm">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 mb-1">GitHub Branch Name</label>
+                            <input type="text" id="edit-task-branch" value="${task.github_branch_name || 'N/A'}" class="input-field w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl outline-none text-sm">
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 mb-1">GitHub PR Created?</label>
+                            <div class="relative">
+                                <select id="edit-task-pr" class="input-field w-full pl-3 pr-8 py-2 bg-slate-50 border border-slate-200 rounded-xl outline-none text-sm appearance-none">
+                                    <option value="No" ${task.github_pr_created === 'No' ? 'selected' : ''}>No</option>
+                                    <option value="Yes" ${task.github_pr_created === 'Yes' ? 'selected' : ''}>Yes</option>
+                                </select>
+                                <i data-lucide="chevron-down" class="w-4 h-4 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none"></i>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 mb-1">Commit Count</label>
+                            <input type="number" id="edit-task-commits" min="0" value="${task.github_commit_count || 0}" class="input-field w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl outline-none text-sm">
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 mb-1">Tech Stack (Comma Separated)</label>
+                        <input type="text" id="edit-task-tech" value="${task.tech_stack || 'N/A'}" class="input-field w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl outline-none text-sm" placeholder="e.g., Python, FastAPI, SQLite">
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 mb-1">No Project Reason (If no project assigned)</label>
+                        <input type="text" id="edit-task-reason" value="${task.no_project_reason || 'N/A'}" class="input-field w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl outline-none text-sm">
+                    </div>
+
+                    <div>
+                        <div class="flex justify-between items-center mb-1">
+                            <label class="block text-xs font-bold text-slate-500">Tasks Performed *</label>
+                            <span id="edit-char-counter" class="text-[10px] text-slate-400">0 / 5000</span>
+                        </div>
+                        <textarea id="edit-task-performed" required rows="4" minlength="20" maxlength="5000" oninput="document.getElementById('edit-char-counter').innerText = this.value.length + ' / 5000'" class="input-field w-full px-3 py-2 bg-slate-50 border border-slate-350 rounded-xl outline-none text-sm text-slate-700">${task.task_performed || ''}</textarea>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 mb-1">Plan for Tomorrow *</label>
+                        <textarea id="edit-task-tomorrow" required rows="2" class="input-field w-full px-3 py-2 bg-slate-50 border border-slate-350 rounded-xl outline-none text-sm text-slate-700">${task.tomorrow_plan || ''}</textarea>
+                    </div>
+                `;
+            } else {
+                fieldsHtml = `
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 mb-1">Hours Logged *</label>
+                            <div class="relative">
+                                <select id="edit-task-hours" required class="input-field w-full pl-3 pr-8 py-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none text-sm font-medium appearance-none">
+                                    ${hourOptions}
+                                </select>
+                                <i data-lucide="chevron-down" class="w-4 h-4 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none"></i>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 mb-1">Platform</label>
+                            <input type="text" id="edit-task-platform" value="${task.platform || 'N/A'}" class="input-field w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl outline-none text-sm">
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 mb-1">Sprint</label>
+                            <input type="text" id="edit-task-sprint" value="${task.sprint || 'N/A'}" class="input-field w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl outline-none text-sm">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 mb-1">Module</label>
+                            <input type="text" id="edit-task-module" value="${task.module || 'N/A'}" class="input-field w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl outline-none text-sm">
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 mb-1">Feature</label>
+                            <input type="text" id="edit-task-feature" value="${task.feature || 'N/A'}" class="input-field w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl outline-none text-sm">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 mb-1">Ticket ID</label>
+                            <input type="text" id="edit-task-ticket" value="${task.ticket_id || 'N/A'}" class="input-field w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl outline-none text-sm">
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 mb-1">Work Type</label>
+                            <input type="text" id="edit-task-worktype" value="${task.work_type || 'Development'}" class="input-field w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl outline-none text-sm">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 mb-1">Task Status</label>
+                            <div class="relative">
+                                <select id="edit-task-status" class="input-field w-full pl-3 pr-8 py-2 bg-slate-50 border border-slate-200 rounded-xl outline-none text-sm appearance-none">
+                                    <option value="Completed" ${task.task_status === 'Completed' ? 'selected' : ''}>Completed</option>
+                                    <option value="In Progress" ${task.task_status === 'In Progress' ? 'selected' : ''}>In Progress</option>
+                                    <option value="On Hold" ${task.task_status === 'On Hold' ? 'selected' : ''}>On Hold</option>
+                                </select>
+                                <i data-lucide="chevron-down" class="w-4 h-4 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none"></i>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 mb-1">Reels Count</label>
+                            <input type="number" id="edit-task-reels" min="0" value="${task.reels_count || 0}" class="input-field w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl outline-none text-sm">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 mb-1">Long Video Count</label>
+                            <input type="number" id="edit-task-videos" min="0" value="${task.long_video_count || 0}" class="input-field w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl outline-none text-sm">
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 mb-1">Poster Count</label>
+                            <input type="number" id="edit-task-posters" min="0" value="${task.poster_count || 0}" class="input-field w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl outline-none text-sm">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 mb-1">Calls Made</label>
+                            <input type="number" id="edit-task-calls" min="0" value="${task.calls_made || 0}" class="input-field w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl outline-none text-sm">
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 mb-1">No Project Reason (If no project assigned)</label>
+                        <input type="text" id="edit-task-reason" value="${task.no_project_reason || 'N/A'}" class="input-field w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl outline-none text-sm">
+                    </div>
+
+                    <div>
+                        <div class="flex justify-between items-center mb-1">
+                            <label class="block text-xs font-bold text-slate-500">Tasks Performed *</label>
+                            <span id="edit-char-counter" class="text-[10px] text-slate-400">0 / 5000</span>
+                        </div>
+                        <textarea id="edit-task-performed" required rows="4" minlength="20" maxlength="5000" oninput="document.getElementById('edit-char-counter').innerText = this.value.length + ' / 5000'" class="input-field w-full px-3 py-2 bg-slate-50 border border-slate-350 rounded-xl outline-none text-sm text-slate-700">${task.task_performed || ''}</textarea>
+                    </div>
+                `;
+            }
+
+            const html = `
+                <form onsubmit="window.submitEditTaskForm(event, '${taskId}', '${taskType}')" class="space-y-4">
+                    <div class="space-y-4 max-h-[60vh] overflow-y-auto pr-1">
+                        ${fieldsHtml}
+                    </div>
+                    <div class="mt-6 flex justify-end gap-3 pt-4 border-t border-slate-100 shrink-0">
+                        <button type="button" onclick="closeModal()" class="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg font-medium transition-colors">Cancel</button>
+                        <button type="submit" id="btnEditSubmit" class="px-5 py-2 bg-brand-primary text-white rounded-lg font-medium shadow-sm hover:bg-indigo-700 transition-all flex items-center gap-2">
+                            <i data-lucide="save" class="w-4 h-4"></i> Save Changes
+                        </button>
+                    </div>
+                </form>
+            `;
+
+            openModal('Edit Timesheet Entry', html);
+            const textEl = document.getElementById('edit-task-performed');
+            if (textEl) {
+                document.getElementById('edit-char-counter').innerText = textEl.value.length + ' / 5000';
+            }
+        };
+
+        window.submitEditTaskForm = async function(event, taskId, taskType) {
+            event.preventDefault();
+            const btn = document.getElementById('btnEditSubmit');
+            const og = btn.innerHTML;
+            btn.innerHTML = '<i data-lucide="loader-2" class="w-4 h-4 mr-2 animate-spin"></i> Saving...';
+            btn.disabled = true;
+
+            const isDev = taskType === 'developer';
+            const payload = {
+                hours_logged: parseFloat(document.getElementById('edit-task-hours').value),
+                task_performed: document.getElementById('edit-task-performed').value,
+                sprint: document.getElementById('edit-task-sprint').value,
+                module: document.getElementById('edit-task-module').value,
+                feature: document.getElementById('edit-task-feature').value,
+                ticket_id: document.getElementById('edit-task-ticket').value,
+                no_project_reason: document.getElementById('edit-task-reason').value,
+                task_status: document.getElementById('edit-task-status').value,
+                work_type: document.getElementById('edit-task-worktype').value
+            };
+
+            if (isDev) {
+                payload.tomorrow_plan = document.getElementById('edit-task-tomorrow').value;
+                payload.tech_stack = document.getElementById('edit-task-tech').value;
+                payload.github_link = document.getElementById('edit-task-ghlink').value;
+                payload.github_branch_name = document.getElementById('edit-task-branch').value;
+                payload.github_pr_created = document.getElementById('edit-task-pr').value;
+                payload.github_commit_count = parseInt(document.getElementById('edit-task-commits').value) || 0;
+                payload.github_repo_name = document.getElementById('edit-task-repo').value;
+            } else {
+                payload.platform = document.getElementById('edit-task-platform').value;
+                payload.reels_count = parseInt(document.getElementById('edit-task-reels').value) || 0;
+                payload.long_video_count = parseInt(document.getElementById('edit-task-videos').value) || 0;
+                payload.poster_count = parseInt(document.getElementById('edit-task-posters').value) || 0;
+                payload.calls_made = parseInt(document.getElementById('edit-task-calls').value) || 0;
+            }
+
+            try {
+                const endpoint = isDev ? `/tasks/developer/update/${taskId}` : `/tasks/content/update/${taskId}`;
+                await apiFetch(endpoint, {
+                    method: 'PUT',
+                    body: payload
+                });
+                showToast("Timesheet entry updated successfully!", "success");
+                closeModal();
+                await loadEmployeeWorkspaceData();
+                routeApp('timesheets');
+            } catch (err) {
+                showToast("Failed to save changes: " + err.message, "error");
+            } finally {
+                if (btn) { btn.innerHTML = og; btn.disabled = false; lucide.createIcons(); }
+            }
+        };
+
         async function handleLeaveRequestSubmit(event) {
             event.preventDefault();
             const btn = document.getElementById('btn-submit-leave');
@@ -4010,6 +4738,63 @@ function getContentTaskFormTemplate() {
             }
         }
 
+        function isUserBusy() {
+            // 1. Check if the user is currently typing in an input, textarea, or select
+            const activeEl = document.activeElement;
+            const isTyping = activeEl && 
+                             (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA' || activeEl.tagName === 'SELECT') && 
+                             !activeEl.readOnly && 
+                             !activeEl.disabled;
+                             
+            if (isTyping) return true;
+
+            // 2. Check if any modal or drawer overlay is open and visible
+            const modalIds = [
+                'global-modal', 'secondary-modal', 'credentialsModalOverlay', 
+                'adminDrawerOverlay', 'imageModalOverlay', 'globalModal', 
+                'otpModal', 'otpModalContainer', 'leaveDetailsModal', 'leaveDetailsModalContainer'
+            ];
+            for (const id of modalIds) {
+                const el = document.getElementById(id);
+                if (el && !el.classList.contains('hidden') && window.getComputedStyle(el).display !== 'none') {
+                    return true;
+                }
+            }
+
+            // 3. Check for any dirty forms (non-empty user-entered inputs)
+            const inputs = document.querySelectorAll('input:not([type="hidden"]):not([type="submit"]):not([type="button"]):not([type="checkbox"]):not([type="radio"]), textarea');
+            for (const input of inputs) {
+                if (!input.disabled && !input.readOnly && input.value.trim() !== '' && input.value !== input.defaultValue) {
+                    return true;
+                }
+            }
+
+            // 4. Check if dropdowns have been changed from their default selected option
+            const selects = document.querySelectorAll('select');
+            for (const select of selects) {
+                if (!select.disabled) {
+                    const options = select.options;
+                    for (let i = 0; i < options.length; i++) {
+                        if (options[i].selected && !options[i].defaultSelected && options[i].value !== 'N/A' && options[i].value !== '') {
+                            return true;
+                        }
+                    }
+                }
+            }
+            
+            // 5. Special views check for active task logs with added rows
+            if (typeof state !== 'undefined') {
+                if (state.currentView === 'log-dev' || state.currentView === 'log-content') {
+                    const container = document.getElementById('dev-task-container') || document.getElementById('content-task-container');
+                    if (container && container.children.length > 0) {
+                        return true;
+                    }
+                }
+            }
+
+            return false;
+        }
+
         let ws;
         function setupWebSocket() {
             if (ws && (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING)) return;
@@ -4022,7 +4807,16 @@ function getContentTaskFormTemplate() {
                     const data = JSON.parse(event.data);
                     if (data.action === "REFRESH_WORKSPACE") {
                         console.log("WebSocket update received. Reloading workspace data.");
+                        
+                        // Silent data refresh
                         await loadEmployeeWorkspaceData();
+                        
+                        // Guard the UI refresh/rerender
+                        if (isUserBusy()) {
+                            console.log("User is currently busy (editing or typing). Skipping DOM refresh to prevent data loss.");
+                            return;
+                        }
+                        
                         routeApp(state.currentView);
                     }
                 } catch (e) {
