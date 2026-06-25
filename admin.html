@@ -1152,6 +1152,16 @@
       renderAdminApp();
     };
 
+    window.handleSidebarSearch = function (val) {
+      state.sidebarSearch = val;
+      renderAdminApp();
+      const inp = document.getElementById("sidebarSearch");
+      if (inp) {
+        inp.focus();
+        inp.selectionStart = inp.selectionEnd = inp.value.length;
+      }
+    };
+
     window.handleAdminRoleSearchDOM = function (val) {
       const st = val.toLowerCase();
       document.querySelectorAll(".role-row-item").forEach((row) => {
@@ -1829,6 +1839,30 @@
       const attendanceHistory = managerSummary.attendance_history || [];
       const resDistribution = workforce.resource_distribution || {};
 
+      // Filter sidebar lists dynamically based on search query
+      const sidebarSearchLower = (state.sidebarSearch || '').toLowerCase().trim();
+      const filteredAbsentEmployees = (workforce.radar?.absent_employees || []).filter(emp => {
+        if (!sidebarSearchLower) return true;
+        return (emp.name && emp.name.toLowerCase().includes(sidebarSearchLower)) ||
+               (emp.username && emp.username.toLowerCase().includes(sidebarSearchLower)) ||
+               (emp.department && emp.department.toLowerCase().includes(sidebarSearchLower));
+      });
+
+      const filteredLeaveRequests = leaveRequests.filter(l => {
+        if (!sidebarSearchLower) return true;
+        return (l.employee_name && l.employee_name.toLowerCase().includes(sidebarSearchLower)) ||
+               (l.reason && l.reason.toLowerCase().includes(sidebarSearchLower)) ||
+               (l.status && l.status.toLowerCase().includes(sidebarSearchLower));
+      });
+
+      const filteredPresenceHistory = attendanceHistory.filter(a => {
+        if (!sidebarSearchLower) return true;
+        return (a.employee_name && a.employee_name.toLowerCase().includes(sidebarSearchLower)) ||
+               (a.status && a.status.toLowerCase().includes(sidebarSearchLower)) ||
+               (a.shift_start && a.shift_start.toLowerCase().includes(sidebarSearchLower)) ||
+               (a.shift_end && a.shift_end.toLowerCase().includes(sidebarSearchLower));
+      });
+
       const phase4Html = `
             <div class="clear-both w-full grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
                 <!-- Portfolio Control Center -->
@@ -1999,29 +2033,34 @@
       }).join('')}
                             ${Object.keys(resDistribution).length === 0 ? '<p class="text-xs text-slate-400 font-bold uppercase py-2">No department data</p>' : ''}
                         </div>
+                     <!-- Leaves & Active Logs -->
+                    <div class="relative mb-4 shrink-0">
+                        <span class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                            <i data-lucide="search" class="w-3.5 h-3.5 text-slate-400"></i>
+                        </span>
+                        <input type="text" id="sidebarSearch" placeholder="Search staff or status..." value="${state.sidebarSearch || ''}" oninput="handleSidebarSearch(this.value)" class="block w-full pl-9 pr-3 py-1.5 border border-slate-200 rounded-xl bg-slate-50/50 text-slate-800 text-xs focus:ring-2 focus:ring-brand-primary outline-none transition-all">
                     </div>
 
-                    <!-- Leaves & Active Logs -->
-                    <div class="flex-1 overflow-y-auto pr-1 custom-scrollbar min-h-[220px]">
+                    <div class="flex-1 overflow-y-auto pr-1 custom-scrollbar max-h-[480px]">
                         <!-- Absent Today Section -->
-                        ${workforce.radar?.absent_employees && workforce.radar.absent_employees.length > 0 ? `
+                        ${filteredAbsentEmployees.length > 0 ? `
                             <div class="mb-5 shrink-0 bg-rose-50/50 p-4 rounded-2xl border border-rose-100/50">
                                 <h5 class="text-[10px] font-black text-rose-850 uppercase tracking-widest mb-2.5 flex items-center gap-1.5">
-                                    <i data-lucide="user-x" class="w-3.5 h-3.5 text-rose-600"></i> Absent Today (${workforce.radar.absent_employees.length})
+                                    <i data-lucide="user-x" class="w-3.5 h-3.5 text-rose-600"></i> Absent Today (${filteredAbsentEmployees.length})
                                 </h5>
                                 <div class="space-y-2">
-                                    ${workforce.radar.absent_employees.map(emp => `
-                                        <div class="bg-white p-2.5 rounded-xl border border-rose-100/30 flex justify-between items-center gap-3 shadow-sm hover:shadow-md transition-shadow">
+                                    ${filteredAbsentEmployees.map(emp => `
+                                        <div class="bg-white p-2 rounded-xl border border-rose-100/30 flex justify-between items-center gap-2 shadow-sm hover:shadow-md transition-shadow">
                                             <div class="min-w-0">
                                                 <p class="text-xs font-black text-slate-800 truncate">${emp.name}</p>
-                                                <p class="text-[9px] text-slate-400 font-semibold truncate">@${emp.username} &bull; ${emp.department}</p>
+                                                <p class="text-[9px] text-slate-450 font-semibold truncate">@${emp.username} &bull; ${emp.department}</p>
                                             </div>
-                                            <span class="px-2 py-0.5 rounded text-[8px] font-black uppercase bg-rose-50 text-rose-700 border border-rose-100 shrink-0">Absent</span>
+                                            <span class="px-1.5 py-0.5 rounded text-[8px] font-black uppercase bg-rose-50 text-rose-700 border border-rose-100 shrink-0">Absent</span>
                                         </div>
                                     `).join('')}
                                 </div>
                             </div>
-                        ` : `
+                        ` : (state.sidebarSearch ? '' : `
                             <div class="mb-5 shrink-0 bg-emerald-50/20 p-3 rounded-xl border border-emerald-100/30 flex items-center gap-2">
                                 <i data-lucide="shield-check" class="w-4 h-4 text-emerald-600"></i>
                                 <div>
@@ -2029,24 +2068,29 @@
                                     <p class="text-[9px] text-slate-450 font-bold uppercase mt-0.5">All employees accounted for today</p>
                                 </div>
                             </div>
-                        `}
-
-                        <!-- Leave Requests -->
-                        ${leaveRequests.length > 0 ? `
+                        `)}
+                         <!-- Leave Requests -->
+                        ${filteredLeaveRequests.length > 0 ? `
                             <div class="mb-5 shrink-0">
                                 <h5 class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2.5 flex items-center gap-1.5">
-                                    <i data-lucide="plane-takeoff" class="w-3.5 h-3.5 text-indigo-500"></i> Leave Requests
+                                    <i data-lucide="plane-takeoff" class="w-3.5 h-3.5 text-indigo-500"></i> Leave Requests (${filteredLeaveRequests.length})
                                 </h5>
                                 <div class="space-y-2 animate-in">
-                                    ${leaveRequests.map(l => `
-                                        <div class="bg-indigo-50/40 p-3 rounded-xl border border-indigo-100/50 flex justify-between items-center gap-3">
-                                            <div class="min-w-0">
-                                                <p class="text-xs font-black text-indigo-950 truncate">${l.employee_name}</p>
-                                                <p class="text-[9px] text-indigo-700 font-bold">${l.reason}</p>
+                                    ${filteredLeaveRequests.map(l => {
+                                        const startDateStr = l.start_date ? new Date(l.start_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : 'N/A';
+                                        return `
+                                            <div class="bg-indigo-50/40 p-2.5 rounded-xl border border-indigo-100/50 flex justify-between items-center gap-2">
+                                                <div class="min-w-0">
+                                                    <div class="flex items-center gap-2">
+                                                        <p class="text-xs font-black text-indigo-950 truncate">${l.employee_name}</p>
+                                                        <span class="px-1.5 py-0.5 bg-indigo-100 text-indigo-800 text-[8px] font-bold rounded">Starts: ${startDateStr}</span>
+                                                    </div>
+                                                    <p class="text-[9px] text-indigo-700 font-bold mt-0.5 truncate">${l.reason}</p>
+                                                </div>
+                                                <span class="px-1.5 py-0.5 rounded text-[8px] font-black uppercase bg-indigo-100 text-indigo-800 shrink-0">${l.status}</span>
                                             </div>
-                                            <span class="px-2 py-0.5 rounded text-[8px] font-black uppercase bg-indigo-100 text-indigo-800 shrink-0">${l.status}</span>
-                                        </div>
-                                    `).join('')}
+                                        `;
+                                    }).join('')}
                                 </div>
                             </div>
                         ` : ''}
@@ -2054,27 +2098,36 @@
                         <!-- Attendance history -->
                         <div>
                             <h5 class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2.5 flex items-center gap-1.5">
-                                <i data-lucide="clock-arrow-up" class="w-3.5 h-3.5 text-emerald-500"></i> Live Presence Feed
+                                <i data-lucide="clock-arrow-up" class="w-3.5 h-3.5 text-emerald-500"></i> Live Presence Feed (${filteredPresenceHistory.length})
                             </h5>
                             <div class="space-y-2">
-                                ${attendanceHistory.map(a => {
-        const timeStr = a.check_in ? new Date(a.check_in).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) : '--';
-        return `
-                                        <div class="bg-slate-50/50 hover:bg-slate-50 p-3 rounded-xl border border-slate-100 flex justify-between items-center gap-3 transition-colors">
-                                            <div class="min-w-0">
-                                                <p class="text-xs font-black text-slate-800 truncate">${a.employee_name}</p>
-                                                <p class="text-[9px] text-slate-400 font-bold uppercase">${a.status}</p>
+                                ${filteredPresenceHistory.map(a => {
+                                    const timeStr = a.check_in ? new Date(a.check_in).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) : '--';
+                                    const outStr = a.check_out ? new Date(a.check_out).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) : '--';
+                                    return `
+                                        <div class="bg-slate-50/50 hover:bg-slate-50 p-2.5 rounded-xl border border-slate-100/80 flex items-center justify-between gap-3 transition-colors">
+                                            <div class="min-w-0 flex-1">
+                                                <div class="flex items-center gap-1.5">
+                                                    <p class="text-xs font-black text-slate-800 truncate">${a.employee_name}</p>
+                                                    <span class="px-1.5 py-0.2 rounded text-[7px] font-black uppercase ${a.status === 'Present' || a.status === 'Checked In' ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-800'}">${a.status}</span>
+                                                </div>
+                                                <p class="text-[9px] text-slate-450 font-bold uppercase truncate mt-0.5">Shift: ${a.shift_start || '09:00'} - ${a.shift_end || '18:00'}</p>
                                             </div>
-                                            <div class="text-right shrink-0">
-                                                <p class="text-xs font-black text-slate-800">${timeStr}</p>
-                                                <p class="text-[8px] font-bold text-slate-400 uppercase">Check-in</p>
+                                            <div class="text-right shrink-0 flex flex-col items-end justify-center text-[9px] font-bold text-slate-600 gap-0.5">
+                                                <div class="flex items-center gap-1">
+                                                    <span class="text-slate-400">In:</span> <span class="text-slate-700">${timeStr}</span>
+                                                </div>
+                                                <div class="flex items-center gap-1">
+                                                    <span class="text-slate-400">Out:</span> <span class="text-slate-700">${outStr}</span>
+                                                </div>
                                             </div>
                                         </div>
                                     `;
-      }).join('')}
-                                ${attendanceHistory.length === 0 ? '<p class="text-[9px] text-slate-400 font-bold uppercase tracking-widest text-center py-4">No check-in logs recorded today</p>' : ''}
+                                }).join('')}
+                                ${filteredPresenceHistory.length === 0 ? '<p class="text-[9px] text-slate-400 font-bold uppercase tracking-widest text-center py-4">No matching records found</p>' : ''}
                             </div>
                         </div>
+                    </div>
                     </div>
                 </div>
             </div>
@@ -3265,6 +3318,20 @@
       const planningCount = allProjects.filter(p => p.status === 'Planning').length;
       const activeCount = allProjects.filter(p => p.status === 'In Progress' || p.status === 'Active').length;
       const completedCount = allProjects.filter(p => p.status === 'Completed').length;
+
+      state.projectTimelineFilter = state.projectTimelineFilter || 'All';
+      state.projectRiskFilter = state.projectRiskFilter || 'All';
+      state.projectProfitFilter = state.projectProfitFilter || 'All';
+      state.projectPaymentFilter = state.projectPaymentFilter || 'All';
+      state.projectManagerFilter = state.projectManagerFilter || 'All';
+
+      window.updateProjectFilter = (type, value) => {
+        state[type] = value;
+        renderAdminProjectsTable();
+      };
+
+      const managersList = [...new Set(allProjects.map(p => p.manager).filter(m => m && m !== 'N/A' && m !== 'N/A manager'))];
+
       return `
                 <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
                     <div>
@@ -3274,6 +3341,54 @@
                     <button onclick="openProjectModal()" class="inline-flex items-center px-4 py-2 bg-brand-primary hover:bg-indigo-700 text-white text-sm font-medium rounded-lg shadow-sm transition-colors focus:ring-2 focus:ring-offset-2 focus:ring-brand-primary">
                         <i data-lucide="plus" class="w-4 h-4 mr-2"></i> New Project
                     </button>
+                </div>
+
+                <!-- Premium Filters Panel -->
+                <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-4 mb-6 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Timeline</label>
+                        <select id="filterTimeline" onchange="updateProjectFilter('projectTimelineFilter', this.value)" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-slate-700 text-sm focus:ring-2 focus:ring-brand-primary outline-none">
+                            <option value="All" ${state.projectTimelineFilter === 'All' ? 'selected' : ''}>All Timelines</option>
+                            <option value="StartedThisWeek" ${state.projectTimelineFilter === 'StartedThisWeek' ? 'selected' : ''}>Started This Week</option>
+                            <option value="EndingThisWeek" ${state.projectTimelineFilter === 'EndingThisWeek' ? 'selected' : ''}>Ending This Week</option>
+                            <option value="StartedThisMonth" ${state.projectTimelineFilter === 'StartedThisMonth' ? 'selected' : ''}>Started This Month</option>
+                            <option value="EndingThisMonth" ${state.projectTimelineFilter === 'EndingThisMonth' ? 'selected' : ''}>Ending This Month</option>
+                            <option value="StartedThisYear" ${state.projectTimelineFilter === 'StartedThisYear' ? 'selected' : ''}>Started This Year</option>
+                            <option value="EndingThisYear" ${state.projectTimelineFilter === 'EndingThisYear' ? 'selected' : ''}>Ending This Year</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Risk Status</label>
+                        <select id="filterRisk" onchange="updateProjectFilter('projectRiskFilter', this.value)" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-slate-700 text-sm focus:ring-2 focus:ring-brand-primary outline-none">
+                            <option value="All" ${state.projectRiskFilter === 'All' ? 'selected' : ''}>All Statuses</option>
+                            <option value="At Risk" ${state.projectRiskFilter === 'At Risk' ? 'selected' : ''}>At Risk</option>
+                            <option value="On Track" ${state.projectRiskFilter === 'On Track' ? 'selected' : ''}>On Track</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Profitability</label>
+                        <select id="filterProfit" onchange="updateProjectFilter('projectProfitFilter', this.value)" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-slate-700 text-sm focus:ring-2 focus:ring-brand-primary outline-none">
+                            <option value="All" ${state.projectProfitFilter === 'All' ? 'selected' : ''}>All Profit levels</option>
+                            <option value="Profitable" ${state.projectProfitFilter === 'Profitable' ? 'selected' : ''}>Profitable (Net &gt; 0)</option>
+                            <option value="Loss Making" ${state.projectProfitFilter === 'Loss Making' ? 'selected' : ''}>Loss Making (Net &le; 0)</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Payment Status</label>
+                        <select id="filterPayment" onchange="updateProjectFilter('projectPaymentFilter', this.value)" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-slate-700 text-sm focus:ring-2 focus:ring-brand-primary outline-none">
+                            <option value="All" ${state.projectPaymentFilter === 'All' ? 'selected' : ''}>All Payments</option>
+                            <option value="Unpaid" ${state.projectPaymentFilter === 'Unpaid' ? 'selected' : ''}>Unpaid</option>
+                            <option value="Partial" ${state.projectPaymentFilter === 'Partial' ? 'selected' : ''}>Partial</option>
+                            <option value="Paid in Full" ${state.projectPaymentFilter === 'Paid in Full' ? 'selected' : ''}>Paid in Full</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Manager</label>
+                        <select id="filterManager" onchange="updateProjectFilter('projectManagerFilter', this.value)" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-slate-700 text-sm focus:ring-2 focus:ring-brand-primary outline-none">
+                            <option value="All" ${state.projectManagerFilter === 'All' ? 'selected' : ''}>All Managers</option>
+                            ${managersList.map(mgr => `<option value="${mgr}" ${state.projectManagerFilter === mgr ? 'selected' : ''}>${mgr}</option>`).join('')}
+                        </select>
+                    </div>
                 </div>
                 
                 <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
@@ -3299,7 +3414,7 @@
                                     <th class="py-3 px-6 text-xs font-semibold text-slate-500 uppercase tracking-wider">Project Name</th>
                                     <th class="py-3 px-6 text-xs font-semibold text-slate-500 uppercase tracking-wider">Client</th>
                                     <th class="py-3 px-6 text-xs font-semibold text-slate-500 uppercase tracking-wider">Manager</th>
-                                    <th class="py-3 px-6 text-xs font-semibold text-slate-500 uppercase tracking-wider">Budget / Cost</th>
+                                    <th class="py-3 px-6 text-xs font-semibold text-slate-500 uppercase tracking-wider">Budget / Billing</th>
                                     <th class="py-3 px-6 text-xs font-semibold text-slate-500 uppercase tracking-wider">Progress</th>
                                     <th class="py-3 px-6 text-xs font-semibold text-slate-500 uppercase tracking-wider">Status</th>
                                     <th class="py-3 px-6 text-xs font-semibold text-slate-500 uppercase tracking-wider text-right">Actions</th>
@@ -3337,8 +3452,51 @@ function renderAdminProjectsTable() {
       const tbody = document.getElementById("admin-projects-tbody");
       if (!tbody) return;
 
+      const timelineFilter = state.projectTimelineFilter || 'All';
+      const riskFilter = state.projectRiskFilter || 'All';
+      const profitFilter = state.projectProfitFilter || 'All';
+      const paymentFilter = state.projectPaymentFilter || 'All';
+      const managerFilter = state.projectManagerFilter || 'All';
+
+      const parseDateLocal = (dateStr) => {
+        if (!dateStr || dateStr === 'N/A') return null;
+        const d = new Date(dateStr);
+        return isNaN(d.getTime()) ? null : d;
+      };
+
+      const getWeekRange = (date) => {
+        const d = new Date(date);
+        const day = d.getDay();
+        const diff = d.getDate() - day + (day === 0 ? -6 : 1);
+        const start = new Date(d.setDate(diff));
+        start.setHours(0,0,0,0);
+        const end = new Date(start);
+        end.setDate(start.getDate() + 6);
+        end.setHours(23,59,59,999);
+        return { start, end };
+      };
+
+      const isInCurrentWeek = (date) => {
+        if (!date) return false;
+        const now = new Date();
+        const { start, end } = getWeekRange(now);
+        return date >= start && date <= end;
+      };
+
+      const isInCurrentMonth = (date) => {
+        if (!date) return false;
+        const now = new Date();
+        return date.getFullYear() === now.getFullYear() && date.getMonth() === now.getMonth();
+      };
+
+      const isInCurrentYear = (date) => {
+        if (!date) return false;
+        const now = new Date();
+        return date.getFullYear() === now.getFullYear();
+      };
+
       const filtered = state.allProjects.filter((p) => {
-        const searchMatch =
+        const searchMatch = !state.projectSearchTerm ? true :
           (p.name &&
             p.name.toLowerCase().includes(state.projectSearchTerm)) ||
           (p.client &&
@@ -3347,7 +3505,7 @@ function renderAdminProjectsTable() {
             p.manager.toLowerCase().includes(state.projectSearchTerm));
 
         let filterMatch = true;
-        if (state.projectFilter !== "All") {
+        if (state.projectFilter !== "All" && state.projectFilter) {
           if (
             state.projectFilter === "In Progress" ||
             state.projectFilter === "Active"
@@ -3357,7 +3515,61 @@ function renderAdminProjectsTable() {
             filterMatch = p.status === state.projectFilter;
           }
         }
-        return searchMatch && filterMatch;
+
+        // Timeline Filter
+        let timelineMatch = true;
+        if (timelineFilter !== 'All') {
+          const start = parseDateLocal(p.start_date);
+          const end = parseDateLocal(p.end_date);
+          if (timelineFilter === 'StartedThisWeek') {
+            timelineMatch = isInCurrentWeek(start);
+          } else if (timelineFilter === 'EndingThisWeek') {
+            timelineMatch = isInCurrentWeek(end);
+          } else if (timelineFilter === 'StartedThisMonth') {
+            timelineMatch = isInCurrentMonth(start);
+          } else if (timelineFilter === 'EndingThisMonth') {
+            timelineMatch = isInCurrentMonth(end);
+          } else if (timelineFilter === 'StartedThisYear') {
+            timelineMatch = isInCurrentYear(start);
+          } else if (timelineFilter === 'EndingThisYear') {
+            timelineMatch = isInCurrentYear(end);
+          }
+        }
+
+        // Risk Filter
+        let riskMatch = true;
+        if (riskFilter !== 'All') {
+          if (riskFilter === 'At Risk') {
+            riskMatch = p.is_at_risk === true;
+          } else if (riskFilter === 'On Track') {
+            riskMatch = p.is_at_risk !== true;
+          }
+        }
+
+        // Profitability Filter
+        let profitMatch = true;
+        if (profitFilter !== 'All') {
+          const profitVal = parseFloat(p.profit || 0);
+          if (profitFilter === 'Profitable') {
+            profitMatch = profitVal > 0;
+          } else if (profitFilter === 'Loss Making') {
+            profitMatch = profitVal <= 0;
+          }
+        }
+
+        // Payment Status Filter
+        let paymentMatch = true;
+        if (paymentFilter !== 'All') {
+          paymentMatch = p.payment_status === paymentFilter;
+        }
+
+        // Manager Filter
+        let managerMatch = true;
+        if (managerFilter !== 'All') {
+          managerMatch = p.manager === managerFilter;
+        }
+
+        return searchMatch && filterMatch && timelineMatch && riskMatch && profitMatch && paymentMatch && managerMatch;
       });
 
       if (filtered.length === 0) {
@@ -3483,8 +3695,8 @@ function renderAdminProjectsTable() {
                     </td>
                     <td class="py-4 px-6 whitespace-nowrap">
                         <div class="flex flex-col">
-                            <span class="text-sm font-medium text-slate-900">${formatCurrencyLocal(budgetVal)}</span>
-                            <span class="text-[10px] text-slate-500 font-normal mt-0.5">Cost: ${formatCurrencyLocal(clientCostVal)}</span>
+                            <span class="text-sm font-semibold text-slate-900">${formatCurrencyLocal(budgetVal)} <span class="text-[9px] font-bold text-slate-400 uppercase tracking-wider">(Budget)</span></span>
+                            <span class="text-[10px] text-slate-500 font-semibold mt-0.5">Billing (Client): ${formatCurrencyLocal(clientCostVal)}</span>
                         </div>
                     </td>
                     <td class="py-4 px-6 whitespace-nowrap">
@@ -3785,10 +3997,7 @@ function renderAdminProjectsTable() {
                                     </span>
                                 </div>
                             </div>
-                            <div>
-                                <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Approximate Cost</p>
-                                <p class="text-sm font-bold text-slate-800 mt-1">${formatCurrency(p.approx_cost || 0)}</p>
-                            </div>
+
                             <div>
                                 <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Team Designation</p>
                                 <p class="text-sm font-bold text-slate-800 mt-1">${p.team && p.team !== "N/A" ? p.team : "General Workforce"}</p>
@@ -4786,6 +4995,13 @@ function renderAdminProjectsTable() {
                             <div class="flex items-center text-[10px] uppercase font-bold text-slate-500 mb-1">
                                 <i data-lucide="${isDev ? "terminal" : "video"}" class="w-3 h-3 mr-1 ${isDev ? "text-indigo-500" : "text-pink-500"}"></i> 
                                 ${isDev ? "Engineering" : "Content"}
+                                <span class="inline-flex items-center gap-1 text-[8px] font-bold ${
+                                  t.task_status === 'Completed' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' :
+                                  t.task_status === 'In Progress' ? 'bg-blue-50 text-blue-700 border border-blue-200' :
+                                  'bg-amber-50 text-amber-700 border border-amber-100'
+                                } px-1.5 py-0.5 rounded ml-1.5 shrink-0">
+                                    ${t.task_status || 'Completed'}
+                                </span>
                                 ${t.is_edited ? `
                                     <span class="inline-flex items-center gap-1 text-[8px] font-bold bg-amber-50 text-amber-700 border border-amber-200 px-1.5 py-0.5 rounded ml-1.5 shrink-0" title="Edited by ${t.edited_by || 'Unknown'}">
                                         <i data-lucide="edit-2" class="w-2 h-2"></i> Edited
@@ -4857,6 +5073,58 @@ function renderAdminProjectsTable() {
       const ticketVal = t.ticket_id || "N/A";
       const workTypeVal = t.work_type || "N/A";
       const statusVal = t.task_status || "Completed";
+
+      let overtimeBadge = '';
+      if (t.is_overtime) {
+        overtimeBadge = `
+          <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-100 mt-1">
+              <i data-lucide="clock" class="w-3 h-3"></i> Extended Shift
+          </span>
+        `;
+      }
+
+      let handoverDetailsCard = '';
+      if (t.is_handover || t.handover_source_task_id) {
+        const colleague = state.allEmployees.find((e) => e.id === t.handover_for_employee_id);
+        const colleagueName = colleague ? colleague.full_name : "Unknown Employee";
+
+        if (t.handover_source_task_id) {
+          const origTask = state.allTasks.find((task) => String(task.id) === String(t.handover_source_task_id));
+          const origDetailsHtml = origTask ? `
+            <div class="mt-2.5 pt-2.5 border-t border-emerald-100/60">
+              <p class="text-[10px] font-bold text-emerald-600 uppercase tracking-wider">Original Task Details (Reference)</p>
+              <p class="text-xs text-slate-700 mt-1 font-medium whitespace-pre-wrap">${origTask.task_performed}</p>
+            </div>
+          ` : '';
+
+          handoverDetailsCard = `
+            <div class="bg-emerald-50 border border-emerald-200 rounded-xl p-4 mb-4">
+              <h5 class="text-xs font-bold text-emerald-800 uppercase tracking-wider flex items-center gap-1.5">
+                <i data-lucide="check-check" class="w-4 h-4 text-emerald-600"></i> Handover Completed
+              </h5>
+              <p class="text-xs text-emerald-900 mt-1 font-semibold">Logged by ${empName} covering colleague ${colleagueName}.</p>
+              <div class="mt-2 pt-2 border-t border-emerald-100/60">
+                <p class="text-[10px] font-bold text-emerald-600 uppercase tracking-wider mb-1">Status</p>
+                <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-100">${statusVal}</span>
+              </div>
+              ${origDetailsHtml}
+            </div>
+          `;
+        } else {
+          handoverDetailsCard = `
+            <div class="bg-indigo-50 border border-indigo-200 rounded-xl p-4 mb-4">
+              <h5 class="text-xs font-bold text-indigo-800 uppercase tracking-wider flex items-center gap-1.5">
+                <i data-lucide="share-2" class="w-4 h-4 text-indigo-600"></i> Handover Assigned
+              </h5>
+              <p class="text-xs text-indigo-900 mt-1 font-semibold">Assigned by ${empName} to covered colleague ${colleagueName}.</p>
+              <div class="mt-2 pt-2 border-t border-indigo-100/60">
+                <p class="text-[10px] font-bold text-indigo-600 uppercase tracking-wider mb-1">Status</p>
+                <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-100">${statusVal}</span>
+              </div>
+            </div>
+          `;
+        }
+      }
 
       let extraDetails = "";
       if (isDev) {
@@ -4963,18 +5231,37 @@ function renderAdminProjectsTable() {
                             <p class="text-xs text-slate-500">${dateStr}</p>
                         </div>
                         <div class="ml-auto text-right">
-                            <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold ${isDev ? "bg-indigo-100 text-indigo-700" : "bg-pink-100 text-pink-700"}">
-                                <i data-lucide="${isDev ? "terminal" : "video"}" class="w-3 h-3"></i>
-                                ${isDev ? "Engineering" : "Content"}
-                            </span>
+                            <div class="flex flex-col items-end gap-1">
+                                <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold ${isDev ? "bg-indigo-100 text-indigo-700" : "bg-pink-100 text-pink-700"}">
+                                    <i data-lucide="${isDev ? "terminal" : "video"}" class="w-3 h-3"></i>
+                                    ${isDev ? "Engineering" : "Content"}
+                                </span>
+                                ${overtimeBadge}
+                            </div>
                             <div class="text-sm font-bold mt-1 text-slate-700">${parseFloat(t.hours_logged).toFixed(1)} hrs logged</div>
                         </div>
                     </div>
 
                     ${editedBanner}
 
+                    ${handoverDetailsCard}
+
                     <!-- Shared Smart Metadata Tracking Grid -->
                     <div class="grid grid-cols-2 md:grid-cols-3 gap-4 mb-6">
+                        <!-- Status -->
+                        <div class="bg-slate-50 p-3 rounded-xl border border-slate-200/80 flex items-center gap-3">
+                            <div class="w-8 h-8 rounded-lg bg-indigo-50 flex items-center justify-center shrink-0">
+                                <i data-lucide="info" class="w-4 h-4 text-brand-primary"></i>
+                            </div>
+                            <div class="min-w-0 flex-1">
+                                <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Status</p>
+                                <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold ${
+                                  statusVal === 'Completed' ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' :
+                                  statusVal === 'In Progress' ? 'bg-blue-50 text-blue-700 border border-blue-100' :
+                                  'bg-amber-50 text-amber-700 border border-amber-100'
+                                }">${statusVal}</span>
+                            </div>
+                        </div>
                         <!-- Workspace -->
                         <div class="bg-slate-50 p-3 rounded-xl border border-slate-200/80 flex items-center gap-3">
                             <div class="w-8 h-8 rounded-lg bg-indigo-50 flex items-center justify-center shrink-0">
@@ -6186,11 +6473,10 @@ function openAddExpenseModal() {
                         <i data-lucide="plus" class="w-4 h-4"></i> Add Milestone
                     </button>
                 </div>
-                
                 <div class="relative border-l-2 border-indigo-100 ml-4 py-4 space-y-8 pl-8">
                     ${timelineHtml}
                 </div>
-             `;
+            `;
     }
 
     // Sub-Tab: SRS & Documents
@@ -6202,13 +6488,14 @@ function openAddExpenseModal() {
       let sidebarHtml = state.projectSRS
         .map((s, idx) => {
           const isActive = activeDoc && activeDoc.id === s.id;
-          const isCloud = s.file_url_or_path.startsWith("http");
+          const isCloud = s.file_url_or_path && s.file_url_or_path.startsWith("http");
+          const isPasted = s.file_url_or_path === "[Pasted SRS Text]";
           return `
                     <div onclick="selectSRS('${s.id}')" class="p-3 border ${isActive ? "border-indigo-200 bg-indigo-50/50" : "border-slate-100 bg-white hover:bg-slate-50"} rounded-lg cursor-pointer flex justify-between items-center group transition-all">
                         <div>
                             <p class="text-sm font-bold ${isActive ? "text-indigo-900" : "text-slate-700 group-hover:text-brand-primary"} flex items-center gap-1">
                                 ${s.version} - ${s.document_title}
-                                ${isCloud ? '<i data-lucide="cloud" class="w-3 h-3 text-sky-500"></i>' : '<i data-lucide="file-text" class="w-3 h-3 text-slate-400"></i>'}
+                                ${isCloud ? '<i data-lucide="cloud" class="w-3 h-3 text-sky-500"></i>' : isPasted ? '<i data-lucide="align-left" class="w-3 h-3 text-emerald-500"></i>' : '<i data-lucide="file-text" class="w-3 h-3 text-slate-400"></i>'}
                             </p>
                             <p class="text-[10px] text-slate-500">By: ${s.approved_by || "Admin"} | ${new Date(s.created_at).toLocaleDateString()}</p>
                         </div>
@@ -6231,10 +6518,14 @@ function openAddExpenseModal() {
                     </div>
                 `;
       } else {
-        const isCloud = activeDoc.file_url_or_path.startsWith("http");
-        const fileLink = isCloud
-          ? activeDoc.file_url_or_path
-          : `http://localhost:8000/${activeDoc.file_url_or_path.replace(/\\/g, "/")}`;
+        const isCloud = activeDoc.file_url_or_path && activeDoc.file_url_or_path.startsWith("http");
+        const isPasted = activeDoc.file_url_or_path === "[Pasted SRS Text]";
+        let fileLink = "";
+        if (isCloud) {
+          fileLink = activeDoc.file_url_or_path;
+        } else if (!isPasted && activeDoc.file_url_or_path) {
+          fileLink = `http://localhost:8000/${activeDoc.file_url_or_path.replace(/\\/g, "/")}`;
+        }
 
         // Construct Parsed Content View (Algorithms Output)
         let parsedContentHtml = "";
@@ -6276,28 +6567,44 @@ function openAddExpenseModal() {
                     <div class="flex flex-col h-full bg-white">
                         <div class="p-3 border-b border-slate-200 flex justify-between items-center bg-slate-50/50">
                             <div class="flex items-center gap-2">
-                                <div class="p-1.5 ${isCloud ? "bg-sky-50 text-sky-600" : "bg-rose-50 text-rose-600"} rounded"><i data-lucide="${isCloud ? "cloud" : "file-pdf"}" class="w-4 h-4"></i></div>
+                                <div class="p-1.5 ${isCloud ? "bg-sky-50 text-sky-600" : isPasted ? "bg-emerald-50 text-emerald-600" : "bg-rose-50 text-rose-600"} rounded">
+                                    <i data-lucide="${isCloud ? "cloud" : isPasted ? "align-left" : "file-pdf"}" class="w-4 h-4"></i>
+                                </div>
                                 <div>
                                     <span class="font-bold text-sm text-slate-800">${activeDoc.document_title}</span>
                                     <span class="text-[10px] text-slate-500 ml-2">Version: ${activeDoc.version}</span>
                                 </div>
                             </div>
                             <div class="flex items-center gap-2">
+                                ${isPasted ? '' : `
                                 <button onclick="toggleSRSView()" class="px-3 py-1.5 bg-indigo-50 border border-indigo-200 text-indigo-700 text-xs font-bold rounded-lg hover:bg-indigo-100 transition-colors flex items-center gap-1 shadow-sm">
                                     <i data-lucide="code" class="w-3 h-3"></i> <span id="srs-toggle-text">Show Parsed Text</span>
                                 </button>
+                                `}
                                 <button onclick="deleteSRS('${activeDoc.id}')" class="px-3 py-1.5 bg-rose-50 border border-rose-200 text-rose-600 text-xs font-bold rounded-lg hover:bg-rose-100 transition-colors flex items-center gap-1 shadow-sm">
                                     <i data-lucide="trash-2" class="w-3 h-3"></i> Delete
                                 </button>
+                                ${isPasted ? '' : `
                                 <a href="${fileLink}" target="_blank" class="px-3 py-1.5 bg-white border border-slate-200 text-slate-700 text-xs font-bold rounded-lg hover:bg-slate-50 transition-colors flex items-center gap-1 shadow-sm">
                                     <i data-lucide="external-link" class="w-3 h-3"></i> Open Original
                                 </a>
+                                `}
                             </div>
                         </div>
                         
                         <!-- SINGLE PANE VIEWER WITH TOGGLE -->
                         <div class="flex-1 relative overflow-hidden bg-slate-100" style="min-height: 500px;">
                             
+                            ${isPasted ? `
+                            <!-- Pasted Text Pane -->
+                            <div class="w-full h-full bg-white flex flex-col relative">
+                                <div class="absolute top-0 left-0 right-0 bg-indigo-900 text-indigo-200 text-[10px] font-bold uppercase tracking-wider px-3 py-1 z-10 flex justify-between shadow-sm">
+                                    <span>Pasted Specification Text</span>
+                                    <span>Formatted Pre-wrap View</span>
+                                </div>
+                                <pre class="p-6 pt-10 overflow-y-auto h-full w-full custom-scrollbar selection:bg-indigo-100 selection:text-indigo-900 text-slate-700 text-sm whitespace-pre-wrap leading-relaxed font-sans">${activeDoc.srs_text || activeDoc.parsed_content || 'No text content available.'}</pre>
+                            </div>
+                            ` : `
                             <!-- Visual Viewer Pane -->
                             <div id="srs-visual-pane" class="w-full h-full flex flex-col relative">
                                 <iframe src="${fileLink}" class="w-full h-full border-0 bg-white"></iframe>
@@ -6313,6 +6620,7 @@ function openAddExpenseModal() {
                                     ${parsedContentHtml}
                                 </div>
                             </div>
+                            `}
 
                         </div>
                     </div>
@@ -6407,7 +6715,7 @@ function openAddExpenseModal() {
                             <input type="file" id="up_srs_file" accept="application/pdf" class="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-brand-primary hover:file:bg-indigo-100 cursor-pointer">
                         </div>
                         
-                        <div class="relative flex items-center py-2">
+                        <div class="relative flex items-center py-1">
                             <div class="flex-grow border-t border-slate-300"></div>
                             <span class="flex-shrink-0 mx-4 text-slate-400 text-xs font-medium">OR</span>
                             <div class="flex-grow border-t border-slate-300"></div>
@@ -6416,6 +6724,17 @@ function openAddExpenseModal() {
                         <div>
                             <label class="block text-sm font-medium text-slate-700 mb-1"><i data-lucide="link" class="w-4 h-4 inline mr-1 text-sky-500"></i> Cloud Document Link</label>
                             <input type="url" id="up_srs_link" placeholder="https://docs.google.com/..." class="input-field w-full px-4 py-2 bg-white border border-slate-200 rounded-lg outline-none text-sm shadow-sm">
+                        </div>
+
+                        <div class="relative flex items-center py-1">
+                            <div class="flex-grow border-t border-slate-300"></div>
+                            <span class="flex-shrink-0 mx-4 text-slate-400 text-xs font-medium">OR</span>
+                            <div class="flex-grow border-t border-slate-300"></div>
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1"><i data-lucide="align-left" class="w-4 h-4 inline mr-1 text-emerald-500"></i> Paste SRS Raw Text</label>
+                            <textarea id="up_srs_text" rows="5" placeholder="Paste the SRS document contents directly..." class="input-field w-full px-4 py-2 bg-white border border-slate-200 rounded-lg outline-none text-sm shadow-sm resize-y"></textarea>
                         </div>
                     </div>
 
@@ -6440,7 +6759,7 @@ function openAddExpenseModal() {
       const btn = document.getElementById("btnSubmitSRS");
       const originalText = btn.innerHTML;
       btn.innerHTML =
-        '<i data-lucide="loader-2" class="w-4 h-4 mr-2 animate-spin"></i> Parsing PDF...';
+        '<i data-lucide="loader-2" class="w-4 h-4 mr-2 animate-spin"></i> Processing...';
       btn.disabled = true;
       document.getElementById("srsErrorBanner").classList.add("hidden");
       lucide.createIcons();
@@ -6448,10 +6767,11 @@ function openAddExpenseModal() {
       const p = state.activeProject;
       const fileInput = document.getElementById("up_srs_file").files[0];
       const linkInput = document.getElementById("up_srs_link").value;
+      const textInput = document.getElementById("up_srs_text").value;
 
-      if (!fileInput && !linkInput) {
+      if (!fileInput && !linkInput && !textInput) {
         document.getElementById("srsErrorMessage").innerText =
-          "You must provide either a PDF file or a Cloud link.";
+          "You must provide either a PDF file, a Cloud link, or pasted SRS text.";
         document.getElementById("srsErrorBanner").classList.remove("hidden");
         document.getElementById("srsErrorBanner").classList.add("flex");
         btn.innerHTML = originalText;
@@ -6474,6 +6794,7 @@ function openAddExpenseModal() {
 
       if (fileInput) formData.append("file", fileInput);
       if (linkInput) formData.append("cloud_link", linkInput);
+      if (textInput) formData.append("srs_text", textInput);
 
       try {
         // Notice we are using the new Uploads endpoint, not the raw JSON endpoint
@@ -7421,10 +7742,7 @@ function openAddExpenseModal() {
                                 <label class="block text-sm font-semibold text-slate-700 mb-1">Client Cost (₹)</label>
                                 <input type="number" id="p_client_cost" value="${p && p.client_cost ? p.client_cost : "0"}" step="0.01" min="0" class="input-field w-full px-4 py-2 bg-white border border-slate-200 rounded-lg outline-none text-sm shadow-sm">
                             </div>
-                            <div class="md:col-span-2">
-                                <label class="block text-sm font-semibold text-slate-700 mb-1">Approx Cost (₹)</label>
-                                <input type="number" id="p_approx_cost" value="${p && p.approx_cost ? p.approx_cost : "0"}" step="0.01" min="0" class="input-field w-full px-4 py-2 bg-white border border-slate-200 rounded-lg outline-none text-sm shadow-sm">
-                            </div>
+
                         </div>
                     </div>
 
@@ -7850,8 +8168,7 @@ function openAddExpenseModal() {
         client_cost:
           parseFloat(document.getElementById("p_client_cost").value) || 0,
         budget: parseFloat(document.getElementById("p_budget").value) || 0,
-        approx_cost:
-          parseFloat(document.getElementById("p_approx_cost").value) || 0,
+
         project_platform: (function () {
           const standard = Array.from(document.querySelectorAll('input[name="p_platforms"]:checked')).map(el => el.value);
           const custom = Array.from(document.querySelectorAll('input[name="p_custom_platforms"]')).map(el => el.value);
@@ -9800,19 +10117,20 @@ function openAddExpenseModal() {
       if (tab === "logs") {
         title = "Attendance Logs";
         tableHeaders = `
-                    <th class="px-6 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">Employee</th>
-                    <th class="px-6 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">Date</th>
-                    <th class="px-6 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">Check In</th>
-                    <th class="px-6 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">Check Out</th>
-                    <th class="px-6 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">Total Hrs</th>
-                    <th class="px-6 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">Status</th>
-                    <th class="px-6 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">IP Address</th>
+                    <th class="px-4 py-2.5 text-xs font-bold text-slate-500 uppercase tracking-wider text-left">Employee</th>
+                    <th class="px-4 py-2.5 text-xs font-bold text-slate-500 uppercase tracking-wider text-left">Date</th>
+                    <th class="px-4 py-2.5 text-xs font-bold text-slate-500 uppercase tracking-wider text-left">Check In</th>
+                    <th class="px-4 py-2.5 text-xs font-bold text-slate-500 uppercase tracking-wider text-left">Check Out</th>
+                    <th class="px-4 py-2.5 text-xs font-bold text-slate-500 uppercase tracking-wider text-left">Total Hrs</th>
+                    <th class="px-4 py-2.5 text-xs font-bold text-slate-500 uppercase tracking-wider text-left">Current Status</th>
+                    <th class="px-4 py-2.5 text-xs font-bold text-slate-500 uppercase tracking-wider text-left">Attendance</th>
+                    <th class="px-4 py-2.5 text-xs font-bold text-slate-500 uppercase tracking-wider text-left">IP Address</th>
                 `;
         const sortedAttendance = [...state.allAttendance].sort(
           (a, b) => new Date(b.date) - new Date(a.date),
         );
         if (sortedAttendance.length === 0) {
-          tableRows = `<tr><td colspan="7" class="px-6 py-8 text-center text-slate-500">No attendance records found</td></tr>`;
+          tableRows = `<tr><td colspan="8" class="px-4 py-8 text-center text-slate-500">No attendance records found</td></tr>`;
         } else {
           tableRows = sortedAttendance
             .map((record) => {
@@ -9835,16 +10153,88 @@ function openAddExpenseModal() {
                 })
                 : "--";
 
-              let statusBadge = `<span class="px-2.5 py-1 bg-slate-100 text-slate-700 rounded-full text-xs font-bold border border-slate-200">${record.status}</span>`;
+              let currentStatusBadge = "";
+              const currentStatus = record.status || "Absent";
+              if (currentStatus === "Checked In" || currentStatus === "Present") {
+                currentStatusBadge = `
+                  <span class="inline-flex items-center gap-1.5 px-2 py-0.5 bg-emerald-50 text-emerald-700 rounded-full text-xs font-bold border border-emerald-200">
+                    <span class="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                    Checked In
+                  </span>
+                `;
+              } else if (currentStatus === "Checked Out") {
+                currentStatusBadge = `
+                  <span class="inline-flex items-center px-2 py-0.5 bg-slate-50 text-slate-600 rounded-full text-xs font-bold border border-slate-200">
+                    Checked Out
+                  </span>
+                `;
+              } else if (currentStatus === "On Leave") {
+                currentStatusBadge = `
+                  <span class="inline-flex items-center px-2 py-0.5 bg-indigo-50 text-indigo-700 rounded-full text-xs font-bold border border-indigo-200">
+                    On Leave
+                  </span>
+                `;
+              } else {
+                currentStatusBadge = `
+                  <span class="inline-flex items-center px-2 py-0.5 bg-rose-50 text-rose-700 rounded-full text-xs font-bold border border-rose-200">
+                    Absent
+                  </span>
+                `;
+              }
+
+              let attStatusBadge = "";
+              let attStatus = record.attendance_status || "Present";
+              if (record.status === "Absent" || record.status === "On Leave") {
+                attStatus = record.status;
+              }
+              if (attStatus === "Present") {
+                attStatusBadge = `
+                  <span class="inline-flex items-center px-2 py-0.5 bg-teal-50 text-teal-700 rounded-full text-xs font-bold border border-teal-200">
+                    Present
+                  </span>
+                `;
+              } else if (attStatus === "Late") {
+                attStatusBadge = `
+                  <span class="inline-flex items-center px-2 py-0.5 bg-amber-50 text-amber-700 rounded-full text-xs font-bold border border-amber-200">
+                    Late
+                  </span>
+                `;
+              } else if (attStatus === "Half-Day") {
+                attStatusBadge = `
+                  <span class="inline-flex items-center px-2 py-0.5 bg-yellow-50 text-yellow-700 rounded-full text-xs font-bold border border-yellow-200">
+                    Half-Day
+                  </span>
+                `;
+              } else if (attStatus === "On Leave") {
+                attStatusBadge = `
+                  <span class="inline-flex items-center px-2 py-0.5 bg-blue-50 text-blue-700 rounded-full text-xs font-bold border border-blue-200">
+                    On Leave
+                  </span>
+                `;
+              } else if (attStatus === "Extended Shift") {
+                attStatusBadge = `
+                  <span class="inline-flex items-center px-2 py-0.5 bg-purple-50 text-purple-700 rounded-full text-xs font-bold border border-purple-200">
+                    Extended Shift
+                  </span>
+                `;
+              } else {
+                attStatusBadge = `
+                  <span class="inline-flex items-center px-2 py-0.5 bg-rose-50 text-rose-700 rounded-full text-xs font-bold border border-rose-200">
+                    Absent
+                  </span>
+                `;
+              }
+
               return `
                             <tr class="border-b border-slate-100 hover:bg-slate-50/50 transition-colors">
-                                <td class="px-6 py-4 font-medium text-slate-800">${empName}</td>
-                                <td class="px-6 py-4 text-sm text-slate-600">${dateStr}</td>
-                                <td class="px-6 py-4 text-sm text-slate-600">${checkInStr}</td>
-                                <td class="px-6 py-4 text-sm text-slate-600">${checkOutStr}</td>
-                                <td class="px-6 py-4 text-sm font-bold text-slate-800">${record.total_hours ? record.total_hours.toFixed(2) + "h" : "--"}</td>
-                                <td class="px-6 py-4">${statusBadge}</td>
-                                <td class="px-6 py-4 text-sm text-slate-500">${record.ip_address || "--"}</td>
+                                <td class="px-4 py-3 font-medium text-slate-800 text-sm">${empName}</td>
+                                <td class="px-4 py-3 text-sm text-slate-600">${dateStr}</td>
+                                <td class="px-4 py-3 text-sm text-slate-600">${checkInStr}</td>
+                                <td class="px-4 py-3 text-sm text-slate-600">${checkOutStr}</td>
+                                <td class="px-4 py-3 text-sm font-bold text-slate-800">${record.total_hours ? record.total_hours.toFixed(2) + "h" : "--"}</td>
+                                <td class="px-4 py-3">${currentStatusBadge}</td>
+                                <td class="px-4 py-3">${attStatusBadge}</td>
+                                <td class="px-4 py-3 text-sm text-slate-500">${record.ip_address || "--"}</td>
                             </tr>
                         `;
             })
@@ -9923,14 +10313,14 @@ function openAddExpenseModal() {
       } else if (tab === "leave") {
         title = "Leave Requests";
         tableHeaders = `
-                    <th class="px-6 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">Employee</th>
-                    <th class="px-6 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">Type & Days</th>
-                    <th class="px-6 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">Start Date</th>
-                    <th class="px-6 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">End Date</th>
-                    <th class="px-6 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">Reason</th>
-                    <th class="px-6 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">Handover & Backup</th>
-                    <th class="px-6 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">Status</th>
-                    <th class="px-6 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider text-right">Actions</th>
+                    <th class="px-4 py-2.5 text-xs font-bold text-slate-500 uppercase tracking-wider text-left">Employee</th>
+                    <th class="px-4 py-2.5 text-xs font-bold text-slate-500 uppercase tracking-wider text-left">Type & Days</th>
+                    <th class="px-4 py-2.5 text-xs font-bold text-slate-500 uppercase tracking-wider text-left">Start Date</th>
+                    <th class="px-4 py-2.5 text-xs font-bold text-slate-500 uppercase tracking-wider text-left">End Date</th>
+                    <th class="px-4 py-2.5 text-xs font-bold text-slate-500 uppercase tracking-wider text-left">Reason</th>
+                    <th class="px-4 py-2.5 text-xs font-bold text-slate-500 uppercase tracking-wider text-left">Handover & Backup</th>
+                    <th class="px-4 py-2.5 text-xs font-bold text-slate-500 uppercase tracking-wider text-left">Status</th>
+                    <th class="px-4 py-2.5 text-xs font-bold text-slate-500 uppercase tracking-wider text-right">Actions</th>
                 `;
         const sortedLeaves = [...(state.allLeaveRequests || [])].sort(
           (a, b) => new Date(b.created_at) - new Date(a.created_at),
@@ -9998,25 +10388,25 @@ function openAddExpenseModal() {
                 backupName = backupEmp ? backupEmp.full_name : record.backup_employee_id;
               }
               const handoverHtml = `
-                <div class="text-xs text-slate-600">
-                    <div><strong>Backup:</strong> ${backupName}</div>
-                    <div class="text-[10px] text-slate-400 truncate max-w-[150px]" title="${record.pending_work_summary || 'N/A'}">Work: ${record.pending_work_summary || 'N/A'}</div>
+                <div class="text-[11px] text-slate-600">
+                    <div class="truncate font-semibold text-slate-700" title="Backup: ${backupName}">Backup: ${backupName}</div>
+                    <div class="text-[10px] text-slate-400 truncate" title="Work: ${record.pending_work_summary || 'N/A'}">Work: ${record.pending_work_summary || 'N/A'}</div>
                 </div>
               `;
 
               return `
-                            <tr onclick="window.showLeaveDetailsModal('${record.id}')" class="border-b border-slate-100 hover:bg-slate-50/50 transition-colors cursor-pointer">
-                                <td class="px-6 py-4 font-medium text-slate-800">${empName}</td>
-                                <td class="px-6 py-4 text-sm text-slate-600">
-                                    <div class="font-semibold text-slate-800">${record.leave_type || 'Paid Leave'}</div>
-                                    <div class="text-xs text-slate-500">${record.total_days || 1.0} day(s) (${record.half_day_option || 'Full Day'})</div>
+                            <tr onclick="window.showLeaveDetailsModal('${record.id}')" class="border-b border-slate-100 hover:bg-slate-50/50 transition-colors cursor-pointer text-xs">
+                                <td class="px-4 py-3 font-semibold text-slate-800 max-w-[120px] truncate" title="${empName}">${empName}</td>
+                                <td class="px-4 py-3 text-slate-600">
+                                    <div class="font-bold text-slate-800">${record.leave_type || 'Paid Leave'}</div>
+                                    <div class="text-[10px] text-slate-500">${record.total_days || 1.0} day(s) (${record.half_day_option || 'Full Day'})</div>
                                 </td>
-                                <td class="px-6 py-4 text-sm text-slate-600">${startStr}</td>
-                                <td class="px-6 py-4 text-sm text-slate-600">${endStr}</td>
-                                <td class="px-6 py-4 text-sm text-slate-600 truncate max-w-xs" title="${record.reason}">${record.reason}</td>
-                                <td class="px-6 py-4">${handoverHtml}</td>
-                                <td class="px-6 py-4">${statusBadge}</td>
-                                <td class="px-6 py-4" onclick="event.stopPropagation()">${actionsHtml}</td>
+                                <td class="px-4 py-3 text-slate-600 font-medium">${startStr}</td>
+                                <td class="px-4 py-3 text-slate-600 font-medium">${endStr}</td>
+                                <td class="px-4 py-3 text-slate-600 truncate max-w-[120px]" title="${record.reason}">${record.reason}</td>
+                                <td class="px-4 py-3 max-w-[140px] truncate">${handoverHtml}</td>
+                                <td class="px-4 py-3">${statusBadge}</td>
+                                <td class="px-4 py-3 font-medium" onclick="event.stopPropagation()">${actionsHtml}</td>
                             </tr>
                         `;
             })
@@ -10140,9 +10530,76 @@ function openAddExpenseModal() {
     }
 
     function getAdminTimesheetsTemplate() {
-      const sortedTasks = [...state.allTasks].sort(
-        (a, b) => new Date(b.created_at) - new Date(a.created_at),
+      state.timesheetProjectFilter = state.timesheetProjectFilter || 'All';
+      state.timesheetStatusFilter = state.timesheetStatusFilter || 'All';
+      state.timesheetEmployeeFilter = state.timesheetEmployeeFilter || 'All';
+      state.timesheetTypeFilter = state.timesheetTypeFilter || 'All';
+
+      // Define update timesheet filter handler globally
+      window.updateTimesheetFilter = (type, value) => {
+        state[type] = value;
+        renderAdminApp();
+      };
+
+      const filteredTasks = (state.allTasks || []).filter(t => {
+        // Project Filter
+        let projectMatch = true;
+        if (state.timesheetProjectFilter !== 'All') {
+          if (state.timesheetProjectFilter === 'General') {
+            projectMatch = !t.project_id || t.project_id === 'N/A';
+          } else {
+            projectMatch = t.project_id === state.timesheetProjectFilter;
+          }
+        }
+
+        // Employee Filter
+        let employeeMatch = true;
+        if (state.timesheetEmployeeFilter !== 'All') {
+          employeeMatch = t.employee_id === state.timesheetEmployeeFilter;
+        }
+
+        // Task Type Filter
+        let typeMatch = true;
+        if (state.timesheetTypeFilter !== 'All') {
+          typeMatch = t.task_type === state.timesheetTypeFilter;
+        }
+
+        // Status Filter
+        let statusMatch = true;
+        if (state.timesheetStatusFilter !== 'All') {
+          statusMatch = (t.task_status || 'Completed').toLowerCase() === state.timesheetStatusFilter.toLowerCase();
+        }
+
+        return projectMatch && employeeMatch && typeMatch && statusMatch;
+      });
+
+      const sortedTasks = [...filteredTasks].sort(
+        (a, b) => new Date(b.created_at || b.date) - new Date(a.created_at || a.date),
       );
+
+      // Recalculate metrics based on current filtered ledger subset
+      let totalHours = 0;
+      let totalCost = 0;
+      let totalBilled = 0;
+      let totalProfit = 0;
+
+      filteredTasks.forEach(t => {
+        totalHours += parseFloat(t.hours_logged || 0);
+        totalCost += parseFloat(t.employee_cost || 0);
+        totalBilled += parseFloat(t.billing_amount || 0);
+        totalProfit += parseFloat(t.profit_loss || 0);
+      });
+
+      const projectOptions = [
+        { id: 'All', name: 'All Projects' },
+        { id: 'General', name: 'General/No Project' },
+        ...(state.allProjects || []).map(p => ({ id: p.id, name: p.name !== 'N/A' ? p.name : 'Unnamed Project' }))
+      ];
+
+      const employeeOptions = [
+        { id: 'All', name: 'All Employees' },
+        ...(state.allEmployees || []).map(e => ({ id: e.id, name: e.full_name || 'Unknown' }))
+      ];
 
       const rows =
         sortedTasks
@@ -10167,6 +10624,27 @@ function openAddExpenseModal() {
                 : "text-brand-alert bg-rose-50";
             const profitSign = profit >= 0 ? "+" : "";
 
+            let handoverBadge = '';
+            if (t.is_handover || t.handover_source_task_id) {
+              const colleague = state.allEmployees.find(
+                (e) => e.id === t.handover_for_employee_id,
+              );
+              const colleagueName = colleague ? colleague.full_name : "Unknown";
+              if (t.handover_source_task_id) {
+                handoverBadge = `
+                  <span class="inline-flex items-center gap-1 text-[8px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 px-1.5 py-0.5 rounded ml-1.5 shrink-0" title="Handover task completed for ${colleagueName}">
+                      <i data-lucide="check-check" class="w-2.5 h-2.5"></i> Done for ${colleagueName}
+                  </span>
+                `;
+              } else {
+                handoverBadge = `
+                  <span class="inline-flex items-center gap-1 text-[8px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200 px-1.5 py-0.5 rounded ml-1.5 shrink-0" title="Handover task assigned to ${colleagueName}">
+                      <i data-lucide="share-2" class="w-2.5 h-2.5"></i> Assigned to ${colleagueName}
+                  </span>
+                `;
+              }
+            }
+
             return `
                     <tr class="hover:bg-slate-50 border-b border-slate-100 last:border-0 cursor-pointer group" onclick="openTaskDetailsModal('${t.id}')">
                         <td class="px-6 py-4 whitespace-nowrap">
@@ -10175,14 +10653,24 @@ function openAddExpenseModal() {
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap"><span class="px-2 py-1 text-xs font-semibold rounded bg-slate-100 text-slate-600">${projName}</span></td>
                         <td class="px-6 py-4 whitespace-nowrap">
-                            <div class="flex items-center text-xs font-medium text-slate-600">
-                                <i data-lucide="${isDev ? "terminal" : "video"}" class="w-4 h-4 mr-1 ${isDev ? "text-indigo-500" : "text-pink-500"}"></i> 
-                                ${isDev ? "Engineering" : "Content"}
+                            <div class="flex items-center text-xs font-medium text-slate-600 flex-wrap gap-1">
+                                <span class="inline-flex items-center">
+                                    <i data-lucide="${isDev ? "terminal" : "video"}" class="w-4 h-4 mr-1 ${isDev ? "text-indigo-500" : "text-pink-500"}"></i> 
+                                    ${isDev ? "Engineering" : "Content"}
+                                </span>
+                                <span class="inline-flex items-center gap-1 text-[8px] font-bold ${
+                                  t.task_status === 'Completed' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' :
+                                  t.task_status === 'In Progress' ? 'bg-blue-50 text-blue-700 border border-blue-200' :
+                                  'bg-amber-50 text-amber-700 border border-amber-100'
+                                } px-1.5 py-0.5 rounded shrink-0">
+                                    ${t.task_status || 'Completed'}
+                                </span>
                                 ${t.is_edited ? `
-                                    <span class="inline-flex items-center gap-1 text-[8px] font-bold bg-amber-50 text-amber-700 border border-amber-200 px-1.5 py-0.5 rounded ml-1.5 shrink-0" title="Edited by ${t.edited_by || 'Unknown'}">
+                                    <span class="inline-flex items-center gap-1 text-[8px] font-bold bg-amber-50 text-amber-700 border border-amber-200 px-1.5 py-0.5 rounded shrink-0" title="Edited by ${t.edited_by || 'Unknown'}">
                                         <i data-lucide="edit-2" class="w-2.5 h-2.5"></i> Edited
                                     </span>
                                 ` : ''}
+                                ${handoverBadge}
                             </div>
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-800">${parseFloat(t.hours_logged).toFixed(1)} <span class="text-xs text-slate-400 font-normal">hrs</span></td>
@@ -10193,7 +10681,7 @@ function openAddExpenseModal() {
                 `;
           })
           .join("") ||
-        `<tr><td colspan="7" class="px-6 py-8 text-center text-slate-500">No timesheets recorded yet.</td></tr>`;
+        `<tr><td colspan="7" class="px-6 py-8 text-center text-slate-500">No timesheets match selected filters.</td></tr>`;
 
       return `
                 <div class="flex justify-between items-center mb-6">
@@ -10202,6 +10690,86 @@ function openAddExpenseModal() {
                         <p class="text-slate-500 mt-1">Universal view of all logged hours, auto-calculated costs, and profit margins.</p>
                     </div>
                 </div>
+
+                <!-- Dynamic Metrics Summary Cards -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                    <div class="bg-white p-5 rounded-2xl border border-slate-200/60 shadow-sm flex items-center gap-4">
+                        <div class="w-10 h-10 rounded-xl bg-indigo-50 flex items-center justify-center text-indigo-600 shrink-0">
+                            <i data-lucide="clock" class="w-5 h-5"></i>
+                        </div>
+                        <div>
+                            <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Total Hours</span>
+                            <span class="text-lg font-black text-slate-800">${totalHours.toFixed(1)} hrs</span>
+                        </div>
+                    </div>
+                    <div class="bg-white p-5 rounded-2xl border border-slate-200/60 shadow-sm flex items-center gap-4">
+                        <div class="w-10 h-10 rounded-xl bg-rose-50 flex items-center justify-center text-rose-600 shrink-0">
+                            <i data-lucide="trending-down" class="w-5 h-5"></i>
+                        </div>
+                        <div>
+                            <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Total Cost (Burn)</span>
+                            <span class="text-lg font-black text-rose-600">${formatCurrency(totalCost)}</span>
+                        </div>
+                    </div>
+                    <div class="bg-white p-5 rounded-2xl border border-slate-200/60 shadow-sm flex items-center gap-4">
+                        <div class="w-10 h-10 rounded-xl bg-emerald-50 flex items-center justify-center text-emerald-600 shrink-0">
+                            <i data-lucide="trending-up" class="w-5 h-5"></i>
+                        </div>
+                        <div>
+                            <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Total Billed (Earn)</span>
+                            <span class="text-lg font-black text-emerald-600">${formatCurrency(totalBilled)}</span>
+                        </div>
+                    </div>
+                    <div class="bg-white p-5 rounded-2xl border border-slate-200/60 shadow-sm flex items-center gap-4">
+                        <div class="w-10 h-10 rounded-xl bg-indigo-550 flex items-center justify-center text-indigo-600 shrink-0">
+                            <i data-lucide="wallet" class="w-5 h-5"></i>
+                        </div>
+                        <div>
+                            <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Net Profit / Loss</span>
+                            <span class="text-lg font-black ${totalProfit >= 0 ? 'text-emerald-600' : 'text-rose-600'}">
+                                ${totalProfit >= 0 ? '+' : ''}${formatCurrency(totalProfit)}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Ledger Filter Panel -->
+                <div class="bg-white rounded-2xl border border-slate-200/60 p-5 mb-8 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 shadow-sm">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Filter by Project</label>
+                        <select onchange="updateTimesheetFilter('timesheetProjectFilter', this.value)" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-slate-700 text-sm focus:ring-2 focus:ring-brand-primary outline-none bg-white">
+                            ${projectOptions.map(p => `
+                                <option value="${p.id}" ${state.timesheetProjectFilter === p.id ? 'selected' : ''}>${p.name}</option>
+                            `).join('')}
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Filter by Employee</label>
+                        <select onchange="updateTimesheetFilter('timesheetEmployeeFilter', this.value)" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-slate-700 text-sm focus:ring-2 focus:ring-brand-primary outline-none bg-white">
+                            ${employeeOptions.map(e => `
+                                <option value="${e.id}" ${state.timesheetEmployeeFilter === e.id ? 'selected' : ''}>${e.name}</option>
+                            `).join('')}
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Filter by Task Type</label>
+                        <select onchange="updateTimesheetFilter('timesheetTypeFilter', this.value)" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-slate-700 text-sm focus:ring-2 focus:ring-brand-primary outline-none bg-white">
+                            <option value="All" ${state.timesheetTypeFilter === 'All' ? 'selected' : ''}>All Types</option>
+                            <option value="developer" ${state.timesheetTypeFilter === 'developer' ? 'selected' : ''}>Engineering</option>
+                            <option value="content_creator" ${state.timesheetTypeFilter === 'content_creator' ? 'selected' : ''}>Content</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Filter by Status</label>
+                        <select onchange="updateTimesheetFilter('timesheetStatusFilter', this.value)" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-slate-700 text-sm focus:ring-2 focus:ring-brand-primary outline-none bg-white">
+                            <option value="All" ${state.timesheetStatusFilter === 'All' ? 'selected' : ''}>All Statuses</option>
+                            <option value="Completed" ${state.timesheetStatusFilter === 'Completed' ? 'selected' : ''}>Completed</option>
+                            <option value="In Progress" ${state.timesheetStatusFilter === 'In Progress' ? 'selected' : ''}>In Progress</option>
+                            <option value="Pending" ${state.timesheetStatusFilter === 'Pending' ? 'selected' : ''}>Pending</option>
+                        </select>
+                    </div>
+                </div>
+
                 <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
                     <div class="overflow-x-auto">
                         <table class="min-w-full divide-y divide-slate-200">
@@ -11839,6 +12407,17 @@ function openAddExpenseModal() {
                         <input type="number" step="0.5" min="0" max="24" id="newWorkingHours" required class="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all font-semibold" placeholder="e.g. 8.0" value="8.0">
                     </div>
 
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Shift Start Time</label>
+                            <input type="time" id="newShiftStart" required class="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all font-semibold" value="09:00">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Shift End Time</label>
+                            <input type="time" id="newShiftEnd" required class="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all font-semibold" value="18:00">
+                        </div>
+                    </div>
+
                     <div>
                         <label class="block text-[10px] font-bold text-slate-550 uppercase tracking-wider mb-1.5">Apply Scope</label>
                         <select id="hoursScope" onchange="window.handleHoursScopeChange(this.value)" class="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all">
@@ -11898,9 +12477,15 @@ function openAddExpenseModal() {
     window.handleChangeWorkingHoursSubmit = async function (e) {
       e.preventDefault();
       const working_hours = parseFloat(document.getElementById('newWorkingHours').value);
+      const shift_start_time = document.getElementById('newShiftStart').value;
+      const shift_end_time = document.getElementById('newShiftEnd').value;
       const scope = document.getElementById('hoursScope').value;
 
-      const payload = { working_hours };
+      const payload = { 
+        working_hours,
+        shift_start_time,
+        shift_end_time
+      };
 
       if (scope === 'employee') {
         payload.employee_ids = [document.getElementById('targetEmployeeId').value];
