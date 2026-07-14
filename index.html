@@ -41,6 +41,57 @@
         @keyframes fadeOut { from { opacity: 1; } to { opacity: 0; } }
         .toast-enter { animation: slideInRight 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
         .toast-exit { animation: fadeOut 0.4s ease forwards; }
+
+        /* Custom stacked notification CSS overrides */
+        #toast-container {
+            display: block !important;
+            pointer-events: auto;
+        }
+        .toast-item {
+            position: absolute;
+            right: 0;
+            top: 0;
+            width: 100%;
+            transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        }
+        #toast-container:not(:hover) .toast-item {
+            pointer-events: none;
+        }
+        #toast-container:not(:hover) .toast-item:last-child {
+            position: relative;
+            transform: translate3d(0, 0, 0) scale(1);
+            z-index: 100;
+            opacity: 1;
+            pointer-events: auto;
+        }
+        #toast-container:not(:hover) .toast-item:nth-last-child(2) {
+            transform: translate3d(0, 10px, 0) scale(0.96);
+            z-index: 90;
+            opacity: 0.9;
+        }
+        #toast-container:not(:hover) .toast-item:nth-last-child(3) {
+            transform: translate3d(0, 20px, 0) scale(0.92);
+            z-index: 80;
+            opacity: 0.8;
+        }
+        #toast-container:not(:hover) .toast-item:nth-last-child(n+4) {
+            transform: translate3d(0, 30px, 0) scale(0.88);
+            z-index: 70;
+            opacity: 0;
+            visibility: hidden;
+        }
+        #toast-container:hover .toast-item {
+            position: relative;
+            transform: translate3d(0, 0, 0) scale(1) !important;
+            opacity: 1 !important;
+            visibility: visible !important;
+            margin-bottom: 0.75rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+        #toast-container:hover .toast-item:last-child {
+            margin-bottom: 0;
+        }
     </style>
 </head>
 <body class="text-slate-800 antialiased h-screen w-screen overflow-hidden">
@@ -113,7 +164,7 @@
                             <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                                 <i data-lucide="lock" class="h-5 w-5 text-slate-400"></i>
                             </div>
-                            <input type="password" id="password" name="password" required
+                            <input type="password" id="password" name="password" required maxlength="128"
                                 class="input-field w-full pl-10 pr-12 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 outline-none focus:bg-white transition-colors"
                                 placeholder="••••••••" autocomplete="current-password">
                             
@@ -140,19 +191,6 @@
     </div>
 
     <script>
-        // Global Error Handling for Unexpected Exceptions
-        window.addEventListener('error', function(event) {
-            if (!event.error) return; 
-            const errMessage = event.error.message || event.message;
-            console.error("Redirecting to 404 due to unexpected error:", errMessage);
-            window.location.href = `404.html?error=${encodeURIComponent(errMessage)}&from=${encodeURIComponent(window.location.pathname)}`;
-        });
-        window.addEventListener('unhandledrejection', function(event) {
-            const errMessage = event.reason ? (event.reason.message || event.reason) : "Unhandled Promise Rejection";
-            console.error("Redirecting to 404 due to unexpected rejection:", errMessage);
-            window.location.href = `404.html?error=${encodeURIComponent(errMessage)}&from=${encodeURIComponent(window.location.pathname)}`;
-        });
-
         document.getElementById('year').textContent = new Date().getFullYear();
         lucide.createIcons();
 
@@ -171,7 +209,7 @@
             else if (type === 'success') { bgColor = 'bg-brand-accent'; iconSvg = `<i data-lucide="check-circle-2" class="w-5 h-5 text-white"></i>`; } 
             else { bgColor = 'bg-slate-800'; iconSvg = `<i data-lucide="info" class="w-5 h-5 text-white"></i>`; }
 
-            toast.className = `toast-enter flex items-center p-4 rounded-lg shadow-lg text-white pointer-events-auto ${bgColor}`;
+            toast.className = `toast-item toast-enter flex items-center p-4 rounded-lg shadow-lg text-white pointer-events-auto ${bgColor}`;
             toast.innerHTML = `<div class="mr-3">${iconSvg}</div><div class="font-medium text-sm flex-1">${message}</div><button onclick="this.parentElement.remove()" class="ml-4 opacity-80 hover:opacity-100"><i data-lucide="x" class="w-4 h-4"></i></button>`;
             container.appendChild(toast);
             lucide.createIcons();
@@ -215,6 +253,11 @@
                 return;
             }
 
+            if (passwordInput.value.length > 128) {
+                showToast("Password cannot exceed 128 characters.", "error");
+                return;
+            }
+
             submitBtn.disabled = true; submitBtn.classList.add('opacity-70', 'cursor-not-allowed');
             btnText.classList.add('hidden'); btnSpinner.classList.remove('hidden');
 
@@ -236,7 +279,7 @@
                 }
 
                 if (data.access_token) {
-                    sessionStorage.setItem(CONFIG.TOKEN_KEY, data.access_token);
+                    localStorage.setItem(CONFIG.TOKEN_KEY, data.access_token);
                     showToast("Authentication successful! Redirecting...", "success");
                     
                     const decoded = parseJwt(data.access_token);
@@ -244,7 +287,11 @@
                     // Route to correct portal based on role
                     setTimeout(() => {
                         if (decoded && decoded.role && decoded.role.toLowerCase() === 'admin') {
-                            window.location.href = 'admin.html';
+                            if (decoded.access_level === 'ManagerAdmin') {
+                                window.location.href = 'manager.html';
+                            } else {
+                                window.location.href = 'admin.html';
+                            }
                         } else {
                             window.location.href = 'employee.html';
                         }
@@ -259,13 +306,21 @@
 
         // Redirect if already logged in
         window.addEventListener('DOMContentLoaded', () => {
-            const token = sessionStorage.getItem(CONFIG.TOKEN_KEY);
+            const token = localStorage.getItem(CONFIG.TOKEN_KEY);
             if (token) {
                 const decoded = parseJwt(token);
                 if (decoded && decoded.exp * 1000 > Date.now()) {
-                    window.location.href = decoded.role.toLowerCase() === 'admin' ? 'admin.html' : 'employee.html';
+                    if (decoded.role.toLowerCase() === 'admin') {
+                        if (decoded.access_level === 'ManagerAdmin') {
+                            window.location.href = 'manager.html';
+                        } else {
+                            window.location.href = 'admin.html';
+                        }
+                    } else {
+                        window.location.href = 'employee.html';
+                    }
                 } else {
-                    sessionStorage.removeItem(CONFIG.TOKEN_KEY);
+                    localStorage.removeItem(CONFIG.TOKEN_KEY);
                 }
             }
         });

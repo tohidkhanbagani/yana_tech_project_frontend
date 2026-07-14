@@ -111,6 +111,57 @@
       animation: fadeOut 0.4s ease forwards;
     }
 
+    /* Custom stacked notification CSS overrides */
+    #toast-container {
+        display: block !important;
+        pointer-events: auto;
+    }
+    .toast-item {
+        position: absolute;
+        right: 0;
+        top: 0;
+        width: 100%;
+        transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+    }
+    #toast-container:not(:hover) .toast-item {
+        pointer-events: none;
+    }
+    #toast-container:not(:hover) .toast-item:last-child {
+        position: relative;
+        transform: translate3d(0, 0, 0) scale(1);
+        z-index: 100;
+        opacity: 1;
+        pointer-events: auto;
+    }
+    #toast-container:not(:hover) .toast-item:nth-last-child(2) {
+        transform: translate3d(0, 10px, 0) scale(0.96);
+        z-index: 90;
+        opacity: 0.9;
+    }
+    #toast-container:not(:hover) .toast-item:nth-last-child(3) {
+        transform: translate3d(0, 20px, 0) scale(0.92);
+        z-index: 80;
+        opacity: 0.8;
+    }
+    #toast-container:not(:hover) .toast-item:nth-last-child(n+4) {
+        transform: translate3d(0, 30px, 0) scale(0.88);
+        z-index: 70;
+        opacity: 0;
+        visibility: hidden;
+    }
+    #toast-container:hover .toast-item {
+        position: relative;
+        transform: translate3d(0, 0, 0) scale(1) !important;
+        opacity: 1 !important;
+        visibility: visible !important;
+        margin-bottom: 0.75rem;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    }
+    #toast-container:hover .toast-item:last-child {
+        margin-bottom: 0;
+    }
+
     ::-webkit-scrollbar {
       width: 6px;
       height: 6px;
@@ -654,7 +705,7 @@
 
     // --- Configuration ---
     const CONFIG = {
-      API_BASE_URL: "https://yana-tech-project-backend-d0sj.onrender.com",
+      API_BASE_URL: 'https://yana-tech-project-backend-d0sj.onrender.com',
       TOKEN_KEY: "yana_os_token",
       LOGIN_URL: "index.html",
     };
@@ -663,7 +714,7 @@
     const state = {
       user: null,
       // Read from sessionStorage or default to 'dashboard' / 'employees'
-      adminView: sessionStorage.getItem("lastAdminView") || "dashboard",
+      adminView: sessionStorage.getItem("lastAdminView") || "projects",
       workforceTab: sessionStorage.getItem("lastWorkforceTab") || "employees",
       allProjects: [],
       projectAssignmentsMap: {},
@@ -731,7 +782,7 @@
         iconSvg = `<i data-lucide="info" class="w-5 h-5 text-white"></i>`;
       }
 
-      toast.className = `toast-enter flex items-center p-4 rounded-lg shadow-lg text-white pointer-events-auto ${bgColor}`;
+      toast.className = `toast-item toast-enter flex items-center p-4 rounded-lg shadow-lg text-white pointer-events-auto ${bgColor}`;
       toast.innerHTML = `<div class="mr-3">${iconSvg}</div><div class="font-medium text-sm flex-1">${message}</div><button onclick="this.parentElement.remove()" class="ml-4 opacity-80 hover:opacity-100"><i data-lucide="x" class="w-4 h-4"></i></button>`;
       container.appendChild(toast);
       lucide.createIcons();
@@ -930,8 +981,60 @@
     }
 
     // --- API Wrapper ---
+    const activeRequestsCache = new Map();
     async function apiFetch(endpoint, options = {}) {
-      const token = sessionStorage.getItem(CONFIG.TOKEN_KEY);
+      const method = (options.method || "GET").toUpperCase();
+
+      if (method === "GET") {
+        if (activeRequestsCache.has(endpoint)) {
+          return activeRequestsCache.get(endpoint);
+        }
+
+        const promise = (async () => {
+          const token = localStorage.getItem(CONFIG.TOKEN_KEY);
+          const headers = { ...options.headers };
+          if (token) headers["Authorization"] = `Bearer ${token}`;
+          if (
+            !headers["Content-Type"] &&
+            !(options.body instanceof FormData) &&
+            typeof options.body !== "string"
+          ) {
+            headers["Content-Type"] = "application/json";
+            if (options.body) options.body = JSON.stringify(options.body);
+          }
+
+          try {
+            const response = await fetch(`${CONFIG.API_BASE_URL}${endpoint}`, {
+              ...options,
+              headers,
+            });
+            if (response.status === 401) {
+              logout(false);
+              throw new Error("Session expired.");
+            }
+            const data = await response.json().catch(() => ({}));
+            if (!response.ok)
+              throw new Error(
+                data.detail ||
+                  data.error ||
+                  data.critical_error ||
+                  "An unexpected error occurred.",
+              );
+            return data;
+          } catch (error) {
+            if (error.message === "Failed to fetch")
+              showToast("Unable to connect to the server.", "error");
+            throw error;
+          } finally {
+            activeRequestsCache.delete(endpoint);
+          }
+        })();
+
+        activeRequestsCache.set(endpoint, promise);
+        return promise;
+      }
+
+      const token = localStorage.getItem(CONFIG.TOKEN_KEY);
       const headers = { ...options.headers };
       if (token) headers["Authorization"] = `Bearer ${token}`;
       if (
@@ -956,9 +1059,9 @@
         if (!response.ok)
           throw new Error(
             data.detail ||
-            data.error ||
-            data.critical_error ||
-            "An unexpected error occurred.",
+              data.error ||
+              data.critical_error ||
+              "An unexpected error occurred.",
           );
         return data;
       } catch (error) {
@@ -970,7 +1073,7 @@
 
     // --- Auth Actions ---
     async function logout(showNotification = true) {
-      sessionStorage.removeItem(CONFIG.TOKEN_KEY);
+      localStorage.removeItem(CONFIG.TOKEN_KEY);
       if (showNotification)
         await customAlert("Logged Out", "Logged out successfully");
       window.location.href = CONFIG.LOGIN_URL;
@@ -3806,7 +3909,7 @@ function renderAdminProjectsTable() {
     async function exportProjectXLSX(projectId, projectName) {
       try {
         showToast("Preparing project Excel export...", "info");
-        const token = sessionStorage.getItem(CONFIG.TOKEN_KEY);
+        const token = localStorage.getItem(CONFIG.TOKEN_KEY);
         const headers = {};
         if (token) headers["Authorization"] = `Bearer ${token}`;
 
@@ -3856,7 +3959,7 @@ function renderAdminProjectsTable() {
       const tabs = [
         { id: "overview", icon: "pie-chart", label: "Overview" },
         { id: "team", icon: "users", label: "Team & Assignments" },
-        { id: "timeline", icon: "clock", label: "Timeline" },
+        ...(p.project_type !== "Content" ? [{ id: "timeline", icon: "clock", label: "Timeline" }] : []),
         { id: "tasks", icon: "list-checks", label: "Task Ledger" },
         { id: "srs", icon: "file-text", label: "SRS & Docs" },
         { id: "expenses", icon: "dollar-sign", label: "Expenses" },
@@ -3987,10 +4090,6 @@ function renderAdminProjectsTable() {
             return `Fixed Price (${p.billing_cycle || 'N/A'})`;
           } else if (p.cost_type === "Monthly Retainer") {
             return `Monthly Retainer: ${formatCurrency(p.billing_rate || 0)} / mo`;
-          } else if (p.cost_type === "Hourly Billing") {
-            return `Hourly: ${formatCurrency(p.billing_rate || 0)} / hr`;
-          } else if (p.cost_type === "Time & Material") {
-            return `T&M: ${formatCurrency(p.billing_rate || 0)} (${p.billing_cycle || 'N/A'})`;
           }
           return "Internal / Non-Billable";
         })()}
@@ -4129,6 +4228,28 @@ function renderAdminProjectsTable() {
 
     // Sub-Tab: Overview
     function getProjectOverviewTab(p, tasks) {
+      let nextDeadline = "N/A";
+      let nextDateOfGiving = "N/A";
+
+      if (p.project_type === "Content" || p.project_type === "Both") {
+        const sortedContentTasks = tasks
+          .filter((t) => t.upload_deadline || t.next_delivery_date)
+          .sort((a, b) => new Date(b.date || b.created_at) - new Date(a.date || a.created_at));
+
+        const latestDeadlineTask = sortedContentTasks.find(
+          (t) => t.upload_deadline && t.upload_deadline !== "N/A"
+        );
+        if (latestDeadlineTask) {
+          nextDeadline = latestDeadlineTask.upload_deadline;
+        }
+        const latestGivingTask = sortedContentTasks.find(
+          (t) => t.next_delivery_date && t.next_delivery_date !== "N/A"
+        );
+        if (latestGivingTask) {
+          nextDateOfGiving = latestGivingTask.next_delivery_date;
+        }
+      }
+
       let totalCost = 0,
         totalBilled = 0,
         totalHours = 0;
@@ -4802,6 +4923,87 @@ function renderAdminProjectsTable() {
                 <!-- Gatekeeper Checklists State -->
                 <div id="project-gatekeeper-state-panel" class="mb-8"></div>
                 
+                ${p.project_type === "Content" ? `
+                <!-- Content Agreement Tracker -->
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+                    <div class="lg:col-span-2 bg-white rounded-2xl border border-slate-200 shadow-sm p-6 relative overflow-hidden group hover:shadow-md transition-shadow">
+                        <div class="absolute -right-20 -bottom-20 w-64 h-64 bg-indigo-50 rounded-full blur-3xl opacity-40 group-hover:opacity-70 transition-opacity pointer-events-none"></div>
+                        <div class="flex items-center gap-3 mb-6 relative z-10">
+                            <div class="w-10 h-10 rounded-xl bg-indigo-50 flex items-center justify-center text-indigo-600 border border-indigo-100">
+                                <i data-lucide="layers" class="w-5 h-5"></i>
+                            </div>
+                            <div>
+                                <h4 class="text-sm font-black text-slate-800 uppercase tracking-widest">Content Agreement Tracker</h4>
+                                <p class="text-[10px] text-slate-500 font-bold uppercase tracking-widest mt-0.5">Real-time Deliverable Counts vs. Targets</p>
+                            </div>
+                        </div>
+                        <div class="space-y-5 relative z-10">
+                            ${(function() {
+                                let agreement = [];
+                                try {
+                                    agreement = typeof p.content_agreement === 'string' ? JSON.parse(p.content_agreement) : (p.content_agreement || []);
+                                } catch(e) {
+                                    agreement = [];
+                                }
+                                if (!agreement || agreement.length === 0) {
+                                    return '<div class="text-xs text-slate-400 italic">No custom tracking fields configured. Go to "Edit Settings" to configure them.</div>';
+                                }
+                                return agreement.map(item => {
+                                    const target = parseInt(item.target) || 0;
+                                    const current = parseInt(item.current) || 0;
+                                    const monthlyTarget = parseInt(item.monthly_target) || 0;
+                                    const pct = target > 0 ? Math.min(100, Math.round((current / target) * 100)) : 0;
+                                    
+                                    return `
+                                        <div class="p-4 rounded-xl border border-slate-100 bg-slate-50/50 hover:bg-slate-50 transition-colors">
+                                            <div class="flex justify-between items-center mb-2">
+                                                <div>
+                                                    <span class="text-xs font-bold text-slate-700">${item.name}</span>
+                                                    ${monthlyTarget > 0 ? `<span class="text-[9px] bg-indigo-50 border border-indigo-100 text-indigo-700 px-2 py-0.5 rounded font-extrabold ml-2">Retainer: ${monthlyTarget}/mo</span>` : ''}
+                                                </div>
+                                                <span class="text-xs font-black text-brand-primary bg-indigo-50/50 px-2 py-1 rounded border border-indigo-100/50">${current} / ${target}</span>
+                                            </div>
+                                            <div class="w-full bg-slate-200 h-2.5 rounded-full overflow-hidden shadow-inner mb-1">
+                                                <div class="bg-indigo-600 h-full rounded-full" style="width: ${pct}%"></div>
+                                            </div>
+                                            <div class="flex justify-between text-[9px] text-slate-400 font-bold uppercase">
+                                                <span>Progress</span>
+                                                <span>${pct}%</span>
+                                            </div>
+                                        </div>
+                                    `;
+                                }).join('');
+                            })()}
+                        </div>
+                    </div>
+                    
+                    <!-- Content Retainer Deadlines -->
+                    <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 relative overflow-hidden group hover:shadow-md transition-shadow">
+                        <div class="absolute -right-16 -top-16 w-48 h-48 bg-emerald-50 rounded-full blur-3xl opacity-50 group-hover:opacity-80 transition-opacity pointer-events-none"></div>
+                        <div class="flex items-center gap-3 mb-6 relative z-10">
+                            <div class="w-10 h-10 rounded-xl bg-emerald-50 flex items-center justify-center text-emerald-600 border border-emerald-100">
+                                <i data-lucide="calendar" class="w-5 h-5"></i>
+                            </div>
+                            <div>
+                                <h4 class="text-sm font-black text-slate-800 uppercase tracking-widest">Retainer Schedule</h4>
+                                <p class="text-[10px] text-slate-500 font-bold uppercase tracking-widest mt-0.5">Retainer Deadlines & Handover Info</p>
+                            </div>
+                        </div>
+                        <div class="space-y-4 relative z-10">
+                            <div class="p-4 rounded-xl border border-slate-100 bg-indigo-50/30">
+                                <span class="text-[9px] font-bold text-slate-450 uppercase tracking-wider block mb-1">Next Upload Deadline</span>
+                                <span class="text-base font-black text-indigo-700 block">${nextDeadline !== 'N/A' ? new Date(nextDeadline).toLocaleDateString(undefined, { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' }) : 'No Upload Logged'}</span>
+                                <span class="text-[9px] text-slate-400 block mt-1">${nextDeadline !== 'N/A' ? `Target: ${nextDeadline}` : 'Set when logging task'}</span>
+                            </div>
+                            <div class="p-4 rounded-xl border border-slate-100 bg-emerald-50/30">
+                                <span class="text-[9px] font-bold text-slate-450 uppercase tracking-wider block mb-1">Next Date of Giving</span>
+                                <span class="text-base font-black text-emerald-700 block">${nextDateOfGiving !== 'N/A' ? new Date(nextDateOfGiving).toLocaleDateString(undefined, { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' }) : 'No Giving Logged'}</span>
+                                <span class="text-[9px] text-slate-400 block mt-1">${nextDateOfGiving !== 'N/A' ? `Target: ${nextDateOfGiving}` : 'Set when logging task'}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                ` : `
                 <!-- Milestone Trajectory Analysis (High Impact) -->
                 <div class="bg-white border border-slate-200 rounded-2xl shadow-sm mb-8 p-6 relative overflow-hidden group hover:shadow-md transition-shadow">
                     <div class="absolute -right-20 -top-20 w-64 h-64 bg-indigo-50 rounded-full blur-3xl opacity-50 group-hover:opacity-80 transition-opacity pointer-events-none"></div>
@@ -4820,7 +5022,7 @@ function renderAdminProjectsTable() {
                                  <span class="w-2.5 h-2.5 rounded-full border-2 border-slate-300 bg-white shadow-sm"></span> Expected
                              </span>
                              <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-50 text-[10px] font-extrabold text-emerald-700 border border-emerald-100 shadow-sm animate-pulse-slow">
-                                 <span class="w-2 h-2 rounded-full bg-emerald-500 shadow-sm shadow-emerald-200"></span> Actual Velocity
+                                 <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-sm shadow-emerald-200"></span> Actual Velocity
                              </span>
                         </div>
                     </div>
@@ -4828,6 +5030,7 @@ function renderAdminProjectsTable() {
                         <canvas id="milestoneChart"></canvas>
                     </div>
                 </div>
+                `}
 
                 <!-- High-Fidelity Charts and Performance -->
                 <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
@@ -5053,20 +5256,6 @@ function renderAdminProjectsTable() {
       const project = state.allProjects.find((p) => p.id === t.project_id);
       const projName = project ? project.name : "General Task";
 
-      const hasProject = !!t.project_id;
-      const reasonCard = (!hasProject && t.no_project_reason && t.no_project_reason !== "N/A") ? `
-                        <!-- No Project Reason -->
-                        <div class="bg-slate-50 p-3 rounded-xl border border-slate-200/80 flex items-center gap-3">
-                            <div class="w-8 h-8 rounded-lg bg-indigo-50 flex items-center justify-center shrink-0">
-                                <i data-lucide="help-circle" class="w-4 h-4 text-brand-primary"></i>
-                            </div>
-                            <div class="min-w-0 flex-1">
-                                <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">No Project Reason</p>
-                                <p class="text-sm font-semibold text-slate-800 truncate" title="${t.no_project_reason}">${t.no_project_reason}</p>
-                            </div>
-                        </div>
-      ` : "";
-
       const sprintVal = t.sprint || "N/A";
       const moduleVal = t.module || "N/A";
       const featureVal = t.feature || "N/A";
@@ -5091,36 +5280,28 @@ function renderAdminProjectsTable() {
         if (t.handover_source_task_id) {
           const origTask = state.allTasks.find((task) => String(task.id) === String(t.handover_source_task_id));
           const origDetailsHtml = origTask ? `
-            <div class="mt-2.5 pt-2.5 border-t border-emerald-100/60">
-              <p class="text-[10px] font-bold text-emerald-600 uppercase tracking-wider">Original Task Details (Reference)</p>
+            <div class="mt-2 pt-2 border-t border-emerald-100/60">
+              <p class="text-[9px] font-bold text-emerald-600 uppercase tracking-wider">Original Task Reference</p>
               <p class="text-xs text-slate-700 mt-1 font-medium whitespace-pre-wrap">${origTask.task_performed}</p>
             </div>
           ` : '';
 
           handoverDetailsCard = `
-            <div class="bg-emerald-50 border border-emerald-200 rounded-xl p-4 mb-4">
-              <h5 class="text-xs font-bold text-emerald-800 uppercase tracking-wider flex items-center gap-1.5">
-                <i data-lucide="check-check" class="w-4 h-4 text-emerald-600"></i> Handover Completed
+            <div class="bg-emerald-55/35 border border-emerald-200 rounded-xl p-3 mb-3 text-xs">
+              <h5 class="font-bold text-emerald-800 uppercase tracking-wider flex items-center gap-1.5 mb-1">
+                <i data-lucide="check-check" class="w-3.5 h-3.5 text-emerald-600"></i> Handover Completed
               </h5>
-              <p class="text-xs text-emerald-900 mt-1 font-semibold">Logged by ${empName} covering colleague ${colleagueName}.</p>
-              <div class="mt-2 pt-2 border-t border-emerald-100/60">
-                <p class="text-[10px] font-bold text-emerald-600 uppercase tracking-wider mb-1">Status</p>
-                <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-100">${statusVal}</span>
-              </div>
+              <p class="text-emerald-950 font-medium">Logged by ${empName} covering colleague ${colleagueName}.</p>
               ${origDetailsHtml}
             </div>
           `;
         } else {
           handoverDetailsCard = `
-            <div class="bg-indigo-50 border border-indigo-200 rounded-xl p-4 mb-4">
-              <h5 class="text-xs font-bold text-indigo-800 uppercase tracking-wider flex items-center gap-1.5">
-                <i data-lucide="share-2" class="w-4 h-4 text-indigo-600"></i> Handover Assigned
+            <div class="bg-indigo-50/30 border border-indigo-200 rounded-xl p-3 mb-3 text-xs">
+              <h5 class="font-bold text-indigo-800 uppercase tracking-wider flex items-center gap-1.5 mb-1">
+                <i data-lucide="share-2" class="w-3.5 h-3.5 text-indigo-600"></i> Handover Assigned
               </h5>
-              <p class="text-xs text-indigo-900 mt-1 font-semibold">Assigned by ${empName} to covered colleague ${colleagueName}.</p>
-              <div class="mt-2 pt-2 border-t border-indigo-100/60">
-                <p class="text-[10px] font-bold text-indigo-600 uppercase tracking-wider mb-1">Status</p>
-                <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-100">${statusVal}</span>
-              </div>
+              <p class="text-indigo-950 font-medium">Assigned by ${empName} to covered colleague ${colleagueName}.</p>
             </div>
           `;
         }
@@ -5129,84 +5310,128 @@ function renderAdminProjectsTable() {
       let extraDetails = "";
       if (isDev) {
         extraDetails = `
-                    <div class="bg-slate-50 border border-slate-200/80 rounded-xl p-4 mb-4">
-                        <h5 class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3 flex items-center gap-1.5">
-                            <i data-lucide="git-branch" class="w-4 h-4 text-indigo-500"></i> Git & Repository Details
-                        </h5>
-                        <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                    <div class="bg-slate-50/40 border border-slate-150 rounded-xl p-3 mb-3">
+                        <span class="block text-[10px] font-black text-slate-450 uppercase tracking-widest mb-2 flex items-center gap-1.5">
+                            <i data-lucide="git-branch" class="w-3.5 h-3.5 text-indigo-500 shrink-0"></i> Git & Repository Details
+                        </span>
+                        <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
                             <div>
-                                <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Repository</p>
-                                <p class="text-xs font-semibold text-slate-800 mt-1 truncate" title="${t.github_repo_name || 'N/A'}">${t.github_repo_name || 'N/A'}</p>
+                                <span class="text-[9px] font-bold text-slate-400 uppercase block">Repository</span>
+                                <span class="font-semibold text-slate-800 truncate block" title="${t.github_repo_name || 'N/A'}">${t.github_repo_name || 'N/A'}</span>
                             </div>
                             <div>
-                                <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Branch</p>
-                                <p class="text-xs font-semibold text-slate-800 mt-1 truncate" title="${t.github_branch_name || 'N/A'}">${t.github_branch_name || 'N/A'}</p>
+                                <span class="text-[9px] font-bold text-slate-400 uppercase block">Branch</span>
+                                <span class="font-semibold text-slate-800 truncate block" title="${t.github_branch_name || 'N/A'}">${t.github_branch_name || 'N/A'}</span>
                             </div>
                             <div>
-                                <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Commits</p>
-                                <p class="text-xs font-semibold text-slate-800 mt-1">${t.github_commit_count || 0}</p>
+                                <span class="text-[9px] font-bold text-slate-400 uppercase block">Commits</span>
+                                <span class="font-bold text-slate-850 block">${t.github_commit_count || 0}</span>
                             </div>
                             <div>
-                                <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">PR Created?</p>
-                                <p class="text-xs font-semibold mt-1">
-                                    <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold ${t.github_pr_created === 'Yes' ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' : 'bg-slate-100 text-slate-600'}">
-                                        ${t.github_pr_created || 'No'}
-                                    </span>
-                                </p>
+                                <span class="text-[9px] font-bold text-slate-400 uppercase block">PR Created?</span>
+                                <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold ${t.github_pr_created === 'Yes' ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' : 'bg-slate-100 text-slate-600'}">
+                                    ${t.github_pr_created || 'No'}
+                                </span>
                             </div>
                         </div>
-                        
                         ${t.github_link && t.github_link !== "N/A" ? `
-                        <div class="mt-3 pt-3 border-t border-slate-200/60">
-                            <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Git Resource Link</p>
-                            <a href="${t.github_link}" target="_blank" class="text-xs font-semibold text-brand-primary hover:underline mt-1 block truncate">${t.github_link}</a>
+                        <div class="mt-2 pt-2 border-t border-slate-150 flex items-center gap-2">
+                            <span class="text-[9px] font-bold text-slate-400 uppercase shrink-0">Link:</span>
+                            <a href="${t.github_link}" target="_blank" class="text-xs font-semibold text-indigo-650 hover:underline truncate">${t.github_link}</a>
                         </div>
                         ` : ''}
                     </div>
 
-                    <div class="bg-slate-50 p-3 rounded-xl border border-slate-200/80 mb-4">
-                        <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Tech Stack Used</p>
-                        <div class="flex flex-wrap gap-1.5">
+                    <div class="bg-slate-50/40 p-2.5 rounded-xl border border-slate-150 mb-3 flex items-center gap-3">
+                        <span class="text-[10px] font-bold text-slate-450 uppercase tracking-wider shrink-0">Tech Stack</span>
+                        <div class="flex flex-wrap gap-1">
                             ${(t.tech_stack && t.tech_stack !== 'N/A' ? t.tech_stack.split(',').map(tag => `
-                                <span class="px-2 py-0.5 bg-indigo-50 text-indigo-700 text-xs font-semibold rounded">${tag.trim()}</span>
-                            `).join('') : '<span class="text-xs text-slate-500 font-medium">N/A</span>')}
+                                <span class="px-2 py-0.5 bg-indigo-50 text-indigo-700 text-[10px] font-bold rounded-lg border border-indigo-100 shadow-sm">${tag.trim()}</span>
+                            `).join('') : '<span class="text-[10px] text-slate-550 font-bold">N/A</span>')}
                         </div>
                     </div>
 
-                    <div class="bg-indigo-50 p-4 rounded-xl border border-indigo-100/80 mb-4">
-                        <h5 class="text-xs font-bold text-indigo-800 uppercase tracking-wider mb-1 flex items-center gap-1.5">
-                            <i data-lucide="compass" class="w-4 h-4 text-indigo-500"></i> Tomorrow's Strategy
-                        </h5>
-                        <p class="text-sm text-indigo-900 leading-relaxed whitespace-pre-wrap">${t.tomorrow_plan || "N/A"}</p>
+                    <div class="bg-indigo-50/30 p-3 rounded-xl border border-indigo-100/50 mb-3 text-xs">
+                        <span class="font-bold text-indigo-800 uppercase tracking-wider flex items-center gap-1.5 mb-1">
+                            <i data-lucide="compass" class="w-3.5 h-3.5 text-indigo-500"></i> Tomorrow's Strategy
+                        </span>
+                        <p class="text-indigo-950 font-medium whitespace-pre-wrap">${t.tomorrow_plan || "N/A"}</p>
                     </div>
                 `;
       } else {
+        let customVals = {};
+        try {
+          customVals = t.custom_field_values ? (typeof t.custom_field_values === 'string' ? JSON.parse(t.custom_field_values) : t.custom_field_values) : {};
+        } catch(e) {
+          customVals = {};
+        }
+
+        let customFieldsHtml = '';
+        if (customVals && typeof customVals === 'object' && Object.keys(customVals).length > 0) {
+          const fieldsList = Object.entries(customVals).map(([k, v]) => `
+            <div class="bg-indigo-50/30 px-3 py-1.5 rounded-lg border border-indigo-100/60 flex items-center justify-between">
+                <span class="text-[10px] font-bold text-indigo-700 uppercase tracking-wider flex items-center gap-1.5"><i data-lucide="sparkles" class="w-3 h-3 text-indigo-500 shrink-0"></i> ${k}</span>
+                <span class="text-sm font-black text-indigo-950">${v}</span>
+            </div>
+          `).join('');
+
+          let deadlinesHtml = '';
+          if (t.upload_deadline || t.next_delivery_date) {
+            deadlinesHtml = `
+              <div class="bg-slate-50/50 px-3 py-1.5 rounded-lg border border-slate-200/60 col-span-2 mt-1 grid grid-cols-2 gap-4 text-xs">
+                  <div>
+                      <span class="text-[9px] font-black text-slate-450 uppercase block">Upload Deadline</span>
+                      <span class="font-bold text-slate-700">${t.upload_deadline !== 'N/A' && t.upload_deadline ? new Date(t.upload_deadline).toLocaleDateString() : 'N/A'}</span>
+                  </div>
+                  <div>
+                      <span class="text-[9px] font-black text-slate-450 uppercase block">Next Date of Giving</span>
+                      <span class="font-bold text-slate-700">${t.next_delivery_date !== 'N/A' && t.next_delivery_date ? new Date(t.next_delivery_date).toLocaleDateString() : 'N/A'}</span>
+                  </div>
+              </div>
+            `;
+          }
+
+          customFieldsHtml = `
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 w-full">
+              ${fieldsList}
+              ${deadlinesHtml}
+            </div>
+          `;
+        } else {
+          customFieldsHtml = `
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 w-full">
+              <div class="bg-slate-50/50 px-3 py-1.5 rounded-lg border border-slate-200 flex items-center justify-between">
+                  <span class="text-[10px] font-bold text-slate-550 uppercase flex items-center gap-1"><i data-lucide="smartphone" class="w-3.5 h-3.5 text-pink-500"></i> Reels</span>
+                  <span class="text-sm font-bold text-slate-800">${t.reels_count || 0}</span>
+              </div>
+              <div class="bg-slate-50/50 px-3 py-1.5 rounded-lg border border-slate-200 flex items-center justify-between">
+                  <span class="text-[10px] font-bold text-slate-550 uppercase flex items-center gap-1"><i data-lucide="youtube" class="w-3.5 h-3.5 text-red-500"></i> Videos</span>
+                  <span class="text-sm font-bold text-slate-800">${t.long_video_count || 0}</span>
+              </div>
+              <div class="bg-slate-50/50 px-3 py-1.5 rounded-lg border border-slate-200 flex items-center justify-between">
+                  <span class="text-[10px] font-bold text-slate-555 uppercase flex items-center gap-1"><i data-lucide="image" class="w-3.5 h-3.5 text-indigo-500"></i> Posters</span>
+                  <span class="text-sm font-bold text-slate-800">${t.poster_count || 0}</span>
+              </div>
+              <div class="bg-slate-50/50 px-3 py-1.5 rounded-lg border border-slate-200 flex items-center justify-between">
+                  <span class="text-[10px] font-bold text-slate-555 uppercase flex items-center gap-1"><i data-lucide="phone-call" class="w-3.5 h-3.5 text-emerald-500"></i> Calls</span>
+                  <span class="text-sm font-bold text-slate-800">${t.calls_made || 0}</span>
+              </div>
+            </div>
+          `;
+        }
+
         extraDetails = `
-                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-4">
-                        <div class="bg-slate-50 p-3 rounded-xl border border-slate-200/80 flex flex-col justify-between">
-                            <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1 flex items-center gap-1"><i data-lucide="smartphone" class="w-3.5 h-3.5 text-pink-500"></i> Reels</p>
-                            <p class="text-lg font-bold text-slate-800 mt-1">${t.reels_count || 0}</p>
-                        </div>
-                        <div class="bg-slate-50 p-3 rounded-xl border border-slate-200/80 flex flex-col justify-between">
-                            <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1 flex items-center gap-1"><i data-lucide="youtube" class="w-3.5 h-3.5 text-red-500"></i> Videos</p>
-                            <p class="text-lg font-bold text-slate-800 mt-1">${t.long_video_count || 0}</p>
-                        </div>
-                        <div class="bg-slate-50 p-3 rounded-xl border border-slate-200/80 flex flex-col justify-between">
-                            <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1 flex items-center gap-1"><i data-lucide="image" class="w-3.5 h-3.5 text-indigo-500"></i> Posters</p>
-                            <p class="text-lg font-bold text-slate-800 mt-1">${t.poster_count || 0}</p>
-                        </div>
-                        <div class="bg-slate-50 p-3 rounded-xl border border-slate-200/80 flex flex-col justify-between">
-                            <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1 flex items-center gap-1"><i data-lucide="phone-call" class="w-3.5 h-3.5 text-emerald-500"></i> Calls</p>
-                            <p class="text-lg font-bold text-slate-800 mt-1">${t.calls_made || 0}</p>
-                        </div>
+                    <div class="mb-3">
+                        <span class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Deliverables Tracking</span>
+                        ${customFieldsHtml}
                     </div>
                     
-                    <div class="bg-slate-50 p-4 rounded-xl border border-slate-200/80 mb-4">
-                        <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Target Platforms</p>
-                        <div class="flex flex-wrap gap-1.5">
+                    <div class="bg-slate-50/40 p-2.5 rounded-xl border border-slate-150 mb-3 flex items-center gap-3">
+                        <span class="text-[10px] font-bold text-slate-455 uppercase tracking-wider shrink-0">Platforms</span>
+                        <div class="flex flex-wrap gap-1">
                             ${(t.platform && t.platform !== 'N/A' ? t.platform.split(',').map(tag => `
-                                <span class="px-2.5 py-1 bg-pink-50 text-pink-700 text-xs font-semibold rounded-full border border-pink-100">${tag.trim()}</span>
-                            `).join('') : '<span class="text-xs text-slate-500 font-medium">N/A</span>')}
+                                <span class="px-2 py-0.5 bg-rose-50 text-rose-700 text-[10px] font-bold rounded-lg border border-rose-100 shadow-sm">${tag.trim()}</span>
+                            `).join('') : '<span class="text-[10px] text-slate-550 font-bold">N/A</span>')}
                         </div>
                     </div>
                 `;
@@ -5214,129 +5439,94 @@ function renderAdminProjectsTable() {
 
       const editedBanner = t.is_edited ? `
                         <!-- Edited Banner -->
-                        <div class="mb-4 p-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 flex items-center gap-2">
-                            <i data-lucide="edit-3" class="w-4 h-4 text-amber-600"></i>
+                        <div class="mb-3 p-2.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 flex items-center gap-2">
+                            <i data-lucide="edit-3" class="w-3.5 h-3.5 text-amber-600"></i>
                             <span class="text-xs font-bold">Edited by ${t.edited_by || 'Unknown'}</span>
                         </div>
       ` : "";
 
       const html = `
-                <div class="p-2">
-                    <div class="flex items-center gap-3 mb-6">
-                        <div class="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center border border-slate-200 text-brand-primary text-xl font-bold">
+                <div class="p-1 text-left">
+                    <div class="flex items-center gap-3 mb-4">
+                        <div class="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center border border-slate-200 text-brand-primary text-lg font-bold">
                             ${empName.charAt(0).toUpperCase()}
                         </div>
                         <div>
-                            <h4 class="font-bold text-slate-800 text-lg leading-tight">${empName}</h4>
+                            <h4 class="font-bold text-slate-800 text-base leading-tight">${empName}</h4>
                             <p class="text-xs text-slate-500">${dateStr}</p>
                         </div>
                         <div class="ml-auto text-right">
-                            <div class="flex flex-col items-end gap-1">
-                                <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold ${isDev ? "bg-indigo-100 text-indigo-700" : "bg-pink-100 text-pink-700"}">
-                                    <i data-lucide="${isDev ? "terminal" : "video"}" class="w-3 h-3"></i>
+                            <div class="flex flex-col items-end gap-0.5">
+                                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold ${isDev ? "bg-indigo-100 text-indigo-700" : "bg-pink-100 text-pink-700"}">
+                                    <i data-lucide="${isDev ? "terminal" : "video"}" class="w-2.5 h-2.5"></i>
                                     ${isDev ? "Engineering" : "Content"}
                                 </span>
                                 ${overtimeBadge}
                             </div>
-                            <div class="text-sm font-bold mt-1 text-slate-700">${parseFloat(t.hours_logged).toFixed(1)} hrs logged</div>
+                            <div class="text-xs font-bold mt-0.5 text-slate-650">${parseFloat(t.hours_logged).toFixed(1)} hrs logged</div>
                         </div>
                     </div>
 
                     ${editedBanner}
-
                     ${handoverDetailsCard}
 
-                    <!-- Shared Smart Metadata Tracking Grid -->
-                    <div class="grid grid-cols-2 md:grid-cols-3 gap-4 mb-6">
-                        <!-- Status -->
-                        <div class="bg-slate-50 p-3 rounded-xl border border-slate-200/80 flex items-center gap-3">
-                            <div class="w-8 h-8 rounded-lg bg-indigo-50 flex items-center justify-center shrink-0">
-                                <i data-lucide="info" class="w-4 h-4 text-brand-primary"></i>
-                            </div>
-                            <div class="min-w-0 flex-1">
-                                <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Status</p>
-                                <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold ${
-                                  statusVal === 'Completed' ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' :
-                                  statusVal === 'In Progress' ? 'bg-blue-50 text-blue-700 border border-blue-100' :
-                                  'bg-amber-50 text-amber-700 border border-amber-100'
-                                }">${statusVal}</span>
-                            </div>
+                    <!-- Dense Metadata Panel -->
+                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-slate-50/50 p-3 rounded-xl border border-slate-150 text-xs mb-3">
+                        <div>
+                            <span class="text-[9px] font-black text-slate-455 uppercase block">Workspace</span>
+                            <span class="font-bold text-slate-800 truncate block" title="${projName}">${projName}</span>
                         </div>
-                        <!-- Workspace -->
-                        <div class="bg-slate-50 p-3 rounded-xl border border-slate-200/80 flex items-center gap-3">
-                            <div class="w-8 h-8 rounded-lg bg-indigo-50 flex items-center justify-center shrink-0">
-                                <i data-lucide="folder" class="w-4 h-4 text-brand-primary"></i>
-                            </div>
-                            <div class="min-w-0 flex-1">
-                                <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Workspace</p>
-                                <p class="text-sm font-semibold text-slate-800 truncate" title="${projName}">${projName}</p>
-                            </div>
+                        <div>
+                            <span class="text-[9px] font-black text-slate-455 uppercase block">Status</span>
+                            <span class="inline-flex items-center px-1.5 py-0.2 rounded text-[9px] font-bold ${
+                              statusVal === 'Completed' ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' :
+                              statusVal === 'In Progress' ? 'bg-blue-50 text-blue-700 border border-blue-100' :
+                              'bg-amber-50 text-amber-700 border border-amber-100'
+                            }">${statusVal}</span>
                         </div>
-                        ${reasonCard}
-                        <!-- Ticket ID -->
-                        <div class="bg-slate-50 p-3 rounded-xl border border-slate-200/80 flex items-center gap-3">
-                            <div class="w-8 h-8 rounded-lg bg-indigo-50 flex items-center justify-center shrink-0">
-                                <i data-lucide="tag" class="w-4 h-4 text-brand-primary"></i>
-                            </div>
-                            <div class="min-w-0 flex-1">
-                                <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Ticket ID</p>
-                                <p class="text-sm font-semibold text-slate-800 truncate" title="${ticketVal}">${ticketVal}</p>
-                            </div>
+                        <div>
+                            <span class="text-[9px] font-black text-slate-455 uppercase block">Ticket ID</span>
+                            <span class="font-bold text-slate-700 block">${ticketVal}</span>
                         </div>
-                        <!-- Work Type -->
-                        <div class="bg-slate-50 p-3 rounded-xl border border-slate-200/80 flex items-center gap-3">
-                            <div class="w-8 h-8 rounded-lg bg-indigo-50 flex items-center justify-center shrink-0">
-                                <i data-lucide="briefcase" class="w-4 h-4 text-brand-primary"></i>
-                            </div>
-                            <div class="min-w-0 flex-1">
-                                <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Work Type</p>
-                                <p class="text-sm font-semibold text-slate-800 truncate" title="${workTypeVal}">${workTypeVal}</p>
-                            </div>
+                        <div>
+                            <span class="text-[9px] font-black text-slate-455 uppercase block">Work Type</span>
+                            <span class="font-bold text-slate-700 block">${workTypeVal}</span>
                         </div>
-                        <!-- Sprint -->
-                        <div class="bg-slate-50 p-3 rounded-xl border border-slate-200/80 flex items-center gap-3">
-                            <div class="w-8 h-8 rounded-lg bg-indigo-50 flex items-center justify-center shrink-0">
-                                <i data-lucide="calendar" class="w-4 h-4 text-brand-primary"></i>
-                            </div>
-                            <div class="min-w-0 flex-1">
-                                <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Sprint</p>
-                                <p class="text-sm font-semibold text-slate-800 truncate" title="${sprintVal}">${sprintVal}</p>
-                            </div>
+                        ${!isDev ? '' : `
+                        <div>
+                            <span class="text-[9px] font-black text-slate-455 uppercase block">Sprint</span>
+                            <span class="font-bold text-slate-700 block">${sprintVal}</span>
                         </div>
-                        <!-- Module -->
-                        <div class="bg-slate-50 p-3 rounded-xl border border-slate-200/80 flex items-center gap-3">
-                            <div class="w-8 h-8 rounded-lg bg-indigo-50 flex items-center justify-center shrink-0">
-                                <i data-lucide="package" class="w-4 h-4 text-brand-primary"></i>
-                            </div>
-                            <div class="min-w-0 flex-1">
-                                <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Module</p>
-                                <p class="text-sm font-semibold text-slate-800 truncate" title="${moduleVal}">${moduleVal}</p>
-                            </div>
+                        <div>
+                            <span class="text-[9px] font-black text-slate-455 uppercase block">Module</span>
+                            <span class="font-bold text-slate-700 block">${moduleVal}</span>
                         </div>
-                        <!-- Feature -->
-                        <div class="bg-slate-50 p-3 rounded-xl border border-slate-200/80 flex items-center gap-3">
-                            <div class="w-8 h-8 rounded-lg bg-indigo-50 flex items-center justify-center shrink-0">
-                                <i data-lucide="cpu" class="w-4 h-4 text-brand-primary"></i>
-                            </div>
-                            <div class="min-w-0 flex-1">
-                                <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Feature</p>
-                                <p class="text-sm font-semibold text-slate-800 truncate" title="${featureVal}">${featureVal}</p>
-                            </div>
+                        <div class="col-span-2">
+                            <span class="text-[9px] font-black text-slate-455 uppercase block">Feature</span>
+                            <span class="font-bold text-slate-700 truncate block" title="${featureVal}">${featureVal}</span>
                         </div>
+                        `}
+                        ${(!t.project_id && t.no_project_reason && t.no_project_reason !== "N/A") ? `
+                        <div class="col-span-2">
+                            <span class="text-[9px] font-black text-slate-455 uppercase block">No Project Reason</span>
+                            <span class="font-bold text-slate-700 truncate block" title="${t.no_project_reason}">${t.no_project_reason}</span>
+                        </div>
+                        ` : ''}
                     </div>
 
-                    <div class="bg-slate-50 border border-slate-200 rounded-lg p-4 mb-4">
-                        <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Task Executed</p>
-                        <p class="text-sm text-slate-800 leading-relaxed whitespace-pre-wrap">${t.task_performed}</p>
+                    <!-- Task Executed Narrative -->
+                    <div class="bg-slate-50/50 border border-slate-200 rounded-xl p-3 mb-3 text-xs">
+                        <span class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Task Narrative / Executed</span>
+                        <p class="text-slate-800 leading-relaxed whitespace-pre-wrap font-medium">${t.task_performed}</p>
                     </div>
 
                     ${extraDetails}
 
-                    <div class="mt-6 flex justify-end gap-3">
-                        <button onclick="window.openAdminEditTaskModal('${t.id}', '${t.task_type}')" class="px-5 py-2.5 bg-brand-primary text-white rounded-lg font-medium shadow-sm hover:bg-indigo-700 transition-colors flex items-center gap-2">
-                            <i data-lucide="edit-3" class="w-4 h-4"></i> Edit Entry
+                    <div class="mt-4 flex justify-end gap-2 pt-3 border-t border-slate-100">
+                        <button onclick="window.openAdminEditTaskModal('${t.id}', '${t.task_type}')" class="px-4 py-2 bg-brand-primary text-white rounded-lg text-xs font-bold shadow-sm hover:bg-indigo-700 transition-colors flex items-center gap-1.5">
+                            <i data-lucide="edit-3" class="w-3.5 h-3.5"></i> Edit Entry
                         </button>
-                        <button onclick="closeModal()" class="px-6 py-2.5 bg-slate-100 text-slate-700 border border-slate-200 rounded-lg font-medium shadow-sm hover:bg-slate-200 transition-colors focus:outline-none">Close Details</button>
+                        <button onclick="closeModal()" class="px-4 py-2 bg-slate-100 text-slate-700 border border-slate-200 rounded-lg text-xs font-bold shadow-sm hover:bg-slate-200 transition-colors focus:outline-none">Close Details</button>
                     </div>
                 </div>
             `;
@@ -5562,20 +5752,6 @@ function renderAdminProjectsTable() {
                         <div>
                             <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Next Invoice Date</span>
                             <span class="text-sm font-bold text-rose-600">${p.next_billing_date && p.next_billing_date !== "N/A" ? new Date(p.next_billing_date).toLocaleDateString() : "N/A"}</span>
-                        </div>
-                        ` : p.cost_type === "Hourly Billing" ? `
-                        <div>
-                            <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Hourly Rate</span>
-                            <span class="text-sm font-bold text-emerald-600">${formatCurrency(p.billing_rate || 0)} / hour</span>
-                        </div>
-                        ` : p.cost_type === "Time & Material" ? `
-                        <div>
-                            <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Billing Cycle</span>
-                            <span class="text-sm font-bold text-slate-800">${p.billing_cycle || "N/A"}</span>
-                        </div>
-                        <div>
-                            <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Rate / Unit</span>
-                            <span class="text-sm font-bold text-emerald-600">${formatCurrency(p.billing_rate || 0)}</span>
                         </div>
                         ` : `
                         <div>
@@ -7684,7 +7860,7 @@ function openAddExpenseModal() {
                             </div>
                             <div>
                                 <label class="block text-sm font-semibold text-slate-700 mb-1">Project Nature *</label>
-                                <select id="p_type" required class="input-field w-full px-4 py-2 bg-white border border-slate-200 rounded-lg outline-none text-sm shadow-sm">
+                                <select id="p_type" required onchange="window.toggleContentAgreementSection(this.value)" class="input-field w-full px-4 py-2 bg-white border border-slate-200 rounded-lg outline-none text-sm shadow-sm">
                                     <option value="Engineering" ${p && p.project_type === "Engineering" ? "selected" : ""}>Engineering / IT</option>
                                     <option value="Content" ${p && p.project_type === "Content" ? "selected" : ""}>Content / Marketing</option>
                                     <option value="Both" ${p && p.project_type === "Both" ? "selected" : ""}>Both</option>
@@ -7795,8 +7971,6 @@ function openAddExpenseModal() {
                                 <select id="p_cost_type" onchange="toggleBillingFields()" class="input-field w-full px-4 py-2 bg-white border border-slate-200 rounded-lg outline-none text-sm shadow-sm">
                                     <option value="Fixed Price" ${p && p.cost_type === "Fixed Price" ? "selected" : ""}>Fixed Price</option>
                                     <option value="Monthly Retainer" ${p && p.cost_type === "Monthly Retainer" ? "selected" : ""}>Monthly Retainer</option>
-                                    <option value="Time & Material" ${p && p.cost_type === "Time & Material" ? "selected" : ""}>Time & Material</option>
-                                    <option value="Hourly Billing" ${p && p.cost_type === "Hourly Billing" ? "selected" : ""}>Hourly Billing</option>
                                     <option value="Internal / Non-Billable" ${(p && p.cost_type === "Internal / Non-Billable") || !p || !p.cost_type ? "selected" : ""}>Internal / Non-Billable</option>
                                 </select>
                             </div>
@@ -7842,6 +8016,23 @@ function openAddExpenseModal() {
                                 <label class="block text-sm font-semibold text-slate-700 mb-1">Predefined Tech Stack</label>
                                 <input type="text" id="p_tech_stack" value="${p && p.tech_stack && p.tech_stack !== "N/A" ? p.tech_stack : ""}" placeholder="e.g. React, Python, FastAPI (comma-separated)" class="input-field w-full px-4 py-2 bg-white border border-slate-200 rounded-lg outline-none text-sm shadow-sm">
                             </div>
+                        </div>
+                    </div>
+
+                    <!-- Section: Content Agreement Config (Dynamic Fields) -->
+                    <div id="content_agreement_section" class="bg-indigo-50/50 p-5 rounded-xl border border-indigo-100 mt-2 hidden">
+                        <div class="flex justify-between items-center mb-4">
+                            <h4 class="text-xs font-bold text-indigo-500 uppercase tracking-wider flex items-center">
+                                <i data-lucide="layers" class="w-4 h-4 mr-2 text-indigo-500"></i> Content Deliverables Tracker (Agreement)
+                            </h4>
+                            <button type="button" onclick="window.addCustomContentFieldRow()" class="px-2.5 py-1 bg-white hover:bg-slate-50 text-indigo-700 text-xs font-bold rounded-lg border border-indigo-200 transition-colors flex items-center gap-1.5 shadow-sm">
+                                <i data-lucide="plus" class="w-3.5 h-3.5"></i> Add Field
+                            </button>
+                        </div>
+                        <p class="text-[10px] text-indigo-600 font-semibold mb-3">Define targets for content creation deliverables (e.g. reels, videos, graphics). For retainers, you can optionally set monthly recurring goals.</p>
+                        
+                        <div id="content_fields_container" class="space-y-2">
+                            <!-- Custom field rows will be added here -->
                         </div>
                     </div>
 
@@ -7954,11 +8145,66 @@ function openAddExpenseModal() {
                     </div>
                 </form>
             `;
+      window.addCustomContentFieldRow = function (name = "", target = 0, monthly = 0) {
+        const container = document.getElementById("content_fields_container");
+        if (!container) return;
+        const row = document.createElement("div");
+        row.className = "flex gap-2.5 items-center bg-white p-3 rounded-lg border border-slate-200 custom-content-field-row";
+        row.innerHTML = `
+            <div class="flex-1">
+                <label class="block text-[10px] font-bold text-slate-500 uppercase">Field Name *</label>
+                <input type="text" placeholder="e.g. Instagram Reels, Posters" value="${name.replace(/"/g, '&quot;')}" class="cc-field-name w-full px-2.5 py-1 bg-slate-50 border border-slate-200 rounded text-xs outline-none focus:border-indigo-500" required>
+            </div>
+            <div class="w-24">
+                <label class="block text-[10px] font-bold text-slate-500 uppercase">Total Target *</label>
+                <input type="number" min="0" placeholder="100" value="${target || ''}" class="cc-field-target w-full px-2.5 py-1 bg-slate-50 border border-slate-200 rounded text-xs outline-none focus:border-indigo-500" required>
+            </div>
+            <div class="w-24">
+                <label class="block text-[10px] font-bold text-slate-500 uppercase">Monthly Target</label>
+                <input type="number" min="0" placeholder="0" value="${monthly || ''}" class="cc-field-monthly w-full px-2.5 py-1 bg-slate-50 border border-slate-200 rounded text-xs outline-none focus:border-indigo-500">
+            </div>
+            <button type="button" onclick="this.parentElement.remove()" class="mt-4 p-1.5 hover:bg-rose-50 text-slate-400 hover:text-rose-500 rounded border border-transparent hover:border-rose-100 transition-colors">
+                <i data-lucide="trash-2" class="w-4 h-4"></i>
+            </button>
+        `;
+        container.appendChild(row);
+        if (window.lucide) lucide.createIcons();
+      };
+
+      window.toggleContentAgreementSection = function (nature) {
+        const section = document.getElementById("content_agreement_section");
+        if (section) {
+          if (nature === "Content" || nature === "Both") {
+            section.classList.remove("hidden");
+          } else {
+            section.classList.add("hidden");
+            const container = document.getElementById("content_fields_container");
+            if (container) container.innerHTML = "";
+          }
+        }
+      };
+
       openModal(
         isEdit ? "Edit Project Workspace" : "Initialize New Project",
         formHtml,
       );
       toggleBillingFields();
+
+      // Populate existing content agreement fields
+      if (p) {
+        window.toggleContentAgreementSection(p.project_type);
+        let agreement = [];
+        try {
+          agreement = typeof p.content_agreement === 'string' ? JSON.parse(p.content_agreement) : (p.content_agreement || []);
+        } catch (e) {
+          agreement = [];
+        }
+        if (Array.isArray(agreement)) {
+          agreement.forEach(item => {
+            window.addCustomContentFieldRow(item.name, item.target, item.monthly_target);
+          });
+        }
+      }
     }
 
 
@@ -7996,41 +8242,6 @@ function openAddExpenseModal() {
               </div>
               <div>
                   <label class="block text-xs font-bold text-slate-700 mb-1">Next Billing Date *</label>
-                  <input type="date" id="p_next_billing_date_input" value="${fmtDate}" class="input-field w-full px-3 py-1.5 bg-white border border-slate-200 rounded-lg outline-none text-xs shadow-sm">
-              </div>
-          </div>
-        `;
-      } else if (type === "Hourly Billing") {
-        html = `
-          <div class="grid grid-cols-1 gap-4 mt-3 p-3 bg-slate-50 border border-slate-200 rounded-lg">
-              <div>
-                  <label class="block text-xs font-bold text-slate-700 mb-1">Hourly Billing Rate (₹) *</label>
-                  <input type="number" step="0.01" min="0" id="p_billing_rate_input" value="${p && p.cost_type === "Hourly Billing" ? p.billing_rate || 0 : 0}" class="input-field w-full px-3 py-1.5 bg-white border border-slate-200 rounded-lg outline-none text-xs shadow-sm">
-              </div>
-          </div>
-        `;
-      } else if (type === "Time & Material") {
-        let fmtDate = "";
-        if (p && p.cost_type === "Time & Material" && p.next_billing_date && p.next_billing_date !== "N/A") {
-          fmtDate = p.next_billing_date;
-        }
-        html = `
-          <div class="grid grid-cols-3 gap-4 mt-3 p-3 bg-slate-50 border border-slate-200 rounded-lg">
-              <div>
-                  <label class="block text-xs font-bold text-slate-700 mb-1">Billing Cycle Frequency</label>
-                  <select id="p_billing_cycle_input" class="input-field w-full px-3 py-1.5 bg-white border border-slate-200 rounded-lg outline-none text-xs shadow-sm bg-white">
-                      <option value="Weekly" ${p && p.billing_cycle === "Weekly" ? "selected" : ""}>Weekly</option>
-                      <option value="Bi-weekly" ${p && p.billing_cycle === "Bi-weekly" ? "selected" : ""}>Bi-weekly</option>
-                      <option value="Monthly" ${p && p.billing_cycle === "Monthly" ? "selected" : ""}>Monthly</option>
-                      <option value="Quarterly" ${p && p.billing_cycle === "Quarterly" ? "selected" : ""}>Quarterly</option>
-                  </select>
-              </div>
-              <div>
-                  <label class="block text-xs font-bold text-slate-700 mb-1">Billing Rate (₹)</label>
-                  <input type="number" step="0.01" min="0" id="p_billing_rate_input" value="${p && p.cost_type === "Time & Material" ? p.billing_rate || 0 : 0}" class="input-field w-full px-3 py-1.5 bg-white border border-slate-200 rounded-lg outline-none text-xs shadow-sm">
-              </div>
-              <div>
-                  <label class="block text-xs font-bold text-slate-700 mb-1">Next Invoice Date</label>
                   <input type="date" id="p_next_billing_date_input" value="${fmtDate}" class="input-field w-full px-3 py-1.5 bg-white border border-slate-200 rounded-lg outline-none text-xs shadow-sm">
               </div>
           </div>
@@ -8168,6 +8379,23 @@ function openAddExpenseModal() {
         client_cost:
           parseFloat(document.getElementById("p_client_cost").value) || 0,
         budget: parseFloat(document.getElementById("p_budget").value) || 0,
+        content_agreement: (function () {
+          const type = document.getElementById("p_type").value;
+          if (type === "Content" || type === "Both") {
+            const rows = document.querySelectorAll(".custom-content-field-row");
+            const fields = [];
+            rows.forEach((row) => {
+              const name = row.querySelector(".cc-field-name").value.trim();
+              const target = parseInt(row.querySelector(".cc-field-target").value) || 0;
+              const monthly = parseInt(row.querySelector(".cc-field-monthly").value) || 0;
+              if (name) {
+                fields.push({ name, target, monthly_target: monthly });
+              }
+            });
+            return JSON.stringify(fields);
+          }
+          return "[]";
+        })(),
 
         project_platform: (function () {
           const standard = Array.from(document.querySelectorAll('input[name="p_platforms"]:checked')).map(el => el.value);
@@ -8184,10 +8412,6 @@ function openAddExpenseModal() {
             return kind ? `${cycle} | ${kind}` : cycle;
           } else if (type === "Monthly Retainer") {
             return "Monthly";
-          } else if (type === "Hourly Billing") {
-            return "Hourly";
-          } else if (type === "Time & Material") {
-            return document.getElementById("p_billing_cycle_input").value;
           }
           return "N/A";
         })(),
@@ -8201,7 +8425,7 @@ function openAddExpenseModal() {
         })(),
         next_billing_date: (function () {
           const type = document.getElementById("p_cost_type").value;
-          if (type === "Monthly Retainer" || type === "Time & Material") {
+          if (type === "Monthly Retainer") {
             const el = document.getElementById("p_next_billing_date_input");
             return el && el.value ? el.value : "N/A";
           }
@@ -8406,22 +8630,86 @@ function openAddExpenseModal() {
     }
 
     function confirmDeleteEmployee(id) {
+      const emp = state.allEmployees.find(e => e.id === id);
+      const name = emp ? emp.full_name : "this employee";
+      const escapedName = (name || "").replace(/'/g, "\\'");
       const formHtml = `
                 <div class="text-center pb-4">
                     <div class="w-16 h-16 bg-rose-100 rounded-full flex items-center justify-center mx-auto mb-4">
                         <i data-lucide="alert-triangle" class="w-8 h-8 text-brand-alert"></i>
                     </div>
-                    <h3 class="text-xl font-bold text-slate-900 mb-2">Delete Employee?</h3>
-                    <p class="text-sm text-slate-500 mb-6 px-4">Are you sure you want to permanently delete this employee? This action cannot be undone.</p>
-                    <div class="flex space-x-3 px-8">
-                        <button onclick="closeModal()" class="flex-1 py-2.5 px-4 bg-white border border-slate-300 text-slate-700 rounded-lg font-medium hover:bg-slate-50 transition-colors">Cancel</button>
-                        <button onclick="executeDeleteEmployee('${id}')" id="btnConfirmEmpDelete" class="flex-1 py-2.5 px-4 bg-brand-alert hover:bg-rose-700 text-white rounded-lg font-medium transition-colors flex justify-center items-center">
-                            Delete
+                    <h3 class="text-xl font-bold text-slate-900 mb-2">Manage Profile: ${name}</h3>
+                    <p class="text-sm text-slate-500 mb-6 px-6 leading-relaxed">
+                        Deleting this employee will permanently remove their credentials and unassign them from all projects, milestones, and handover tasks. Timesheet entries will be preserved under a generic "Deleted Employee" record labeled with their name.
+                    </p>
+                    <div class="flex flex-col space-y-3 px-8">
+                        <button onclick="deactivateEmployeeFromModal('${id}')" id="btnModalDeactivate" class="w-full py-2.5 px-4 bg-amber-500 hover:bg-amber-600 text-white rounded-lg font-medium transition-colors shadow-sm">
+                            Deactivate Employee (Safe)
+                        </button>
+                        <button onclick="confirmFinalDeleteEmployee('${id}', '${escapedName}')" class="w-full py-2.5 px-4 bg-brand-alert hover:bg-rose-700 text-white rounded-lg font-medium transition-colors shadow-sm">
+                            Delete Permanently (Risky)
+                        </button>
+                        <button onclick="closeModal()" class="w-full py-2.5 px-4 bg-white border border-slate-300 text-slate-700 rounded-lg font-medium hover:bg-slate-50 transition-colors">
+                            Cancel
                         </button>
                     </div>
                 </div>
             `;
-      openModal("Confirm Deletion", formHtml);
+      openModal("Confirm Employee Action", formHtml);
+      lucide.createIcons();
+    }
+
+    async function deactivateEmployeeFromModal(id) {
+      const btn = document.getElementById("btnModalDeactivate");
+      btn.innerHTML = '<i data-lucide="loader-2" class="w-5 h-5 animate-spin mx-auto"></i>';
+      btn.disabled = true;
+      lucide.createIcons();
+
+      try {
+        await apiFetch(`/employees/update/${id}`, {
+          method: "PUT",
+          body: { is_active: false },
+        });
+        showToast("Employee deactivated successfully", "success");
+        closeModal();
+        const emp = state.allEmployees.find(e => e.id === id);
+        if (emp) emp.is_active = false;
+        routeApp("workforce", "employees");
+      } catch (err) {
+        showToast(err.message, "error");
+      } finally {
+        if (btn) {
+          btn.innerHTML = "Deactivate Employee (Safe)";
+          btn.disabled = false;
+        }
+      }
+    }
+
+    function confirmFinalDeleteEmployee(id, name) {
+      const escapedName = (name || "").replace(/'/g, "\\'");
+      const formHtml = `
+                <div class="text-center pb-4">
+                    <div class="w-16 h-16 bg-rose-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <i data-lucide="alert-triangle" class="w-8 h-8 text-brand-alert"></i>
+                    </div>
+                    <h3 class="text-xl font-bold text-slate-900 mb-2">Final Warning</h3>
+                    <p class="text-sm text-slate-500 mb-6 px-6 leading-relaxed">
+                        Are you absolutely sure you want to permanently delete <strong>${name}</strong>? 
+                        This will unassign them from every project, milestone, and handover task, and completely delete their credentials. 
+                        <strong>This action is irreversible.</strong>
+                    </p>
+                    <div class="flex space-x-3 px-8">
+                        <button onclick="confirmDeleteEmployee('${id}')" class="flex-1 py-2.5 px-4 bg-white border border-slate-300 text-slate-700 rounded-lg font-medium hover:bg-slate-50 transition-colors">
+                            Go Back
+                        </button>
+                        <button onclick="executeDeleteEmployee('${id}')" id="btnConfirmEmpDelete" class="flex-1 py-2.5 px-4 bg-brand-alert hover:bg-rose-700 text-white rounded-lg font-medium transition-colors flex justify-center items-center">
+                            Delete Permanently
+                        </button>
+                    </div>
+                </div>
+            `;
+      openModal("Irreversible Action Warning", formHtml);
+      lucide.createIcons();
     }
 
     async function executeDeleteEmployee(id) {
@@ -8432,17 +8720,16 @@ function openAddExpenseModal() {
       lucide.createIcons();
 
       try {
-        // Adjust endpoint based on your API design (assuming it's similar to projects)
         await apiFetch(`/employees/delete/${id}`, { method: "DELETE" });
         showToast("Employee deleted successfully", "success");
         closeModal();
         state.allEmployees = state.allEmployees.filter((e) => e.id !== id);
-        routeApp("workforce", "employees"); // Re-render workforce view
+        routeApp("workforce", "employees");
       } catch (err) {
         showToast(err.message, "error");
       } finally {
         if (btn) {
-          btn.innerHTML = "Delete";
+          btn.innerHTML = "Delete Permanently";
           btn.disabled = false;
         }
       }
@@ -8485,6 +8772,20 @@ function openAddExpenseModal() {
         renderAdminApp();
       } catch (err) {
         showToast("Failed to approve unlock: " + err.message, "error");
+      }
+    }
+
+    async function denyEmployeeUnlock(empId) {
+      try {
+        const res = await apiFetch(`/employees/deny-unlock/${empId}`, { method: 'POST', body: {} });
+        showToast(res.message || "Profile unlock request denied.", "success");
+        await loadAdminWorkspaceData();
+        if (state.activeEmployee && state.activeEmployee.id === empId) {
+          state.activeEmployee = state.allEmployees.find((e) => e.id === empId);
+        }
+        renderAdminApp();
+      } catch (err) {
+        showToast("Failed to deny unlock: " + err.message, "error");
       }
     }
 
@@ -8810,87 +9111,126 @@ function openAddExpenseModal() {
       const title = roleObj ? roleObj.role_name : emp.job_title || "Employee";
 
       return `
-                <div class="mb-8 p-1 bg-white/50 backdrop-blur-md rounded-3xl border border-white shadow-xl">
-                    <div class="p-6 flex flex-col lg:flex-row lg:items-center justify-between gap-6">
-                        <div class="flex items-center gap-6">
-                            <button onclick="closeEmployeeDetails()" class="w-12 h-12 bg-white border border-slate-100 rounded-2xl flex items-center justify-center hover:bg-slate-50 transition-all shadow-sm group">
-                                <i data-lucide="arrow-left" class="w-5 h-5 text-slate-400 group-hover:text-brand-primary transition-colors"></i>
+                <div class="mb-8 p-1 bg-gradient-to-r from-slate-50 to-white backdrop-blur-md rounded-3xl border border-slate-100 shadow-xl shadow-slate-150/40">
+                    <div class="p-6 flex flex-col xl:flex-row xl:items-center justify-between gap-6">
+                        <div class="flex flex-col sm:flex-row items-start sm:items-center gap-6">
+                            <button onclick="closeEmployeeDetails()" class="w-12 h-12 bg-white border border-slate-200 rounded-2xl flex items-center justify-center hover:bg-slate-50 hover:border-slate-300 active:scale-95 transition-all shadow-sm group shrink-0">
+                                <i data-lucide="arrow-left" class="w-5 h-5 text-slate-500 group-hover:text-brand-primary transition-colors"></i>
                             </button>
                             
-                            <div class="relative group">
-                                <div class="h-20 w-20 rounded-3xl overflow-hidden border-4 border-white shadow-2xl bg-slate-200 flex items-center justify-center font-black text-slate-400 text-2xl">
+                            <div class="relative shrink-0">
+                                <div class="h-20 w-20 rounded-2xl overflow-hidden border-4 border-white shadow-lg bg-slate-150 flex items-center justify-center font-black text-slate-550 text-2xl">
                                     ${emp.photo && emp.photo !== "N/A"
-          ? `<img src="${emp.photo.startsWith("http") ? emp.photo : CONFIG.API_BASE_URL + "/" + emp.photo.replace(/\\/g, "/")}" class="w-full h-full object-cover">`
-          : (emp.full_name || "U")
-            .split(" ")
-            .map((n) => n[0])
-            .join("")
-            .substring(0, 2)
-            .toUpperCase()
-        }
+                                      ? `<img src="${emp.photo.startsWith("http") ? emp.photo : CONFIG.API_BASE_URL + "/" + emp.photo.replace(/\\/g, "/")}" class="w-full h-full object-cover">`
+                                      : (emp.full_name || "U")
+                                        .split(" ")
+                                        .map((n) => n[0])
+                                        .join("")
+                                        .substring(0, 2)
+                                        .toUpperCase()
+                                    }
                                 </div>
+                                <span class="absolute -bottom-1 -right-1 flex h-4 w-4">
+                                    <span class="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${emp.is_active !== false ? "bg-emerald-400" : "bg-rose-400"}"></span>
+                                    <span class="relative inline-flex rounded-full h-4 w-4 ${emp.is_active !== false ? "bg-emerald-500" : "bg-rose-500"} border-2 border-white"></span>
+                                </span>
                                 ${state.isEditingEmployee
-          ? `
+                                  ? `
                                     <div class="absolute -bottom-2 -right-2 flex gap-1">
                                         <button onclick="document.getElementById('up_profile_${emp.id}').click()" class="w-8 h-8 bg-brand-primary text-white rounded-xl shadow-lg flex items-center justify-center hover:scale-110 active:scale-95 transition-all" title="Upload Photo">
                                             <i data-lucide="camera" class="w-4 h-4"></i>
                                         </button>
                                         <input type="file" id="up_profile_${emp.id}" class="hidden" accept="image/*" onchange="uploadEmployeeImage('${emp.id}', 'profile', 'profile', this.id)">
                                         ${emp.photo && emp.photo !== "N/A"
-            ? `
+                                          ? `
                                             <button onclick="deleteEmployeeImage('${emp.id}', 'profile', 'profile')" class="w-8 h-8 bg-brand-alert text-white rounded-xl shadow-lg flex items-center justify-center hover:scale-110 active:scale-95 transition-all" title="Delete Photo">
                                                 <i data-lucide="trash-2" class="w-4 h-4"></i>
                                             </button>
-                                        `
-            : ""
-          }
+                                          `
+                                          : ""
+                                        }
                                     </div>
-                                `
-          : ""
-        }
+                                  `
+                                  : ""
+                                }
                             </div>
 
-                            <div>
-                                <div class="flex items-center gap-3">
-                                    <h2 class="text-3xl font-black text-slate-900 tracking-tight">${emp.full_name}</h2>
-                                    <div class="px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${emp.is_active !== false ? "bg-emerald-50 text-emerald-600 border border-emerald-100" : "bg-rose-50 text-rose-600 border border-rose-100"}">
-                                        ${emp.is_active !== false ? "• Online System" : "• Restricted Access"}
+                            <div class="min-w-0">
+                                <div class="flex flex-wrap items-center gap-3">
+                                    <h2 class="text-2xl font-black text-slate-800 tracking-tight leading-none">${emp.full_name}</h2>
+                                    <div class="px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest flex items-center gap-1.5 ${emp.is_active !== false ? "bg-emerald-50 text-emerald-600 border border-emerald-200/50" : "bg-rose-50 text-rose-600 border border-rose-200/50"}">
+                                        <span class="w-1.5 h-1.5 rounded-full ${emp.is_active !== false ? "bg-emerald-500 animate-pulse" : "bg-rose-500"}"></span>
+                                        ${emp.is_active !== false ? "Active Operative" : "Deactivated"}
                                     </div>
                                 </div>
-                                <div class="flex flex-wrap items-center gap-x-4 gap-y-2 mt-2">
-                                    <p class="text-sm font-bold text-brand-primary bg-indigo-50 px-2 py-0.5 rounded whitespace-nowrap">${title}</p>
-                                    <div class="h-1 w-1 bg-slate-300 rounded-full"></div>
-                                    <p class="text-sm font-medium text-slate-500 whitespace-nowrap">${dept}</p>
-                                    <div class="h-1 w-1 bg-slate-300 rounded-full"></div>
-                                    <p class="text-sm font-mono text-slate-400 whitespace-nowrap">@${emp.username}</p>
+                                <div class="flex flex-wrap items-center gap-y-1.5 gap-x-3.5 mt-2.5">
+                                    <div class="flex items-center gap-1 text-indigo-700 bg-indigo-50/80 px-2.5 py-0.5 rounded-lg text-xs font-bold border border-indigo-100/60">
+                                        <i data-lucide="briefcase" class="w-3.5 h-3.5 text-indigo-500"></i> ${title}
+                                    </div>
+                                    <div class="flex items-center gap-1 text-slate-550 text-xs font-medium">
+                                        <i data-lucide="building" class="w-3.5 h-3.5 text-slate-400"></i> ${dept}
+                                    </div>
+                                    <div class="flex items-center gap-1 text-slate-450 font-mono text-xs">
+                                        <i data-lucide="user" class="w-3.5 h-3.5 text-slate-400"></i> @${emp.username}
+                                    </div>
                                 </div>
                             </div>
                         </div>
 
-                        <div class="flex items-center gap-4 bg-slate-50/50 p-2 rounded-2xl border border-slate-100 flex-shrink-0">
-                            ${emp.profile_edit_requested ? `
-                            <button onclick="approveEmployeeUnlock('${emp.id}')" class="px-5 py-2.5 bg-amber-500 hover:bg-amber-600 text-white text-sm font-bold rounded-xl shadow-lg shadow-amber-200 active:scale-95 transition-all flex items-center gap-2 whitespace-nowrap">
-                                <i data-lucide="unlock" class="w-4 h-4"></i> Approve Unlock
-                            </button>
-                            <div class="w-px h-8 bg-slate-200 mx-1"></div>
-                            ` : ''}
-                            ${state.user && state.user.access_level === 'SystemAdmin' ? `
-                            <button onclick="deleteEmployeeAccount('${emp.id}', '${emp.full_name}')" class="px-5 py-2.5 bg-rose-50 text-rose-600 text-sm font-bold rounded-xl shadow-sm hover:bg-rose-100 active:scale-95 transition-all flex items-center gap-2 whitespace-nowrap" title="Delete Operative">
-                                <i data-lucide="trash-2" class="w-4 h-4"></i> 
-                            </button>
-                            <div class="w-px h-8 bg-slate-200 mx-1"></div>
-                            ` : ''}
-                            <button onclick="toggleEmployeeStatusFromPage('${emp.id}')" class="px-5 py-2.5 bg-white border border-slate-200 text-slate-700 text-sm font-bold rounded-xl shadow-sm hover:bg-slate-50 active:scale-95 transition-all flex items-center gap-2 whitespace-nowrap">
-                                <i data-lucide="power" class="w-4 h-4 ${emp.is_active !== false ? "text-rose-500" : "text-emerald-500"}"></i> 
-                                ${emp.is_active !== false ? "Deactivate" : "Activate Account"}
-                            </button>
-                            <div class="w-px h-8 bg-slate-200 mx-1"></div>
-                            <button id="btnEmployeeEdit" onclick="toggleEmployeeEditMode(true)" class="${state.isEditingEmployee ? "hidden" : "flex"} px-6 py-2.5 bg-brand-primary text-white text-sm font-bold rounded-xl shadow-lg shadow-indigo-200 hover:bg-indigo-700 active:scale-95 transition-all items-center gap-2 whitespace-nowrap">
-                                <i data-lucide="edit-3" class="w-4 h-4"></i> Modify Profile
-                            </button>
-                            <button id="btnEmployeeSave" onclick="saveEmployeeEdits()" class="${state.isEditingEmployee ? "flex" : "hidden"} px-6 py-2.5 bg-emerald-600 text-white text-sm font-bold rounded-xl shadow-lg shadow-emerald-200 hover:bg-emerald-700 active:scale-95 transition-all items-center gap-2 whitespace-nowrap">
-                                <i data-lucide="save" class="w-4 h-4"></i> Push Changes
-                            </button>
+                        <!-- Action Buttons Section -->
+                        <div class="flex flex-wrap items-center gap-3.5 bg-slate-50/60 p-2.5 rounded-2xl border border-slate-100 xl:self-center">
+                            ${emp.profile_edit_requested
+                              ? `
+                                <div class="flex items-center gap-2 bg-amber-50/80 border border-amber-200/60 p-1 rounded-xl shadow-sm">
+                                    <span class="text-[9px] font-black text-amber-700 uppercase tracking-widest px-2 py-1 bg-amber-100/70 rounded-lg flex items-center gap-1">
+                                        <i data-lucide="shield-alert" class="w-3.5 h-3.5 animate-bounce text-amber-600"></i> Edit Request
+                                    </span>
+                                    <button onclick="approveEmployeeUnlock('${emp.id}')" class="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-lg shadow-sm active:scale-95 transition-all flex items-center gap-1">
+                                        <i data-lucide="check" class="w-3.5 h-3.5"></i> Approve
+                                    </button>
+                                    <button onclick="denyEmployeeUnlock('${emp.id}')" class="px-3.5 py-1.5 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold rounded-lg shadow-sm active:scale-95 transition-all flex items-center gap-1">
+                                        <i data-lucide="x" class="w-3.5 h-3.5"></i> Deny
+                                    </button>
+                                </div>
+                                <div class="w-px h-6 bg-slate-200 hidden md:block"></div>
+                              `
+                              : ""
+                            }
+                            
+                            <div class="flex items-center gap-2">
+                                ${state.user && state.user.access_level === 'SystemAdmin'
+                                  ? `
+                                    <button onclick="deleteEmployeeAccount('${emp.id}', '${emp.full_name}')" class="p-2.5 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-xl shadow-sm active:scale-95 transition-all flex items-center justify-center shrink-0 border border-rose-100/50" title="Delete Operative">
+                                        <i data-lucide="trash-2" class="w-4 h-4"></i> 
+                                    </button>
+                                  `
+                                  : ""
+                                }
+                                <button onclick="toggleEmployeeStatusFromPage('${emp.id}')" class="px-4 py-2.5 bg-white border border-slate-200 text-slate-700 text-xs font-bold rounded-xl shadow-sm hover:bg-slate-50 active:scale-95 transition-all flex items-center gap-1.5 whitespace-nowrap">
+                                    <i data-lucide="power" class="w-3.5 h-3.5 ${emp.is_active !== false ? "text-rose-500" : "text-emerald-500"}"></i> 
+                                    ${emp.is_active !== false ? "Deactivate" : "Activate"}
+                                </button>
+                            </div>
+                            
+                            <div class="w-px h-6 bg-slate-200"></div>
+
+                            <div class="flex items-center gap-2">
+                                ${state.isEditingEmployee
+                                  ? `
+                                    <button id="btnEmployeeSave" onclick="saveEmployeeEdits()" class="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black uppercase rounded-xl shadow-md shadow-emerald-200/50 hover:shadow-lg active:scale-95 transition-all flex items-center gap-2 whitespace-nowrap">
+                                        <i data-lucide="save" class="w-4 h-4"></i> Push Changes
+                                    </button>
+                                    <button onclick="toggleEmployeeEditMode(false)" class="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-black uppercase rounded-xl shadow-sm active:scale-95 transition-all flex items-center gap-2 whitespace-nowrap">
+                                        <i data-lucide="x" class="w-4 h-4"></i> Cancel
+                                    </button>
+                                  `
+                                  : `
+                                    <button id="btnEmployeeEdit" onclick="toggleEmployeeEditMode(true)" class="px-5 py-2.5 bg-brand-primary hover:bg-indigo-750 text-white text-xs font-black uppercase rounded-xl shadow-md shadow-indigo-150 hover:shadow-lg active:scale-95 transition-all flex items-center gap-2 whitespace-nowrap">
+                                        <i data-lucide="edit-3" class="w-4 h-4"></i> Modify Profile
+                                    </button>
+                                  `
+                                }
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -10231,7 +10571,15 @@ function openAddExpenseModal() {
                                 <td class="px-4 py-3 text-sm text-slate-600">${dateStr}</td>
                                 <td class="px-4 py-3 text-sm text-slate-600">${checkInStr}</td>
                                 <td class="px-4 py-3 text-sm text-slate-600">${checkOutStr}</td>
-                                <td class="px-4 py-3 text-sm font-bold text-slate-800">${record.total_hours ? record.total_hours.toFixed(2) + "h" : "--"}</td>
+                                <td class="px-4 py-3 text-sm font-bold text-slate-800">
+                                    ${(h => {
+                                        if (!h) return "--";
+                                        const tm = Math.round(h * 60);
+                                        const hrs = Math.floor(tm / 60);
+                                        const mins = tm % 60;
+                                        return `${hrs}h ${mins < 10 ? '0' : ''}${mins}m`;
+                                    })(record.total_hours)}
+                                </td>
                                 <td class="px-4 py-3">${currentStatusBadge}</td>
                                 <td class="px-4 py-3">${attStatusBadge}</td>
                                 <td class="px-4 py-3 text-sm text-slate-500">${record.ip_address || "--"}</td>
@@ -10765,7 +11113,7 @@ function openAddExpenseModal() {
                             <option value="All" ${state.timesheetStatusFilter === 'All' ? 'selected' : ''}>All Statuses</option>
                             <option value="Completed" ${state.timesheetStatusFilter === 'Completed' ? 'selected' : ''}>Completed</option>
                             <option value="In Progress" ${state.timesheetStatusFilter === 'In Progress' ? 'selected' : ''}>In Progress</option>
-                            <option value="Pending" ${state.timesheetStatusFilter === 'Pending' ? 'selected' : ''}>Pending</option>
+                            <option value="Pending Review" ${state.timesheetStatusFilter === 'Pending Review' ? 'selected' : ''}>Pending Review</option>
                         </select>
                     </div>
                 </div>
@@ -11218,6 +11566,23 @@ function openAddExpenseModal() {
             btn.innerHTML = `<i data-lucide="copy" class="w-4 h-4"></i> Copy Password`;
             if (window.lucide) lucide.createIcons();
           }, 2000);
+          
+          // Clear clipboard after 30 seconds for security
+          setTimeout(() => {
+            try {
+              navigator.clipboard.readText().then((text) => {
+                if (text === pwd) {
+                  navigator.clipboard.writeText("");
+                  showToast("Clipboard cleared for security.", "info");
+                }
+              }).catch(() => {
+                navigator.clipboard.writeText("");
+                showToast("Clipboard cleared for security.", "info");
+              });
+            } catch (e) {
+              navigator.clipboard.writeText("");
+            }
+          }, 30000);
         })
         .catch((err) => {
           showToast("Failed to copy", "error");
@@ -11650,7 +12015,12 @@ function openAddExpenseModal() {
           ws.readyState === WebSocket.CONNECTING)
       )
         return;
-      const wsUrl = CONFIG.API_BASE_URL.replace("http", "ws") + "/ws";
+      const token = localStorage.getItem(CONFIG.TOKEN_KEY);
+      if (!token) {
+        console.log("No token found. WebSocket connection skipped.");
+        return;
+      }
+      const wsUrl = CONFIG.API_BASE_URL.replace("http", "ws") + "/ws?token=" + encodeURIComponent(token);
       ws = new WebSocket(wsUrl);
 
       ws.onopen = () =>
@@ -11697,7 +12067,13 @@ function openAddExpenseModal() {
         }
       };
       
-      ws.onclose = () => setTimeout(setupWebSocket, 3000);
+      ws.onclose = (event) => {
+        if (event.code === 1008) {
+          console.log("WebSocket connection rejected due to authentication failure. Stopping reconnection.");
+          return;
+        }
+        setTimeout(setupWebSocket, 3000);
+      };
       ws.onerror = () => ws.close();
     }
 
@@ -11741,7 +12117,7 @@ function openAddExpenseModal() {
 
     // --- Bootstrap Application ---
     document.addEventListener("DOMContentLoaded", async () => {
-      const token = sessionStorage.getItem(CONFIG.TOKEN_KEY);
+      const token = localStorage.getItem(CONFIG.TOKEN_KEY);
       const appDiv = document.getElementById("app");
 
       if (!token) {
@@ -11753,15 +12129,19 @@ function openAddExpenseModal() {
 
       if (
         !state.user ||
-        state.user.exp * 1000 < Date.now() ||
-        state.user.role.toLowerCase() !== "admin"
+        state.user.exp * 1000 < Date.now()
       ) {
         await customAlert(
           "Session Error",
           "Unauthorized or expired session. Redirecting to login.",
         );
-        sessionStorage.removeItem(CONFIG.TOKEN_KEY);
+        localStorage.removeItem(CONFIG.TOKEN_KEY);
         window.location.href = CONFIG.LOGIN_URL;
+        return;
+      }
+
+      if (state.user.role.toLowerCase() !== "admin") {
+        window.location.href = "employee.html";
         return;
       }
 
