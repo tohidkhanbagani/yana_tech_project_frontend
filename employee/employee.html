@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Yana OS | Employee Workspace</title>
+
+    <!-- Google Fonts: Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['Inter', 'sans-serif'] },
+                    colors: {
+                        brand: {
+                            dark: '#0f172a', primary: '#4f46e5',
+                            accent: '#10b981', alert: '#f43f5e',
+                            surface: '#f8fafc'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f8fafc;
+            overflow-x: hidden;
+        }
+
+        .input-field {
+            transition: all 0.3s ease;
+        }
+
+        .input-field:focus {
+            box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.2);
+            border-color: #4f46e5;
+        }
+
+        @keyframes slideInRight {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        @keyframes fadeOut {
+            from {
+                opacity: 1;
+            }
+
+            to {
+                opacity: 0;
+            }
+        }
+
+        .toast-enter {
+            animation: slideInRight 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+
+        .toast-exit {
+            animation: fadeOut 0.4s ease forwards;
+        }
+
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+
+        /* Desktop Sidebar Collapse Styles */
+        @media (min-width: 768px) {
+            #main-sidebar {
+                transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1), transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+                overflow-x: hidden;
+            }
+
+            #main-sidebar.sidebar-collapsed {
+                width: 5rem;
+            }
+
+            #main-sidebar.sidebar-collapsed span {
+                display: none;
+            }
+
+            #main-sidebar.sidebar-collapsed .h-16 {
+                padding-left: 0 !important;
+                padding-right: 0 !important;
+                justify-content: center;
+            }
+
+            #main-sidebar.sidebar-collapsed .mr-3 {
+                margin-right: 0 !important;
+            }
+
+            #main-sidebar.sidebar-collapsed .nav-btn {
+                padding-left: 0 !important;
+                padding-right: 0 !important;
+                justify-content: center;
+            }
+
+            #main-sidebar.sidebar-collapsed .p-4 {
+                padding-left: 0.5rem !important;
+                padding-right: 0.5rem !important;
+            }
+        }
+
+        /* Custom stacked notification CSS overrides */
+        #toast-container {
+            display: block !important;
+            pointer-events: auto;
+        }
+        .toast-item {
+            position: absolute;
+            right: 0;
+            top: 0;
+            width: 100%;
+            transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        }
+        #toast-container:not(:hover) .toast-item {
+            pointer-events: none;
+        }
+        #toast-container:not(:hover) .toast-item:last-child {
+            position: relative;
+            transform: translate3d(0, 0, 0) scale(1);
+            z-index: 100;
+            opacity: 1;
+            pointer-events: auto;
+        }
+        #toast-container:not(:hover) .toast-item:nth-last-child(2) {
+            transform: translate3d(0, 10px, 0) scale(0.96);
+            z-index: 90;
+            opacity: 0.9;
+        }
+        #toast-container:not(:hover) .toast-item:nth-last-child(3) {
+            transform: translate3d(0, 20px, 0) scale(0.92);
+            z-index: 80;
+            opacity: 0.8;
+        }
+        #toast-container:not(:hover) .toast-item:nth-last-child(n+4) {
+            transform: translate3d(0, 30px, 0) scale(0.88);
+            z-index: 70;
+            opacity: 0;
+            visibility: hidden;
+        }
+        #toast-container:hover .toast-item {
+            position: relative;
+            transform: translate3d(0, 0, 0) scale(1) !important;
+            opacity: 1 !important;
+            visibility: visible !important;
+            margin-bottom: 0.75rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+        #toast-container:hover .toast-item:last-child {
+            margin-bottom: 0;
+        }
+    </style>
+</head>
+
+<body class="text-slate-800 antialiased h-screen w-screen overflow-hidden">
+
+    <!-- Toast Notification Container -->
+    <div id="toast-container"
+        class="fixed top-4 right-4 z-[9999] flex flex-col gap-2 w-full max-w-sm pointer-events-none"></div>
+
+    <!-- Global Modal -->
+    <div id="globalModal"
+        class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-xl w-full max-w-lg overflow-hidden flex flex-col max-h-[90vh]">
+            <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50 shrink-0">
+                <h3 id="modalTitle" class="text-lg font-bold text-slate-800 tracking-tight"></h3>
+                <button onclick="closeModal()"
+                    class="text-slate-400 hover:text-slate-600 transition-colors p-1 rounded-lg"><i data-lucide="x"
+                        class="w-5 h-5"></i></button>
+            </div>
+            <div id="modalBody" class="p-6 overflow-y-auto"></div>
+        </div>
+    </div>
+
+    <!-- Main SPA Mount Point -->
+    <div id="app" class="h-full w-full"></div>
+
+<!-- Dynamically injected modules -->
+<script src="js/app.js"></script>
+<script src="sections/dashboard/dashboard.js"></script>
+<script src="sections/tasks/tasks.js"></script>
+<script src="sections/profile/profile.js"></script>
+<script src="sections/leaves/leaves.js"></script>
+<script src="sections/timesheets/timesheets.js"></script>
+<script src="sections/projects/projects.js"></script>
+
+</body>
+
+</html>

@@ -288,12 +288,12 @@
                     setTimeout(() => {
                         if (decoded && decoded.role && decoded.role.toLowerCase() === 'admin') {
                             if (decoded.access_level === 'ManagerAdmin') {
-                                window.location.href = 'manager.html';
+                                window.location.href = 'manager/manager.html';
                             } else {
-                                window.location.href = 'admin.html';
+                                window.location.href = 'admin/admin.html';
                             }
                         } else {
-                            window.location.href = 'employee.html';
+                            window.location.href = 'employee/employee.html';
                         }
                     }, 800);
                 }
@@ -312,12 +312,12 @@
                 if (decoded && decoded.exp * 1000 > Date.now()) {
                     if (decoded.role.toLowerCase() === 'admin') {
                         if (decoded.access_level === 'ManagerAdmin') {
-                            window.location.href = 'manager.html';
+                            window.location.href = 'manager/manager.html';
                         } else {
-                            window.location.href = 'admin.html';
+                            window.location.href = 'admin/admin.html';
                         }
                     } else {
-                        window.location.href = 'employee.html';
+                        window.location.href = 'employee/employee.html';
                     }
                 } else {
                     localStorage.removeItem(CONFIG.TOKEN_KEY);

@@ -1,0 +1,830 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Yana OS | Executive Control Center</title>
+
+  <!-- Google Fonts: Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Chart.js & Plugins -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script
+    src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+  <script
+    src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3.0.1/dist/chartjs-plugin-annotation.min.js"></script>
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ["Inter", "sans-serif"],
+          },
+          colors: {
+            brand: {
+              dark: "#0f172a", // Midnight Slate
+              primary: "#4f46e5", // Indigo
+              accent: "#10b981", // Emerald Success
+              alert: "#f43f5e", // Rose Red Alert
+              surface: "#f8fafc", // Off-white surface
+            },
+          },
+        },
+      },
+    };
+  </script>
+
+  <style>
+    /* Add inside your <style> tag if not already present */
+    input[type="range"] {
+      -webkit-appearance: none;
+      background: transparent;
+    }
+
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      height: 16px;
+      width: 16px;
+      border-radius: 50%;
+      background: #4f46e5;
+      cursor: pointer;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    }
+
+    body {
+      font-family: "Inter", sans-serif;
+      background-color: #f8fafc;
+      overflow-x: hidden;
+    }
+
+    .input-field {
+      transition: all 0.3s ease;
+    }
+
+    .input-field:focus {
+      box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.2);
+      border-color: #4f46e5;
+    }
+
+    #dynamic-content-area {
+      /* Instant swap — no transition delay */
+    }
+
+    @keyframes slideInRight {
+      from {
+        transform: translateX(100%);
+        opacity: 0;
+      }
+
+      to {
+        transform: translateX(0);
+        opacity: 1;
+      }
+    }
+
+    @keyframes fadeOut {
+      from {
+        opacity: 1;
+      }
+
+      to {
+        opacity: 0;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, ::before, ::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+      }
+    }
+
+    .toast-enter {
+      animation: slideInRight 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+
+    .toast-exit {
+      animation: fadeOut 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+
+    /* Enterprise Compact Table Layout Mode */
+    body.compact-table-mode table td,
+    body.compact-table-mode table th {
+      padding-top: 0.375rem !important;  /* 6px top/bottom padding */
+      padding-bottom: 0.375rem !important;
+      padding-left: 0.75rem !important;   /* 12px left/right padding */
+      padding-right: 0.75rem !important;
+      font-size: 0.75rem !important;     /* 12px font size */
+      line-height: 1rem !important;
+    }
+    body.compact-table-mode table tr {
+      height: auto !important;
+    }
+
+    /* Custom stacked notification CSS overrides */
+    #toast-container {
+        display: block !important;
+        pointer-events: auto;
+    }
+    .toast-item {
+        position: absolute;
+        right: 0;
+        top: 0;
+        width: 100%;
+        transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+    }
+    #toast-container:not(:hover) .toast-item {
+        pointer-events: none;
+    }
+    #toast-container:not(:hover) .toast-item:last-child {
+        position: relative;
+        transform: translate3d(0, 0, 0) scale(1);
+        z-index: 100;
+        opacity: 1;
+        pointer-events: auto;
+    }
+    #toast-container:not(:hover) .toast-item:nth-last-child(2) {
+        transform: translate3d(0, 10px, 0) scale(0.96);
+        z-index: 90;
+        opacity: 0.9;
+    }
+    #toast-container:not(:hover) .toast-item:nth-last-child(3) {
+        transform: translate3d(0, 20px, 0) scale(0.92);
+        z-index: 80;
+        opacity: 0.8;
+    }
+    #toast-container:not(:hover) .toast-item:nth-last-child(n+4) {
+        transform: translate3d(0, 30px, 0) scale(0.88);
+        z-index: 70;
+        opacity: 0;
+        visibility: hidden;
+    }
+    #toast-container:hover .toast-item {
+        position: relative;
+        transform: translate3d(0, 0, 0) scale(1) !important;
+        opacity: 1 !important;
+        visibility: visible !important;
+        margin-bottom: 0.75rem;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    }
+    #toast-container:hover .toast-item:last-child {
+        margin-bottom: 0;
+    }
+
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: #f8fafc;
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 4px;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+      background: #94a3b8;
+    }
+
+    .feed-scrollbar::-webkit-scrollbar {
+      width: 4px;
+    }
+
+    /* Desktop Sidebar Collapse Styles */
+    @media (min-width: 768px) {
+      #main-sidebar {
+        transition:
+          width 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+          transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        overflow-x: hidden;
+      }
+
+      #main-sidebar.sidebar-collapsed {
+        width: 5rem;
+      }
+
+      #main-sidebar.sidebar-collapsed span {
+        display: none;
+      }
+
+      #main-sidebar.sidebar-collapsed .h-16 {
+        padding-left: 0 !important;
+        padding-right: 0 !important;
+        justify-content: center;
+      }
+
+      #main-sidebar.sidebar-collapsed .mr-3 {
+        margin-right: 0 !important;
+      }
+
+      #main-sidebar.sidebar-collapsed .nav-btn {
+        padding-left: 0 !important;
+        padding-right: 0 !important;
+        justify-content: center;
+      }
+
+      #main-sidebar.sidebar-collapsed .p-4 {
+        padding-left: 0.5rem !important;
+        padding-right: 0.5rem !important;
+      }
+    }
+
+    /* Premium UI Utilities */
+    .glass-card {
+      background: rgba(255, 255, 255, 0.7);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.3);
+    }
+
+    .premium-gradient-1 {
+      background: linear-gradient(135deg, #6366f1 0%, #a855f7 100%);
+    }
+
+    .premium-gradient-2 {
+      background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    }
+
+    .premium-gradient-3 {
+      background: linear-gradient(135deg, #f43f5e 0%, #e11d48 100%);
+    }
+
+    .premium-gradient-4 {
+      background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+    }
+
+    .card-hover {
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .card-hover:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 12px 24px -8px rgba(0, 0, 0, 0.15);
+    }
+
+    .animate-in {
+      animation: cardEnter 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
+    }
+
+    @keyframes cardEnter {
+      from {
+        opacity: 0;
+        transform: translateY(20px) scale(0.98);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+      }
+    }
+
+    .stagger-1 {
+      animation-delay: 0.1s;
+    }
+
+    .stagger-2 {
+      animation-delay: 0.2s;
+    }
+
+    .stagger-3 {
+      animation-delay: 0.3s;
+    }
+
+    .stagger-4 {
+      animation-delay: 0.4s;
+    }
+
+    .stat-pill {
+      @apply px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider shadow-sm border;
+    }
+
+    /* Privacy Mode: Financial Blur Utilities */
+    .blur-financial {
+      transition: filter 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    body.hide-financials .blur-financial {
+      filter: blur(7px) !important;
+      user-select: none !important;
+      pointer-events: none !important;
+    }
+
+    body.hide-financials canvas {
+      filter: blur(8px) !important;
+      pointer-events: none !important;
+      transition: filter 0.3s ease;
+    }
+  </style>
+</head>
+
+<body class="text-slate-800 antialiased h-screen w-screen overflow-hidden">
+  <!-- Toast Notification Container -->
+  <div id="toast-container" aria-live="polite"
+    class="fixed top-4 right-4 z-[9999] flex flex-col gap-2 w-full max-w-sm pointer-events-none"></div>
+
+  <!-- Global Modal Overlay -->
+  <div id="global-modal"
+    class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 hidden items-center justify-center p-4 opacity-0 transition-opacity duration-300">
+    <div id="modal-content"
+      class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden transform scale-95 transition-transform duration-300">
+      <!-- Modal Content Injected Here -->
+    </div>
+  </div>
+
+  <!-- Secondary Modal Overlay (used for nested dialogs like Client creation to preserve primary modal state) -->
+  <div id="secondary-modal"
+    class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[60] hidden items-center justify-center p-4 opacity-0 transition-opacity duration-300">
+    <div id="secondary-modal-content"
+      class="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden transform scale-95 transition-transform duration-300">
+      <!-- Secondary Modal Content Injected Here -->
+    </div>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- SLIDE-OVER DRAWER (Profile Detail View)    -->
+  <!-- ========================================== -->
+  <!-- SLIDE-OVER DRAWER (Employee Detail View) - REMOVED: Migrated to Command Center -->
+
+  <!-- ========================================== -->
+  <!-- SLIDE-OVER DRAWER (Admin Detail View)      -->
+  <!-- ========================================== -->
+  <div id="adminDrawerOverlay"
+    class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 hidden opacity-0 transition-opacity duration-300"
+    onclick="closeAdminDrawer()"></div>
+  <div id="adminDrawerPanel"
+    class="fixed inset-y-0 right-0 z-50 w-full max-w-md bg-white shadow-2xl transform translate-x-full transition-transform duration-300 flex flex-col">
+    <div class="px-6 py-6 border-b border-slate-100 bg-slate-50/50 flex items-start justify-between relative">
+      <button type="button" onclick="closeAdminDrawer()"
+        class="absolute top-6 right-6 text-slate-400 hover:text-slate-600 transition-colors p-1.5 rounded-md hover:bg-slate-200">
+        <i data-lucide="x" class="w-5 h-5"></i>
+      </button>
+      <div class="flex items-center space-x-4 mt-2">
+        <div id="ad_avatar"
+          class="w-14 h-14 rounded-full bg-slate-800 text-white flex items-center justify-center text-xl font-bold shadow-sm">
+          --
+        </div>
+        <div>
+          <h2 id="ad_username" class="text-lg font-bold text-slate-900 tracking-tight">
+            --
+          </h2>
+          <p id="ad_access" class="text-xs font-semibold px-2 py-0.5 mt-1 rounded bg-slate-900 text-white inline-block">
+            --
+          </p>
+        </div>
+      </div>
+    </div>
+    <div class="flex-1 overflow-y-auto p-6 bg-slate-50/30 space-y-6">
+      <div class="bg-white border border-slate-100 rounded-xl p-5 shadow-sm space-y-4">
+        <div class="flex items-start">
+          <i data-lucide="mail" class="w-4 h-4 text-slate-400 mt-0.5 mr-3"></i>
+          <div>
+            <p class="text-xs font-medium text-slate-500 mb-0.5">
+              Email Address
+            </p>
+            <a href="#" id="ad_email" class="text-sm font-medium text-brand-primary hover:underline">--</a>
+          </div>
+        </div>
+      </div>
+      <div class="grid grid-cols-2 gap-4 bg-white border border-slate-100 rounded-xl p-5 shadow-sm">
+        <div class="col-span-2">
+          <p class="text-xs font-medium text-slate-500 mb-1">Admin UUID</p>
+          <p id="ad_id"
+            class="text-xs font-mono text-slate-600 bg-slate-50 border border-slate-100 p-2 rounded break-all">
+            --
+          </p>
+        </div>
+        <div class="col-span-2 pt-2">
+          <p class="text-xs font-medium text-slate-500 mb-1">Status</p>
+          <p class="text-sm font-medium text-emerald-600 flex items-center gap-1.5">
+            <span class="w-1.5 h-1.5 bg-emerald-500 rounded-full"></span>
+            Active System Admin
+          </p>
+        </div>
+      </div>
+    </div>
+    <div class="p-6 border-t border-slate-100 bg-slate-50/50" id="ad_actions_area">
+      <!-- Dynamically Injected Actions -->
+    </div>
+  </div>
+
+  <!-- FULLSCREEN IMAGE MODAL -->
+  <div id="imageModalOverlay"
+    class="fixed inset-0 bg-slate-900/90 z-[70] hidden flex items-center justify-center p-4 transition-opacity opacity-0 duration-300"
+    onclick="closeImageModal()">
+    <button type="button" class="absolute top-6 right-6 text-white hover:text-slate-300 transition-colors p-2"
+      onclick="closeImageModal()">
+      <i data-lucide="x" class="w-8 h-8"></i>
+    </button>
+    <img id="imageModalContent" src=""
+      class="max-w-full max-h-full rounded-lg shadow-2xl scale-95 transition-transform duration-300"
+      onclick="event.stopPropagation()" />
+  </div>
+
+  <!-- Milestone Details Modal -->
+  <div id="modal-milestone-details"
+    class="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-50 flex items-center justify-center p-4 hidden animate-in fade-in duration-200">
+    <div
+      class="bg-white rounded-3xl shadow-2xl border border-slate-100 max-w-xl w-full overflow-hidden animate-in zoom-in-95 duration-200">
+
+      <!-- Modal Header -->
+      <div class="px-6 py-5 bg-slate-50 border-b border-slate-100 flex items-center justify-between">
+        <div class="flex items-center gap-3">
+          <div
+            class="w-10 h-10 rounded-xl bg-indigo-50 flex items-center justify-center text-indigo-600 shadow-sm border border-indigo-100">
+            <i data-lucide="milestone" class="w-5 h-5"></i>
+          </div>
+          <div>
+            <h3 class="text-base font-bold text-slate-800" id="md_title">Milestone Tracker</h3>
+            <p class="text-xs font-semibold text-brand-600" id="md_project_name">Project: --</p>
+          </div>
+        </div>
+        <button onclick="closeMilestoneDetailsModal()"
+          class="w-8 h-8 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 flex items-center justify-center transition-all">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <!-- Modal Body -->
+      <div class="p-6 space-y-6 max-h-[70vh] overflow-y-auto">
+
+        <!-- ================= VIEW MODE ================= -->
+        <div id="md_view_mode" class="space-y-6">
+
+          <!-- Milestone Title Card Banner -->
+          <div
+            class="bg-gradient-to-r from-slate-50 to-slate-100/50 rounded-2xl p-5 border border-slate-200/60 relative overflow-hidden flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div>
+              <span class="text-[9px] font-black tracking-widest text-slate-400 uppercase">Active Milestone</span>
+              <h4 class="text-lg font-black text-slate-800 mt-0.5" id="md_name_view">--</h4>
+            </div>
+            <div class="flex items-center gap-2.5 shrink-0">
+              <span id="md_status_view_badge"
+                class="px-3 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider shadow-sm">--</span>
+              <span id="md_work_type_view_badge"
+                class="px-3 py-1.5 bg-indigo-50 text-indigo-700 border border-indigo-100 rounded-full text-xs font-bold uppercase tracking-wider shadow-sm">--</span>
+            </div>
+          </div>
+
+          <!-- Section 1: Execution Analytics Strategy (Smart Fields) -->
+          <div class="space-y-3">
+            <h5 class="text-xs font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2"><i
+                data-lucide="git-pull-request" class="w-3.5 h-3.5"></i> Smart Tracking Parameters</h5>
+            <div
+              class="grid grid-cols-1 md:grid-cols-2 gap-4 bg-indigo-50/20 rounded-2xl p-4 border border-indigo-100/30">
+              <div class="space-y-3">
+                <div>
+                  <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider">Sprint
+                    Scope</label>
+                  <p class="text-sm font-bold text-slate-700 mt-0.5 flex items-center gap-1.5"><i data-lucide="play"
+                      class="w-3.5 h-3.5 text-indigo-500"></i> <span id="md_sprint_view">--</span></p>
+                </div>
+                <div>
+                  <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider">Target
+                    Module</label>
+                  <p class="text-sm font-bold text-slate-700 mt-0.5 flex items-center gap-1.5"><i
+                      data-lucide="component" class="w-3.5 h-3.5 text-indigo-500"></i> <span
+                      id="md_module_view">--</span></p>
+                </div>
+                <div>
+                  <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider">Assigned
+                    Feature</label>
+                  <p class="text-sm font-bold text-slate-700 mt-0.5 flex items-center gap-1.5"><i data-lucide="sparkles"
+                      class="w-3.5 h-3.5 text-indigo-500"></i> <span id="md_feature_view">--</span></p>
+                </div>
+              </div>
+              <div class="space-y-3 border-t md:border-t-0 md:border-l border-slate-200/60 pt-3 md:pt-0 md:pl-4">
+                <div>
+                  <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider">Target
+                    Repository</label>
+                  <p class="text-sm font-bold text-slate-700 mt-0.5 flex items-center gap-1.5"><i
+                      data-lucide="folder-git-2" class="w-3.5 h-3.5 text-slate-500"></i> <span id="md_repo_view"
+                      class="font-mono text-xs select-all bg-slate-100 px-2 py-0.5 rounded border border-slate-200/50">--</span>
+                  </p>
+                </div>
+                <div>
+                  <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider">Work Type
+                    Classification</label>
+                  <p class="text-sm font-bold text-slate-700 mt-0.5 flex items-center gap-1.5"><i data-lucide="cpu"
+                      class="w-3.5 h-3.5 text-brand-500"></i> <span id="md_work_type_view">--</span></p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Section 2: Timeline Comparative Ledger -->
+          <div class="space-y-3">
+            <h5 class="text-xs font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2"><i
+                data-lucide="calendar" class="w-3.5 h-3.5"></i> Timeline Ledger</h5>
+            <div class="grid grid-cols-2 gap-4">
+              <!-- Expected Box -->
+              <div class="bg-slate-50 rounded-2xl p-4 border border-slate-200/60">
+                <span class="text-[9px] font-black tracking-wider text-amber-600 uppercase flex items-center gap-1"><i
+                    data-lucide="clock-3" class="w-3 h-3"></i> Expected Window</span>
+                <div class="mt-2.5 space-y-2">
+                  <div>
+                    <label class="block text-[10px] text-slate-400">Start Date</label>
+                    <p class="text-xs font-bold text-slate-700" id="md_expected_start_view">--</p>
+                  </div>
+                  <div>
+                    <label class="block text-[10px] text-slate-400">Completion Date</label>
+                    <p class="text-xs font-bold text-slate-700" id="md_expected_end_view">--</p>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Actual Box -->
+              <div class="bg-slate-50 rounded-2xl p-4 border border-slate-200/60">
+                <span class="text-[9px] font-black tracking-wider text-emerald-600 uppercase flex items-center gap-1"><i
+                    data-lucide="check-circle" class="w-3 h-3"></i> Real-time Execution</span>
+                <div class="mt-2.5 space-y-2">
+                  <div>
+                    <label class="block text-[10px] text-slate-400">Actual Start</label>
+                    <p class="text-xs font-bold text-slate-700" id="md_actual_start_view">--</p>
+                  </div>
+                  <div>
+                    <label class="block text-[10px] text-slate-400">Actual Completion</label>
+                    <p class="text-xs font-bold text-slate-700" id="md_actual_end_view">--</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Remarks Section -->
+          <div class="space-y-2">
+            <label class="block text-xs font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2"><i
+                data-lucide="message-square" class="w-3.5 h-3.5"></i> Executive Remarks</label>
+            <p class="text-sm text-slate-600 bg-slate-50 p-4 rounded-2xl border-l-4 border-indigo-500/50 italic leading-relaxed"
+              id="md_remarks_view">--</p>
+          </div>
+          <!-- Assigned Employees Section -->
+          <div class="space-y-2 border-t border-slate-100 pt-4">
+            <label class="block text-xs font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2"><i
+                data-lucide="users" class="w-3.5 h-3.5"></i> Assigned Employees</label>
+            <div id="md_assigned_employees_view" class="flex flex-wrap gap-2 text-slate-600">
+              <!-- Dynamically populated tags -->
+            </div>
+          </div>
+        </div>
+
+        <!-- ================= EDIT MODE (Form) ================= -->
+        <form id="md_edit_mode" class="space-y-5 hidden" onsubmit="saveMilestoneEdit(event)">
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+            <div class="col-span-1 md:col-span-2">
+              <label class="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-1.5">Milestone
+                Title</label>
+              <div class="relative">
+                <i data-lucide="edit-3" class="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2"></i>
+                <input type="text" id="mde_name" required
+                  class="w-full pl-9 pr-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold outline-none focus:bg-white focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all shadow-sm" />
+              </div>
+            </div>
+
+            <div>
+              <label class="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-1.5">Track Status</label>
+              <div class="relative">
+                <select id="mde_status"
+                  class="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold outline-none focus:bg-white focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all shadow-sm appearance-none">
+                  <option value="Pending">Pending</option>
+                  <option value="Active">Active</option>
+                  <option value="Completed">Completed</option>
+                  <option value="Delayed">Delayed</option>
+                </select>
+                <i data-lucide="chevron-down"
+                  class="w-4 h-4 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none"></i>
+              </div>
+            </div>
+
+            <div>
+              <label class="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-1.5">Work Type</label>
+              <div class="relative">
+                <select id="mde_work_type"
+                  class="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold outline-none focus:bg-white focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all shadow-sm appearance-none">
+                  <option value="Backend">Backend</option>
+                  <option value="Frontend">Frontend</option>
+                  <option value="Full Stack">Full Stack</option>
+                  <option value="DevOps">DevOps</option>
+                  <option value="Design">Design</option>
+                </select>
+                <i data-lucide="chevron-down"
+                  class="w-4 h-4 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none"></i>
+              </div>
+            </div>
+
+            <!-- Smart Fields in Edit Mode -->
+            <div>
+              <label class="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-1.5">Sprint Name</label>
+              <input type="text" id="mde_sprint"
+                class="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold outline-none focus:bg-white focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all shadow-sm" />
+            </div>
+
+            <div>
+              <label class="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-1.5">Module Name</label>
+              <input type="text" id="mde_module"
+                class="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold outline-none focus:bg-white focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all shadow-sm" />
+            </div>
+
+            <div>
+              <label class="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-1.5">Feature Name</label>
+              <input type="text" id="mde_feature"
+                class="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold outline-none focus:bg-white focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all shadow-sm" />
+            </div>
+
+            <div>
+              <label class="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-1.5">Repository
+                (owner/repo)</label>
+              <input type="text" id="mde_repo"
+                class="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold outline-none focus:bg-white focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all shadow-sm" />
+            </div>
+
+            <div class="col-span-1 md:col-span-2 border-t border-slate-100 pt-3 mt-1">
+              <label class="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-1.5">Expected Timeline
+                Setup</label>
+              <div class="grid grid-cols-2 gap-4">
+                <div>
+                  <label class="block text-[10px] text-slate-400 uppercase font-black tracking-wider mb-1">Expected
+                    Start</label>
+                  <input type="date" id="mde_expected_start" required
+                    class="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold outline-none focus:bg-white focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all shadow-sm" />
+                </div>
+                <div>
+                  <label class="block text-[10px] text-slate-400 uppercase font-black tracking-wider mb-1">Expected
+                    Complete</label>
+                  <input type="date" id="mde_expected_end" required
+                    class="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold outline-none focus:bg-white focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all shadow-sm" />
+                </div>
+              </div>
+            </div>
+
+            <div class="col-span-1 md:col-span-2 border-t border-slate-100 pt-3">
+              <label class="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-1.5">Real-time Execution
+                Timings</label>
+              <div class="grid grid-cols-2 gap-4">
+                <div>
+                  <label class="block text-[10px] text-slate-400 uppercase font-black tracking-wider mb-1">Actual
+                    Start</label>
+                  <input type="date" id="mde_actual_start"
+                    class="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold outline-none focus:bg-white focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all shadow-sm" />
+                </div>
+                <div>
+                  <label class="block text-[10px] text-slate-400 uppercase font-black tracking-wider mb-1">Actual
+                    Complete</label>
+                  <input type="date" id="mde_actual_end"
+                    class="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold outline-none focus:bg-white focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all shadow-sm" />
+                </div>
+              </div>
+            </div>
+
+            <div class="col-span-1 md:col-span-2">
+              <label class="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-1.5">Remarks / Progression
+                Log</label>
+              <textarea id="mde_remarks" rows="2"
+                class="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium outline-none focus:bg-white focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all shadow-sm resize-none"
+                placeholder="Log internal comments, issues, or progression highlights..."></textarea>
+            </div>
+            <!-- Assigned Employees Edit Section -->
+            <div class="col-span-1 md:col-span-2 border-t border-slate-100 pt-4">
+              <label class="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-1.5">Assign Employees to
+                Milestone</label>
+              <div id="md_assigned_employees_edit" class="w-full">
+                <!-- Dynamically populated checkboxes -->
+              </div>
+            </div>
+          </div>
+        </form>
+      </div>
+
+      <!-- Modal Footer -->
+      <div class="px-6 py-4 border-t border-slate-100 bg-slate-50 flex justify-end gap-2.5">
+        <button type="button" id="btn-cancel-milestone-edit" onclick="toggleMilestoneEdit(false)"
+          class="px-4 py-2 text-slate-600 hover:bg-slate-200 rounded-lg font-bold text-sm transition-all border border-slate-300 bg-white hidden shadow-sm">
+          Cancel
+        </button>
+        <button type="button" onclick="closeMilestoneDetailsModal()" id="btn-close-milestone-details"
+          class="px-4 py-2 text-slate-600 hover:bg-slate-200 rounded-lg font-bold text-sm transition-all border border-slate-300 bg-white shadow-sm">
+          Close Window
+        </button>
+        <button type="button" id="btn-edit-milestone-toggle" onclick="toggleMilestoneEdit(true)"
+          class="px-4 py-2 bg-slate-900 hover:bg-black text-white rounded-lg font-bold text-sm transition-all shadow-md">
+          Edit Details
+        </button>
+        <button type="button" id="btn-save-milestone-edit"
+          onclick="document.getElementById('md_edit_mode').requestSubmit()"
+          class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-bold text-sm transition-all shadow-md hidden">
+          Save Changes
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main SPA Mount Point -->
+  <div id="app" class="h-full w-full"></div>
+
+<!-- Dynamically injected modules -->
+<script src="js/app.js"></script>
+<script src="sections/dashboard/dashboard.js"></script>
+<script src="sections/projects/project_tooltip.js"></script>
+<script src="sections/projects/project_directory.js"></script>
+<script src="sections/projects/project_details.js"></script>
+<script src="sections/clients/clients.js"></script>
+<script src="sections/workforce/workforce.js"></script>
+<script src="sections/attendance/attendance.js"></script>
+<script src="sections/timesheets/timesheets.js"></script>
+<script src="sections/profile/profile.js"></script>
+<script src="sections/operations/operational_obligations.js"></script>
+
+
+  <!-- Credentials Modal Overlay -->
+  <div id="credentialsModalOverlay"
+    class="fixed inset-0 z-[60] bg-slate-900/40 backdrop-blur-sm hidden opacity-0 transition-opacity duration-300 flex items-center justify-center p-4">
+    <div id="credentialsModalPanel"
+      class="bg-white rounded-2xl shadow-xl w-full max-w-md scale-95 transition-transform duration-300 overflow-hidden transform">
+      <div class="px-6 py-5 border-b border-slate-100 bg-slate-50/80 flex justify-between items-center">
+        <div class="flex items-center space-x-3">
+          <div class="bg-brand-100 text-brand-600 p-2 rounded-lg">
+            <i data-lucide="key" class="w-5 h-5"></i>
+          </div>
+          <h3 class="font-bold text-lg text-slate-800 tracking-tight">
+            Account Credentials
+          </h3>
+        </div>
+        <button type="button" onclick="closeCredentialsModal()"
+          class="text-slate-400 hover:text-slate-600 transition-colors p-1.5 rounded-md hover:bg-slate-200">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <div class="p-6">
+        <p class="text-sm text-slate-600 mb-6 leading-relaxed">
+          Employee created successfully. Please securely share these temporary
+          credentials. They will be required to log in for the first time.
+        </p>
+
+        <div class="space-y-4">
+          <div class="bg-slate-50 border border-slate-200 rounded-lg p-4 relative">
+            <p class="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1">
+              Username
+            </p>
+            <p id="cred_username" class="text-base font-mono font-medium text-slate-900 break-all select-all">
+              --
+            </p>
+          </div>
+
+          <div class="bg-slate-50 border border-slate-200 rounded-lg p-4 relative pr-12">
+            <p class="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1">
+              Temporary Password
+            </p>
+            <input type="password" id="cred_password"
+              class="w-full bg-transparent border-none p-0 text-base font-mono font-medium text-brand-700 outline-none select-all"
+              readonly value="--" />
+            <button onclick="togglePasswordVisibility()"
+              class="absolute right-3 top-1/2 mt-1 text-slate-400 hover:text-slate-600 transition-colors focus:outline-none">
+              <i data-lucide="eye" class="w-5 h-5"></i>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div
+        class="px-6 py-4 border-t border-slate-100 bg-slate-50/50 flex flex-col sm:flex-row justify-end gap-3 sm:gap-2">
+        <button type="button" onclick="closeCredentialsModal()"
+          class="w-full sm:w-auto px-4 py-2 text-slate-600 hover:bg-slate-200 rounded-lg font-medium transition-colors border border-slate-300 bg-white">
+          Close
+        </button>
+        <a id="cred_email_btn" href="#"
+          class="w-full sm:w-auto px-4 py-2 text-brand-700 hover:bg-brand-50 rounded-lg font-medium transition-colors border border-brand-200 bg-white inline-flex items-center justify-center gap-2">
+          <i data-lucide="mail-plus" class="w-4 h-4"></i> Email User
+        </a>
+        <button type="button" id="btnCopyCreds" onclick="copyCredentialsToClipboard()"
+          class="w-full sm:w-auto px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-lg font-medium shadow-sm transition-colors inline-flex items-center justify-center gap-2">
+          <i data-lucide="copy" class="w-4 h-4"></i> Copy Password
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Global Project Employees Tooltip -->
+  <div id="global-project-tooltip"
+    class="fixed pointer-events-none z-[9999] bg-slate-950 text-white text-[11px] rounded-xl p-3 shadow-xl border border-slate-800 w-60 opacity-0 scale-95 transition-all duration-200 invisible whitespace-normal">
+  </div>
+</body>
+
+</html>

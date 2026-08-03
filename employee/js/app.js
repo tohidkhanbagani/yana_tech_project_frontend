@@ -1,216 +1,3 @@
-<!DOCTYPE html>
-<html lang="en">
-
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Yana OS | Employee Workspace</title>
-
-    <!-- Google Fonts: Inter -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-
-    <!-- Lucide Icons -->
-    <script src="https://unpkg.com/lucide@latest"></script>
-
-    <!-- Tailwind CSS -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    fontFamily: { sans: ['Inter', 'sans-serif'] },
-                    colors: {
-                        brand: {
-                            dark: '#0f172a', primary: '#4f46e5',
-                            accent: '#10b981', alert: '#f43f5e',
-                            surface: '#f8fafc'
-                        }
-                    }
-                }
-            }
-        }
-    </script>
-
-    <style>
-        body {
-            font-family: 'Inter', sans-serif;
-            background-color: #f8fafc;
-            overflow-x: hidden;
-        }
-
-        .input-field {
-            transition: all 0.3s ease;
-        }
-
-        .input-field:focus {
-            box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.2);
-            border-color: #4f46e5;
-        }
-
-        @keyframes slideInRight {
-            from {
-                transform: translateX(100%);
-                opacity: 0;
-            }
-
-            to {
-                transform: translateX(0);
-                opacity: 1;
-            }
-        }
-
-        @keyframes fadeOut {
-            from {
-                opacity: 1;
-            }
-
-            to {
-                opacity: 0;
-            }
-        }
-
-        .toast-enter {
-            animation: slideInRight 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-        }
-
-        .toast-exit {
-            animation: fadeOut 0.4s ease forwards;
-        }
-
-        ::-webkit-scrollbar {
-            width: 8px;
-            height: 8px;
-        }
-
-        ::-webkit-scrollbar-track {
-            background: #f1f1f1;
-        }
-
-        ::-webkit-scrollbar-thumb {
-            background: #cbd5e1;
-            border-radius: 4px;
-        }
-
-        ::-webkit-scrollbar-thumb:hover {
-            background: #94a3b8;
-        }
-
-        /* Desktop Sidebar Collapse Styles */
-        @media (min-width: 768px) {
-            #main-sidebar {
-                transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1), transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-                overflow-x: hidden;
-            }
-
-            #main-sidebar.sidebar-collapsed {
-                width: 5rem;
-            }
-
-            #main-sidebar.sidebar-collapsed span {
-                display: none;
-            }
-
-            #main-sidebar.sidebar-collapsed .h-16 {
-                padding-left: 0 !important;
-                padding-right: 0 !important;
-                justify-content: center;
-            }
-
-            #main-sidebar.sidebar-collapsed .mr-3 {
-                margin-right: 0 !important;
-            }
-
-            #main-sidebar.sidebar-collapsed .nav-btn {
-                padding-left: 0 !important;
-                padding-right: 0 !important;
-                justify-content: center;
-            }
-
-            #main-sidebar.sidebar-collapsed .p-4 {
-                padding-left: 0.5rem !important;
-                padding-right: 0.5rem !important;
-            }
-        }
-
-        /* Custom stacked notification CSS overrides */
-        #toast-container {
-            display: block !important;
-            pointer-events: auto;
-        }
-        .toast-item {
-            position: absolute;
-            right: 0;
-            top: 0;
-            width: 100%;
-            transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
-            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
-        }
-        #toast-container:not(:hover) .toast-item {
-            pointer-events: none;
-        }
-        #toast-container:not(:hover) .toast-item:last-child {
-            position: relative;
-            transform: translate3d(0, 0, 0) scale(1);
-            z-index: 100;
-            opacity: 1;
-            pointer-events: auto;
-        }
-        #toast-container:not(:hover) .toast-item:nth-last-child(2) {
-            transform: translate3d(0, 10px, 0) scale(0.96);
-            z-index: 90;
-            opacity: 0.9;
-        }
-        #toast-container:not(:hover) .toast-item:nth-last-child(3) {
-            transform: translate3d(0, 20px, 0) scale(0.92);
-            z-index: 80;
-            opacity: 0.8;
-        }
-        #toast-container:not(:hover) .toast-item:nth-last-child(n+4) {
-            transform: translate3d(0, 30px, 0) scale(0.88);
-            z-index: 70;
-            opacity: 0;
-            visibility: hidden;
-        }
-        #toast-container:hover .toast-item {
-            position: relative;
-            transform: translate3d(0, 0, 0) scale(1) !important;
-            opacity: 1 !important;
-            visibility: visible !important;
-            margin-bottom: 0.75rem;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-        }
-        #toast-container:hover .toast-item:last-child {
-            margin-bottom: 0;
-        }
-    </style>
-</head>
-
-<body class="text-slate-800 antialiased h-screen w-screen overflow-hidden">
-
-    <!-- Toast Notification Container -->
-    <div id="toast-container"
-        class="fixed top-4 right-4 z-[9999] flex flex-col gap-2 w-full max-w-sm pointer-events-none"></div>
-
-    <!-- Global Modal -->
-    <div id="globalModal"
-        class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
-        <div class="bg-white rounded-2xl shadow-xl w-full max-w-lg overflow-hidden flex flex-col max-h-[90vh]">
-            <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50 shrink-0">
-                <h3 id="modalTitle" class="text-lg font-bold text-slate-800 tracking-tight"></h3>
-                <button onclick="closeModal()"
-                    class="text-slate-400 hover:text-slate-600 transition-colors p-1 rounded-lg"><i data-lucide="x"
-                        class="w-5 h-5"></i></button>
-            </div>
-            <div id="modalBody" class="p-6 overflow-y-auto"></div>
-        </div>
-    </div>
-
-    <!-- Main SPA Mount Point -->
-    <div id="app" class="h-full w-full"></div>
-
-    <script>
         /**
          * YANA OS - EMPLOYEE PORTAL ENGINE
          */
@@ -218,7 +5,7 @@
         const CONFIG = {
             API_BASE_URL: 'https://yana-tech-project-backend-d0sj.onrender.com',
             TOKEN_KEY: 'yana_os_token',
-            LOGIN_URL: "index.html"
+            LOGIN_URL: '../login.html'
         };
 
         const state = {
@@ -657,547 +444,7 @@
         }
 
         // --- View Templates ---
-        function getEmployeeDashboardTemplate() {
-            const now = new Date();
-            const startOfWeek = new Date(now.setDate(now.getDate() - now.getDay()));
-            startOfWeek.setHours(0, 0, 0, 0);
-
-            // Determine active/today attendance status
-            // First, find if there is an active check-in (no check-out time)
-            let activeAttendance = null;
-            if (state.myAttendance && state.myAttendance.length > 0) {
-                activeAttendance = state.myAttendance.find(a => a.check_in_time && !a.check_out_time);
-            }
-
-            // Next, find today's completed attendance (using local date string YYYY-MM-DD)
-            const localTodayStr = new Date().toLocaleDateString('sv-SE'); // Formats as YYYY-MM-DD local time
-            let todayAttendance = null;
-            if (state.myAttendance && state.myAttendance.length > 0) {
-                todayAttendance = state.myAttendance.find(a => {
-                    const checkInDate = a.check_in_time ? a.check_in_time.split(' ')[0] : (a.date ? a.date.split(' ')[0] : '');
-                    return checkInDate === localTodayStr;
-                });
-            }
-
-            // Decide which attendance to show in the widget
-            let attendanceWidgetHtml = '';
-            if (activeAttendance) {
-                // Show checked-in state
-                const checkInDateObj = new Date(activeAttendance.check_in_time);
-                const checkInTime = checkInDateObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-                const isToday = activeAttendance.check_in_time.startsWith(localTodayStr);
-                const dateLabel = isToday ? 'today' : `on ${checkInDateObj.toLocaleDateString([], { month: 'short', day: 'numeric' })}`;
-
-                attendanceWidgetHtml = `
-                    <div class="bg-gradient-to-r from-emerald-600 to-teal-500 rounded-2xl p-6 shadow-md flex flex-col md:flex-row items-center justify-between gap-4 mb-8 animate-in fade-in duration-350">
-                        <div class="flex items-center gap-4">
-                            <div class="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center border border-white/20 shrink-0">
-                                <i data-lucide="check-circle" class="w-6 h-6 text-white animate-pulse"></i>
-                            </div>
-                            <div>
-                                <h4 class="text-white font-bold text-lg flex items-center gap-2">You are Checked In</h4>
-                                <p class="text-emerald-50 text-xs mt-0.5">Checked in at ${checkInTime} ${dateLabel}. Have a great workday!</p>
-                            </div>
-                        </div>
-                        
-                        <!-- Premium Clock Widget showing elapsed work hours (capped to hide overtime) -->
-                        <div class="flex items-center gap-3 bg-white/10 border border-white/20 rounded-xl px-4 py-2 text-white shadow-inner backdrop-blur-sm shrink-0">
-                            <div class="flex flex-col items-center">
-                                <span class="text-[9px] font-black tracking-widest text-emerald-100 uppercase">Worktime Elapsed</span>
-                                <span id="elapsed-timer-clock" class="text-lg font-black font-mono tracking-wider mt-0.5" data-checkin="${activeAttendance.check_in_time}">00:00:00</span>
-                            </div>
-                            <div class="w-7 h-7 rounded-lg bg-white/15 flex items-center justify-center animate-spin" style="animation-duration: 10s">
-                                <i data-lucide="clock" class="w-4 h-4 text-emerald-100"></i>
-                            </div>
-                        </div>
-
-                        <button onclick="handleCheckOut(event)" class="bg-white/20 hover:bg-white/30 border border-white/30 text-white font-bold py-2.5 px-6 rounded-xl shadow-lg transition-all flex items-center shrink-0 backdrop-blur-sm hover:scale-[1.02] active:scale-[0.98]">
-                            <i data-lucide="log-out" class="w-4 h-4 mr-2"></i> Check Out
-                        </button>
-                    </div>
-                `;
-            } else if (todayAttendance) {
-                // Show shift completed state or absent state
-                const checkInTime = todayAttendance.check_in_time ? new Date(todayAttendance.check_in_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--:--';
-                const checkOutTime = todayAttendance.check_out_time ? new Date(todayAttendance.check_out_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--:--';
-                const totalHrs = todayAttendance.total_hours ? (h => {
-                    const tm = Math.round(h * 60);
-                    const hrs = Math.floor(tm / 60);
-                    const mins = tm % 60;
-                    return `${hrs}h ${mins < 10 ? '0' : ''}${mins}m`;
-                })(todayAttendance.total_hours) : '--';
-                
-                if (todayAttendance.status === 'Absent') {
-                    // Employee was marked absent, but since they have no active attendance, show Check-In button!
-                    // This allows them to check in even if auto-marked absent.
-                    attendanceWidgetHtml = `
-                        <div class="bg-gradient-to-r from-brand-dark to-slate-800 rounded-2xl p-6 shadow-md flex flex-col sm:flex-row items-center justify-between gap-4 mb-8 animate-in fade-in duration-350">
-                            <div>
-                                <h4 class="text-white font-bold text-lg flex items-center gap-2"><i data-lucide="clock" class="w-5 h-5 text-rose-400"></i> Marked Absent</h4>
-                                <p class="text-slate-300 text-sm mt-1">You were auto-marked absent today. You can still check in to start your work.</p>
-                            </div>
-                            <button onclick="handleCheckIn(event)" class="bg-emerald-500 hover:bg-emerald-600 text-white font-bold py-2.5 px-6 rounded-xl shadow-lg transition-all flex items-center shrink-0">
-                                <i data-lucide="log-in" class="w-4 h-4 mr-2"></i> Check In Now
-                            </button>
-                        </div>
-                    `;
-                } else {
-                    attendanceWidgetHtml = `
-                        <div class="bg-slate-200/50 border border-slate-200 rounded-2xl p-6 flex flex-col sm:flex-row items-center justify-between gap-4 mb-8 animate-in fade-in duration-350">
-                            <div>
-                                <h4 class="text-slate-700 font-bold text-lg flex items-center gap-2"><i data-lucide="check-check" class="w-5 h-5 text-brand-primary"></i> Shift Completed</h4>
-                                <p class="text-slate-500 text-sm mt-1">In: ${checkInTime} &bull; Out: ${checkOutTime} &bull; <span class="font-bold text-slate-700">${totalHrs}</span> total.</p>
-                            </div>
-                        </div>
-                    `;
-                }
-            } else {
-                // Show default check-in state
-                attendanceWidgetHtml = `
-                    <div class="bg-gradient-to-r from-brand-dark to-slate-800 rounded-2xl p-6 shadow-md flex flex-col sm:flex-row items-center justify-between gap-4 mb-8 animate-in fade-in duration-350">
-                        <div>
-                            <h4 class="text-white font-bold text-lg flex items-center gap-2"><i data-lucide="clock" class="w-5 h-5 text-emerald-400"></i> Start Your Day</h4>
-                            <p class="text-slate-300 text-sm mt-1">Remember to check in to record your attendance today.</p>
-                        </div>
-                        <button onclick="handleCheckIn(event)" class="bg-emerald-500 hover:bg-emerald-600 text-white font-bold py-2.5 px-6 rounded-xl shadow-lg transition-all flex items-center shrink-0">
-                            <i data-lucide="log-in" class="w-4 h-4 mr-2"></i> Check In Now
-                        </button>
-                    </div>
-                `;
-            }
-
-            // --- 1. Compute Dashboard Summaries (3 Blocks) ---
-            const activeProjectIds = new Set(state.projects ? state.projects.map(p => p.id) : []);
-            const projectsAssignedCount = state.projects ? state.projects.length : 0;
-            
-            // Only consider milestones that belong to active/non-completed projects
-            let activeMilestonesForActiveProjects = [];
-            if (state.myMilestones) {
-                state.myMilestones.forEach(m => {
-                    if (activeProjectIds.has(m.project_id)) {
-                        activeMilestonesForActiveProjects.push(m);
-                    }
-                });
-            }
-
-            const pendingMilestones = activeMilestonesForActiveProjects.filter(m => (m.status || '').toLowerCase() !== 'completed');
-            const activeMilestonesCount = pendingMilestones.length;
-
-            let upcomingDeadlinesCount = 0;
-            let overdueDeadlinesCount = 0;
-            const nowTime = new Date();
-            nowTime.setHours(0, 0, 0, 0);
-            const warningLimit = new Date();
-            warningLimit.setDate(nowTime.getDate() + 7); // 7 days window
-            warningLimit.setHours(23, 59, 59, 999);
-
-            // Build work deadlines radar lists
-            let deadlineAlertsList = [];
-
-            // Check projects deadlines (only active projects)
-            if (state.projects) {
-                state.projects.forEach(p => {
-                    if (p.end_date && p.end_date !== 'N/A' && p.status !== 'Completed') {
-                        const pDeadline = new Date(p.end_date);
-                        if (!isNaN(pDeadline.getTime())) {
-                            if (pDeadline < nowTime) {
-                                overdueDeadlinesCount++;
-                                deadlineAlertsList.push({
-                                    type: 'Project Overdue',
-                                    name: p.name,
-                                    daysText: 'Overdue',
-                                    dateText: p.end_date,
-                                    isOverdue: true
-                                });
-                            } else if (pDeadline >= nowTime && pDeadline <= warningLimit) {
-                                upcomingDeadlinesCount++;
-                                const diffDays = Math.ceil((pDeadline - nowTime) / (1000 * 60 * 60 * 24));
-                                deadlineAlertsList.push({
-                                    type: 'Project Deadline',
-                                    name: p.name,
-                                    daysText: `Due in ${diffDays} day${diffDays > 1 ? 's' : ''}`,
-                                    dateText: p.end_date,
-                                    isOverdue: false
-                                });
-                            }
-                        }
-                    }
-                });
-            }
-
-            // Check milestones deadlines (only milestones belonging to active projects and which are pending/active)
-            pendingMilestones.forEach(m => {
-                if (m.expected_end) {
-                    const mDeadline = new Date(m.expected_end);
-                    if (!isNaN(mDeadline.getTime())) {
-                        if (mDeadline < nowTime) {
-                            overdueDeadlinesCount++;
-                            deadlineAlertsList.push({
-                                type: 'Milestone Overdue',
-                                name: `${m.projectName} &bull; ${m.milestone_name}`,
-                                daysText: 'Overdue',
-                                dateText: new Date(m.expected_end).toLocaleDateString([], { month: 'short', day: 'numeric' }),
-                                isOverdue: true
-                            });
-                        } else if (mDeadline >= nowTime && mDeadline <= warningLimit) {
-                            upcomingDeadlinesCount++;
-                            const diffDays = Math.ceil((mDeadline - nowTime) / (1000 * 60 * 60 * 24));
-                            deadlineAlertsList.push({
-                                type: 'Milestone Deadline',
-                                name: `${m.projectName} &bull; ${m.milestone_name}`,
-                                daysText: `Due in ${diffDays} day${diffDays > 1 ? 's' : ''}`,
-                                dateText: new Date(m.expected_end).toLocaleDateString([], { month: 'short', day: 'numeric' }),
-                                isOverdue: false
-                            });
-                        }
-                    }
-                }
-            });
-
-            // Sort deadlines list: Overdue first, then upcoming soonest first
-            deadlineAlertsList.sort((a, b) => {
-                if (a.isOverdue && !b.isOverdue) return -1;
-                if (!a.isOverdue && b.isOverdue) return 1;
-                return new Date(a.dateText) - new Date(b.dateText);
-            });
-
-            // --- 2. Milestone board shower list generation (filter out ended projects) ---
-            const showActive = (state.milestoneTab || 'active') === 'active';
-            const filteredMilestones = activeMilestonesForActiveProjects.filter(m => {
-                const isComp = (m.status || '').toLowerCase() === 'completed';
-                return showActive ? !isComp : isComp;
-            });
-
-            const milestonesHtml = filteredMilestones.map(m => {
-                const isDelayed = m.is_delayed || (m.status || '').toLowerCase() === 'delayed';
-                const dueDate = m.expected_end ? new Date(m.expected_end).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' }) : 'N/A';
-                const startDate = m.expected_start ? new Date(m.expected_start).toLocaleDateString([], { month: 'short', day: 'numeric' }) : 'N/A';
-                
-                // Tech badge
-                const techBadge = m.work_type ? `<span class="px-2 py-0.5 bg-slate-100 text-slate-600 rounded text-[10px] font-semibold uppercase tracking-wider">${m.work_type}</span>` : '';
-                
-                // Status badge class
-                let badgeClass = 'bg-slate-100 text-slate-600 border-slate-200';
-                if ((m.status || '').toLowerCase() === 'active') badgeClass = 'bg-emerald-50 text-emerald-700 border-emerald-200';
-                else if (isDelayed) badgeClass = 'bg-rose-50 text-rose-700 border-rose-200 animate-pulse';
-                else if ((m.status || '').toLowerCase() === 'completed') badgeClass = 'bg-indigo-50 text-indigo-700 border-indigo-200';
-                
-                // Delay warning (past expected end and not completed)
-                let riskAlertsHtml = '';
-                if (isDelayed && (m.status || '').toLowerCase() !== 'completed') {
-                    riskAlertsHtml += `
-                        <div class="mt-2 px-3 py-2 bg-rose-50/50 border border-rose-100 rounded-xl flex items-center gap-2 text-rose-700 text-xs font-semibold">
-                            <i data-lucide="clock" class="w-4 h-4 text-rose-500 shrink-0"></i>
-                            <span>Milestone Overdue: Expected end date was ${dueDate}</span>
-                        </div>
-                    `;
-                }
-
-                return `
-                    <div class="p-5 hover:bg-slate-50/50 transition-colors flex flex-col md:flex-row md:items-center justify-between gap-4">
-                        <div class="flex-1 min-w-0">
-                            <div class="flex items-center gap-2 flex-wrap mb-1.5">
-                                <h5 class="font-bold text-slate-800 text-sm md:text-base truncate max-w-md">${m.milestone_name}</h5>
-                                ${techBadge}
-                            </div>
-                            <p class="text-xs font-medium text-slate-500 flex items-center gap-1.5 flex-wrap">
-                                <span class="text-slate-700 font-bold">${m.projectName}</span>
-                                <span>&bull;</span>
-                                <span class="flex items-center gap-1"><i data-lucide="calendar" class="w-3.5 h-3.5"></i> ${startDate} - ${dueDate}</span>
-                            </p>
-                            ${riskAlertsHtml}
-                        </div>
-                        <div class="flex items-center gap-3 self-start md:self-auto shrink-0">
-                            <span class="px-2.5 py-1 text-xs font-bold rounded-lg border ${badgeClass}">
-                                ${m.status}
-                            </span>
-                        </div>
-                    </div>
-                `;
-            }).join('') || `<p class="p-8 text-slate-400 text-center text-sm font-medium">No ${showActive ? 'active' : 'completed'} milestones found for active projects.</p>`;
-
-            // --- 3. Handover Coverages ---
-            const backupCoverages = state.backupCoverages || [];
-            const backupCoveragesHtml = backupCoverages.map(cover => {
-                const startStr = cover.start_date ? new Date(cover.start_date).toLocaleDateString() : 'N/A';
-                const endStr = cover.end_date ? new Date(cover.end_date).toLocaleDateString() : 'N/A';
-                
-                const projObj = state.projects.find(p => p.id === cover.project_id);
-                const projName = projObj ? projObj.name : 'N/A';
-                
-                let milestoneName = 'General Task (No Milestone)';
-                if (cover.milestone_id && cover.project_id && state.projectTimelines) {
-                    const milestones = state.projectTimelines[cover.project_id] || [];
-                    const milestoneObj = milestones.find(m => m.id === cover.milestone_id);
-                    if (milestoneObj) {
-                        milestoneName = milestoneObj.milestone_name;
-                    }
-                }
-
-                let detailsSection = '';
-                if (cover.project_id) {
-                    detailsSection = `
-                        <div class="mt-1 text-xs text-slate-500 grid grid-cols-1 sm:grid-cols-2 gap-1.5 bg-slate-100/50 p-2.5 rounded-lg border border-slate-200/40 mb-3 font-medium">
-                            <div><strong>Project:</strong> ${projName}</div>
-                            <div><strong>Milestone:</strong> ${milestoneName}</div>
-                            <div><strong>Task Type:</strong> ${cover.task_type === 'developer' ? 'Engineering' : cover.task_type === 'content' ? 'Content' : 'Both'}</div>
-                        </div>
-                    `;
-                }
-
-                let buttonsHtml = '';
-                if (cover.status === 'Approved') {
-                    const type = cover.task_type || 'both';
-                    if (type === 'developer' || type === 'both') {
-                        buttonsHtml += `
-                            <button onclick="window.logHandoverTaskFor('${cover.employee_id}', 'dev')" class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 border border-indigo-200 text-indigo-700 hover:bg-indigo-100 rounded-xl text-xs font-bold transition-all shadow-sm">
-                                <i data-lucide="terminal" class="w-3.5 h-3.5"></i> Log Engineering Handover
-                            </button>
-                        `;
-                    }
-                    if (type === 'content' || type === 'both') {
-                        buttonsHtml += `
-                            <button onclick="window.logHandoverTaskFor('${cover.employee_id}', 'content')" class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-rose-50 border border-rose-200 text-rose-700 hover:bg-rose-100 rounded-xl text-xs font-bold transition-all shadow-sm">
-                                <i data-lucide="video" class="w-3.5 h-3.5"></i> Log Content Handover
-                            </button>
-                        `;
-                    }
-                }
-
-                const actionArea = buttonsHtml ? `
-                    <div class="flex flex-wrap gap-2 pt-2 border-t border-slate-200/60">
-                        ${buttonsHtml}
-                    </div>
-                ` : '';
-
-                // Badge status styling
-                let statusBadgeClass = 'bg-amber-50 text-amber-700 border border-amber-200';
-                if (cover.status === 'Approved') {
-                    statusBadgeClass = 'bg-emerald-50 text-emerald-700 border border-emerald-200';
-                } else if (cover.status === 'Cancelled' || cover.status === 'Rejected') {
-                    statusBadgeClass = 'bg-rose-50 text-rose-700 border border-rose-200';
-                }
-
-                return `
-                    <div class="p-5 border-b border-slate-100 last:border-0 hover:bg-slate-50 transition-colors">
-                        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 mb-3">
-                            <div>
-                                <h5 class="font-bold text-slate-800 text-sm flex items-center gap-2">
-                                    <i data-lucide="shield-alert" class="w-4 h-4 text-indigo-500"></i>
-                                    Coverage for ${cover.employee_name}
-                                </h5>
-                                <p class="text-xs text-slate-500 mt-1 flex items-center gap-1">
-                                    <i data-lucide="calendar" class="w-3.5 h-3.5"></i>
-                                    ${startStr} - ${endStr} (${cover.total_days} ${cover.total_days === 1 ? 'day' : 'days'})
-                                </p>
-                            </div>
-                            <div class="shrink-0">
-                                <span class="px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider rounded-md ${statusBadgeClass}">
-                                    ${cover.status}
-                                </span>
-                            </div>
-                        </div>
-                         <div class="bg-slate-50 border border-slate-100 rounded-xl p-3.5">
-                            ${detailsSection}
-                            <span class="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 flex items-center gap-1">
-                                <i data-lucide="clipboard-list" class="w-3 h-3 text-slate-400"></i>
-                                Handover Task / Pending Work
-                            </span>
-                            <p class="text-xs text-slate-600 leading-relaxed font-medium mb-3">${cover.pending_work_summary || 'No pending work logged.'}</p>
-                            ${actionArea}
-                        </div>
-                    </div>
-                `;
-            }).join('') || `
-                <div class="p-6 text-center text-slate-500 text-sm italic">
-                    No backup duties assigned to you.
-                </div>
-            `;
-
-            // --- 4. Active Deadlines Radar (Focus on coming/overdue deadlines ONLY) ---
-            const deadlineRadarHtml = deadlineAlertsList.map(alert => {
-                const isOverdue = alert.isOverdue;
-                const badgeColor = isOverdue ? 'bg-rose-50 text-rose-700 border-rose-200 animate-pulse' : 'bg-amber-50 text-amber-700 border-amber-200';
-                const iconColor = isOverdue ? 'text-rose-500 bg-rose-50' : 'text-amber-500 bg-amber-50';
-                const iconName = isOverdue ? 'alert-circle' : 'calendar-clock';
-                
-                return `
-                    <div class="p-4 border-b border-slate-100 last:border-0 hover:bg-slate-50/50 transition-colors animate-in fade-in">
-                        <div class="flex items-start gap-3">
-                            <div class="w-8 h-8 rounded-lg ${iconColor} flex items-center justify-center shrink-0">
-                                <i data-lucide="${iconName}" class="w-4 h-4"></i>
-                            </div>
-                            <div class="min-w-0 flex-1">
-                                <div class="flex items-center justify-between gap-2 mb-1">
-                                    <span class="text-[10px] font-black uppercase tracking-wider ${isOverdue ? 'text-rose-600' : 'text-amber-600'}">${alert.type}</span>
-                                    <span class="px-2 py-0.5 border rounded-full text-[9px] font-black ${badgeColor}">${alert.daysText}</span>
-                                </div>
-                                <p class="font-bold text-slate-800 text-sm leading-snug">${alert.name}</p>
-                                <p class="text-xs text-slate-500 font-medium mt-1 flex items-center gap-1">
-                                    <i data-lucide="calendar" class="w-3 h-3"></i> Deadline: ${alert.dateText}
-                                </p>
-                            </div>
-                        </div>
-                    </div>
-                `;
-            }).join('') || `
-                <div class="p-8 text-center text-slate-400">
-                    <i data-lucide="shield-check" class="w-10 h-10 mx-auto mb-2 text-emerald-500"></i>
-                    <p class="text-sm font-bold text-slate-700">No Approaching Deadlines</p>
-                    <p class="text-xs mt-1">All assigned projects and milestones are operating on track.</p>
-                </div>
-            `;
-
-            const missingFields = checkMandatoryFieldsMissing(state.employeeData || {});
-            let missingAlertHtml = '';
-            if (missingFields.length > 0) {
-                missingAlertHtml = `
-                    <div class="mb-6 p-4 rounded-xl bg-rose-50/50 border border-rose-200 text-rose-800 flex items-start shadow-sm mt-4">
-                        <i data-lucide="alert-triangle" class="w-5 h-5 mr-3 text-rose-600 shrink-0 mt-0.5 animate-bounce"></i>
-                        <div class="text-sm">
-                            <span class="font-bold text-rose-700">Incomplete Profile Details:</span> 
-                            Please complete the following mandatory fields to ensure compliance: 
-                            <span class="font-semibold text-rose-600">${missingFields.join(', ')}</span>.
-                        </div>
-                    </div>
-                `;
-            }
-
-            return `
-                <div class="mb-8 mt-2">
-                    <h3 class="text-2xl md:text-3xl font-black text-slate-800 mb-1.5 tracking-tight">Welcome back, ${state.employeeData?.full_name || state.user.sub}</h3>
-                    <p class="text-slate-500 text-sm font-medium">Manage your active projects, timeline milestones, and work submissions.</p>
-                </div>
-
-                ${missingAlertHtml}
-
-                ${attendanceWidgetHtml}
-
-                <!-- New Layered Summary Blocks -->
-                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 md:gap-6 mb-8 md:mb-10 animate-in fade-in duration-300">
-                    <!-- Block 1: Projects Assigned -->
-                    <div class="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm flex items-center">
-                        <div class="w-12 h-12 md:w-14 md:h-14 bg-indigo-50 rounded-xl flex items-center justify-center mr-4 md:mr-5 shrink-0">
-                            <i data-lucide="folder-git-2" class="w-6 h-6 md:w-7 md:h-7 text-brand-primary"></i>
-                        </div>
-                        <div>
-                            <p class="text-xs md:text-sm text-slate-500 font-medium mb-1">Active Projects</p>
-                            <h4 class="text-2xl md:text-3xl font-black text-slate-800">${projectsAssignedCount}</h4>
-                        </div>
-                    </div>
-                    <!-- Block 2: Milestones Assigned -->
-                    <div class="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm flex items-center">
-                        <div class="w-12 h-12 md:w-14 md:h-14 bg-emerald-50 rounded-xl flex items-center justify-center mr-4 md:mr-5 shrink-0">
-                            <i data-lucide="target" class="w-6 h-6 md:w-7 md:h-7 text-brand-accent"></i>
-                        </div>
-                        <div>
-                            <p class="text-xs md:text-sm text-slate-500 font-medium mb-1">Pending Milestones</p>
-                            <h4 class="text-2xl md:text-3xl font-black text-slate-800">${activeMilestonesCount}</h4>
-                        </div>
-                    </div>
-                    <!-- Block 3: Upcoming & Overdue Deadlines -->
-                    <div class="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm flex items-center">
-                        <div class="w-12 h-12 md:w-14 md:h-14 bg-amber-50 rounded-xl flex items-center justify-center mr-4 md:mr-5 shrink-0">
-                            <i data-lucide="calendar-clock" class="w-6 h-6 md:w-7 md:h-7 text-amber-500"></i>
-                        </div>
-                        <div>
-                            <p class="text-xs md:text-sm text-slate-500 font-medium mb-1">Upcoming/Overdue Deadlines</p>
-                            <h4 class="text-2xl md:text-3xl font-black ${overdueDeadlinesCount > 0 ? 'text-rose-600 animate-pulse' : 'text-slate-800'}">${upcomingDeadlinesCount + overdueDeadlinesCount}</h4>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-                    <!-- Left Column: Actions & Active Milestones Board -->
-                    <div class="lg:col-span-2 space-y-8">
-                        <div>
-                            <div class="flex items-center justify-between mb-4">
-                                <h4 class="text-lg font-bold text-slate-800">Log Your Work</h4>
-                            </div>
-                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                <button onclick="routeApp('log-dev')" class="group text-left bg-white border border-slate-200 hover:border-brand-primary rounded-2xl p-5 shadow-sm hover:shadow-md transition-all">
-                                    <div class="flex items-center justify-between mb-4">
-                                        <div class="w-10 h-10 bg-slate-50 group-hover:bg-indigo-50 rounded-xl flex items-center justify-center transition-colors">
-                                            <i data-lucide="terminal" class="w-5 h-5 text-slate-600 group-hover:text-brand-primary"></i>
-                                        </div>
-                                        <i data-lucide="arrow-right" class="w-5 h-5 text-slate-400 group-hover:text-brand-primary transform group-hover:translate-x-1 transition-all"></i>
-                                    </div>
-                                    <h5 class="text-lg font-bold text-slate-800 mb-1">Engineering Task</h5>
-                                    <p class="text-xs text-slate-500 font-medium">Log dev hours, tech stack, and GitHub commits.</p>
-                                </button>
-
-                                <button onclick="routeApp('log-content')" class="group text-left bg-white border border-slate-200 hover:border-brand-primary rounded-2xl p-5 shadow-sm hover:shadow-md transition-all">
-                                    <div class="flex items-center justify-between mb-4">
-                                        <div class="w-10 h-10 bg-slate-50 group-hover:bg-indigo-50 rounded-xl flex items-center justify-center transition-colors">
-                                            <i data-lucide="video" class="w-5 h-5 text-slate-600 group-hover:text-brand-primary"></i>
-                                        </div>
-                                        <i data-lucide="arrow-right" class="w-5 h-5 text-slate-400 group-hover:text-brand-primary transform group-hover:translate-x-1 transition-all"></i>
-                                    </div>
-                                    <h5 class="text-lg font-bold text-slate-800 mb-1">Content Task</h5>
-                                    <p class="text-xs text-slate-500 font-medium">Log reels, videos, posters, and engagement metrics.</p>
-                                </button>
-                            </div>
-                        </div>
-
-                        <!-- Premium Milestones Board -->
-                        <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col animate-in fade-in duration-300">
-                            <div class="px-6 py-4 border-b border-slate-100 bg-indigo-50/30 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                                <div class="flex items-center gap-2">
-                                    <i data-lucide="target" class="w-5 h-5 text-brand-primary"></i>
-                                    <h4 class="font-bold text-slate-800">Your Milestone Board</h4>
-                                </div>
-                                <!-- Filter Tabs -->
-                                <div class="flex bg-slate-100 p-1 rounded-xl shrink-0 self-start sm:self-auto border border-slate-200/50">
-                                    <button onclick="window.switchMilestoneTab('active')" class="px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all ${showActive ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-800'}">
-                                        Active & Pending
-                                    </button>
-                                    <button onclick="window.switchMilestoneTab('completed')" class="px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all ${!showActive ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-800'}">
-                                        Completed
-                                    </button>
-                                </div>
-                            </div>
-                            <div class="flex flex-col divide-y divide-slate-100 max-h-[450px] overflow-y-auto">
-                                ${milestonesHtml}
-                            </div>
-                            <div class="px-6 py-3.5 bg-slate-50 border-t border-slate-100 text-[11px] text-slate-400 font-medium flex items-center gap-1.5">
-                                <i data-lucide="info" class="w-3.5 h-3.5 shrink-0 text-slate-400"></i>
-                                <span>Milestone status changes and completion updates are authorized and managed by admins.</span>
-                            </div>
-                        </div>
-
-                        <!-- Handover Coverages Widget -->
-                        <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-                            <div class="px-6 py-4 border-b border-slate-100 bg-slate-50 flex items-center justify-between">
-                                <div class="flex items-center gap-2">
-                                    <i data-lucide="shield-check" class="w-5 h-5 text-slate-600"></i>
-                                    <h4 class="font-bold text-slate-800">Your Handover Coverages</h4>
-                                </div>
-                                <span class="px-2 py-0.5 bg-slate-100 text-slate-600 text-xs font-bold rounded-md">${backupCoverages.length}</span>
-                            </div>
-                            <div class="flex flex-col divide-y divide-slate-100 max-h-[300px] overflow-y-auto">
-                                ${backupCoveragesHtml}
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Right Column: Active Deadlines Radar -->
-                    <div class="lg:col-span-1">
-                        <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden h-full flex flex-col animate-in fade-in duration-300">
-                            <div class="px-6 py-4 border-b border-slate-100 bg-slate-50 flex items-center gap-2 shrink-0">
-                                <i data-lucide="calendar-clock" class="w-5 h-5 text-amber-500"></i>
-                                <h4 class="font-bold text-slate-800">Active Deadlines Radar</h4>
-                            </div>
-                            <div class="flex flex-col divide-y divide-slate-100 overflow-y-auto flex-1 max-h-[500px]">
-                                ${deadlineRadarHtml}
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Calendar: Repositioned as a full width dashboard section at the bottom -->
-                ${getCalendarHtml()}
-            `;
-        }
+        
 
         window.switchMilestoneTab = function(tab) {
             state.milestoneTab = tab;
@@ -2287,6 +1534,8 @@
                     if (noProjContainer) noProjContainer.classList.remove('hidden');
                     const noProjInput = row.querySelector('.col-no-project-reason');
                     if (noProjInput) noProjInput.required = true;
+                    
+                    projectInput.dispatchEvent(new Event('change'));
                 }
                 if (milestoneSelect) {
                     milestoneSelect.innerHTML = '<option value="">General Task (No Milestone)</option>';
@@ -3304,73 +2553,7 @@ window.addDevTaskRow = function (btnElement = null) {
             window.toggleRemoveButtonsVisibility('developer');
         };
 
-        function getDevTaskFormTemplate() {
-            return `
-                <div class="bg-white rounded-3xl border border-slate-200 shadow-sm max-w-[95%] mx-auto mt-4 overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-300 relative pb-16">
-                    <!-- Premium Header -->
-                    <div class="bg-gradient-to-r from-slate-900 to-slate-800 px-6 py-4 text-white relative overflow-hidden">
-                        <div class="absolute top-0 right-0 opacity-10 pointer-events-none translate-x-1/4 -translate-y-1/4">
-                            <i data-lucide="terminal-square" class="w-64 h-64"></i>
-                        </div>
-                        <div class="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-6">
-                            <div class="flex items-center gap-5">
-                                <button onclick="routeApp('dashboard')" class="w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 border border-white/10 flex items-center justify-center text-white transition-all backdrop-blur-sm shrink-0 shadow-sm">
-                                    <i data-lucide="arrow-left" class="w-4 h-4"></i>
-                                </button>
-                                <div>
-                                    <h3 class="text-xl font-black tracking-tight text-white flex items-center gap-2">
-                                        Engineering Log <span class="px-2 py-0.5 rounded bg-indigo-500/20 border border-indigo-400/30 text-indigo-300 text-[10px] uppercase tracking-widest font-bold">Batch Mode</span>
-                                    </h3>
-                                    <p class="text-slate-450 text-xs mt-0.5">Log multiple development tasks in a single fluid motion.</p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <form onsubmit="handleTaskSubmit(event, 'developer')" class="p-3 sm:p-4 bg-slate-50/30">
-                        <div id="dev-task-container" class="space-y-4 pb-2">
-                            <!-- Rows added dynamically -->
-                        </div>
-                        
-                        <!-- Repositioned Add Row Button sitting at the bottom of the list -->
-                        <div class="flex justify-center mt-3 mb-5 px-2">
-                            <button type="button" onclick="window.addDevTaskRow()" class="w-full py-2.5 border border-dashed border-slate-300 hover:border-brand-primary rounded-xl text-slate-500 hover:text-brand-primary bg-white hover:bg-indigo-50/20 transition-all flex items-center justify-center font-bold text-xs gap-1.5 shadow-sm">
-                                <i data-lucide="plus-circle" class="w-4 h-4"></i> Add Another Task Row (Alt + N)
-                            </button>
-                        </div>
-                        
-                        <!-- Sticky Total Hours & Submit Bar -->
-                        <div class="sticky bottom-0 left-0 right-0 bg-slate-50/95 backdrop-blur-md border-t border-slate-200 px-6 py-4 flex flex-col md:flex-row justify-between items-center gap-4 shadow-[0_-8px_30px_rgba(15,23,42,0.06)] z-40 rounded-b-3xl">
-                            <div class="flex flex-wrap items-center gap-4 w-full md:w-auto">
-                                <div class="flex flex-col gap-1">
-                                    <div class="flex items-center gap-2 flex-wrap">
-                                        <span class="text-[10px] font-black text-slate-400 uppercase tracking-widest whitespace-nowrap">Total Logged Hours:</span>
-                                        <span id="sticky-total-hours" class="text-sm font-extrabold text-slate-800 whitespace-nowrap">0.0 hrs</span>
-                                    </div>
-                                    <div class="w-48 bg-slate-200 rounded-full h-1.5 overflow-hidden">
-                                        <div id="sticky-hours-progress" class="bg-indigo-600 h-full rounded-full transition-all duration-300" style="width: 0%"></div>
-                                    </div>
-                                </div>
-                                <div id="sticky-hours-badge" class="px-2.5 py-0.5 rounded-full text-[9px] font-black tracking-wider uppercase bg-slate-100 text-slate-500 border border-slate-200/60 shadow-xs whitespace-nowrap shrink-0">
-                                    No Hours Logged
-                                </div>
-                            </div>
-                            
-                            <div class="flex items-center gap-4 w-full md:w-auto justify-end">
-                                <div class="text-[10px] text-slate-400 font-bold hidden lg:flex items-center gap-1.5 whitespace-nowrap">
-                                    <kbd class="bg-white px-1.5 py-0.5 rounded border border-slate-200 text-slate-500 font-bold shadow-xs">Ctrl+Enter</kbd> to submit
-                                    <span class="text-slate-300">•</span>
-                                    <kbd class="bg-white px-1.5 py-0.5 rounded border border-slate-200 text-slate-500 font-bold shadow-xs">Alt+N</kbd> new row
-                                </div>
-                                <button type="submit" id="btn-submit-dev" class="w-full sm:w-auto whitespace-nowrap bg-gradient-to-r from-brand-primary to-indigo-600 hover:from-indigo-600 hover:to-indigo-700 hover:shadow-indigo-500/20 active:scale-[0.98] text-white font-extrabold text-xs tracking-wider uppercase py-3.5 px-8 rounded-xl shadow-md transition-all duration-200 flex items-center justify-center gap-2">
-                                    <i data-lucide="send" class="w-3.5 h-3.5"></i> <span>Submit Batch Timesheet</span>
-                                </button>
-                            </div>
-                        </div>
-                    </form>
-                </div>
-            `;
-        }
+        
 
         window.handlePlatformDropdownSelect = function (selectEl) {
             const val = selectEl.value;
@@ -3740,490 +2923,9 @@ window.addConTaskRow = function () {
             window.toggleRemoveButtonsVisibility('content');
         };
 
-        function getContentTaskFormTemplate() {
-            return `
-                <div class="bg-white rounded-3xl border border-slate-200 shadow-sm max-w-[95%] mx-auto mt-4 overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-300 relative pb-16">
-                    <!-- Premium Header -->
-                    <div class="bg-gradient-to-r from-rose-900 to-rose-800 px-6 py-4 text-white relative overflow-hidden">
-                        <div class="absolute top-0 right-0 opacity-10 pointer-events-none translate-x-1/4 -translate-y-1/4">
-                            <i data-lucide="video" class="w-64 h-64"></i>
-                        </div>
-                        <div class="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-6">
-                            <div class="flex items-center gap-5">
-                                <button onclick="routeApp('dashboard')" class="w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 border border-white/10 flex items-center justify-center text-white transition-all backdrop-blur-sm shrink-0 shadow-sm">
-                                    <i data-lucide="arrow-left" class="w-4 h-4"></i>
-                                </button>
-                                <div>
-                                    <h3 class="text-xl font-black tracking-tight text-white flex items-center gap-2">
-                                        Content Log <span class="px-2 py-0.5 rounded bg-rose-500/20 border border-rose-400/30 text-rose-300 text-[10px] uppercase tracking-widest font-bold">Batch Mode</span>
-                                    </h3>
-                                    <p class="text-rose-100/70 text-xs mt-0.5">Log multiple content tasks in a single fluid motion.</p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+        
 
-                    <form onsubmit="handleTaskSubmit(event, 'content')" class="p-3 sm:p-4 bg-slate-50/30">
-                        <div id="con-task-container" class="space-y-4 pb-2">
-                            <!-- Rows added dynamically -->
-                        </div>
-                        
-                        <!-- Repositioned Add Row Button sitting at the bottom of the list -->
-                        <div class="flex justify-center mt-3 mb-5 px-2">
-                            <button type="button" onclick="window.addConTaskRow()" class="w-full py-2.5 border border-dashed border-rose-300 hover:border-rose-600 rounded-xl text-slate-500 hover:text-rose-600 bg-white hover:bg-rose-50/20 transition-all flex items-center justify-center font-bold text-xs gap-1.5 shadow-sm">
-                                <i data-lucide="plus-circle" class="w-4 h-4"></i> Add Another Task Row (Alt + N)
-                            </button>
-                        </div>
-                        
-                        <!-- Sticky Total Hours & Submit Bar -->
-                        <div class="sticky bottom-0 left-0 right-0 bg-slate-50/95 backdrop-blur-md border-t border-slate-200 px-6 py-4 flex flex-col md:flex-row justify-between items-center gap-4 shadow-[0_-8px_30px_rgba(15,23,42,0.06)] z-40 rounded-b-3xl">
-                            <div class="flex flex-wrap items-center gap-4 w-full md:w-auto">
-                                <div class="flex flex-col gap-1">
-                                    <div class="flex items-center gap-2 flex-wrap">
-                                        <span class="text-[10px] font-black text-slate-400 uppercase tracking-widest whitespace-nowrap">Total Logged Hours:</span>
-                                        <span id="sticky-total-hours" class="text-sm font-extrabold text-slate-800 whitespace-nowrap">0.0 hrs</span>
-                                    </div>
-                                    <div class="w-48 bg-slate-200 rounded-full h-1.5 overflow-hidden">
-                                        <div id="sticky-hours-progress" class="bg-rose-500 h-full rounded-full transition-all duration-300" style="width: 0%"></div>
-                                    </div>
-                                </div>
-                                <div id="sticky-hours-badge" class="px-2.5 py-0.5 rounded-full text-[9px] font-black tracking-wider uppercase bg-slate-100 text-slate-500 border border-slate-200/60 shadow-xs whitespace-nowrap shrink-0">
-                                    No Hours Logged
-                                </div>
-                            </div>
-                            
-                            <div class="flex items-center gap-4 w-full md:w-auto justify-end">
-                                <div class="text-[10px] text-slate-400 font-bold hidden lg:flex items-center gap-1.5 whitespace-nowrap">
-                                    <kbd class="bg-white px-1.5 py-0.5 rounded border border-slate-200 text-slate-500 font-bold shadow-xs">Ctrl+Enter</kbd> to submit
-                                    <span class="text-slate-300">•</span>
-                                    <kbd class="bg-white px-1.5 py-0.5 rounded border border-slate-200 text-slate-500 font-bold shadow-xs">Alt+N</kbd> new row
-                                </div>
-                                <button type="submit" id="btn-submit-con" class="w-full sm:w-auto whitespace-nowrap bg-gradient-to-r from-rose-500 to-rose-600 hover:from-rose-600 hover:to-rose-700 hover:shadow-rose-500/20 active:scale-[0.98] text-white font-extrabold text-xs tracking-wider uppercase py-3.5 px-8 rounded-xl shadow-md transition-all duration-200 flex items-center justify-center gap-2">
-                                    <i data-lucide="send" class="w-3.5 h-3.5"></i> <span>Submit Batch Timesheet</span>
-                                </button>
-                            </div>
-                        </div>
-                    </form>
-                </div>
-            `;
-        }
-
-        function getEmployeeProfileTemplate() {
-            const emp = state.employeeData || {};
-            const isEdit = state.isEditingProfile;
-
-            // Helper to render static text or input field
-            const val = (k) => emp[k] && emp[k] !== 'N/A' ? emp[k] : '';
-            const maskAadhaar = (val) => {
-                if (!val || val === 'N/A') return val;
-                const digits = val.replace(/\D/g, '');
-                if (digits.length === 12) {
-                    return `XXXX XXXX ${digits.slice(8)}`;
-                }
-                return val;
-            };
-            const txt = (k) => {
-                const raw = emp[k] && emp[k] !== 'N/A' ? emp[k] : '';
-                if (!raw) return '<span class="text-slate-300 italic font-normal">Not provided</span>';
-                if (k === 'adhar_number') return maskAadhaar(raw);
-                return raw;
-            };
-
-            const isAlwaysReadOnly = (k) => {
-                if (emp.profile_unlocked) return false;
-                const readOnlyKeys = [
-                    'date_of_joining', 'reporting_manager', 'experience', 'previous_employer', 'previous_job_role',
-                    'email', 'contact_number', 'bank_name', 'bank_account', 'ifsc_code', 'upi_id',
-                    'account_holder_name', 'pf_number', 'esic_number', 'tax_details',
-                    'adhar_number', 'pan_number'
-                ];
-                return readOnlyKeys.includes(k);
-            };
-
-            const isEditOnceAndSet = (k) => {
-                if (emp.profile_unlocked) return false;
-                const editOnceKeys = [
-                    'highest_qualification', 'specialization',
-                    'full_name', 'fathers_name', 'date_of_birth', 'gender'
-                ];
-                if (!editOnceKeys.includes(k)) return false;
-                const value = emp[k];
-                return value && value !== 'N/A' && value !== '';
-            };
-
-            const input = (id, label, key, type = "text", placeholder = "") => {
-                const readOnly = isAlwaysReadOnly(key) || isEditOnceAndSet(key);
-                const displayValue = val(key);
-                
-                return `
-                    <div class="flex flex-col">
-                        <div class="flex items-center justify-between mb-1">
-                            <label class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">${label}</label>
-                            ${readOnly && isEdit ? `<span class="text-[9px] text-slate-400 font-medium italic flex items-center cursor-help" title="Contact HR to update this field"><i data-lucide="lock" class="w-2.5 h-2.5 mr-0.5"></i> Locked</span>` : ''}
-                        </div>
-                        ${isEdit && !readOnly
-                        ? `<input type="${type}" id="edit_${id}" value="${displayValue}" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-800 text-sm outline-none focus:border-brand-primary focus:ring-1 focus:ring-brand-primary transition-all shadow-sm" placeholder="${placeholder || 'Enter ' + label}">`
-                        : `<div class="text-sm font-semibold text-slate-800 py-1 border-b border-transparent min-h-[32px]">${txt(key)}</div>`
-                    }
-                    </div>
-                `;
-            };
-
-            const isRepMgrReadOnly = isAlwaysReadOnly('reporting_manager');
-            const repMgrSelect = `
-                <div class="flex flex-col">
-                    <div class="flex items-center justify-between mb-1">
-                        <label class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Reporting Manager</label>
-                        ${isRepMgrReadOnly && isEdit ? `<span class="text-[9px] text-slate-400 font-medium italic flex items-center cursor-help" title="Contact HR to update this field"><i data-lucide="lock" class="w-2.5 h-2.5 mr-0.5"></i> Locked</span>` : ''}
-                    </div>
-                    ${isEdit && !isRepMgrReadOnly
-                    ? `<select id="edit_reporting_manager" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-800 text-sm outline-none focus:border-brand-primary focus:ring-1 focus:ring-brand-primary transition-all shadow-sm">
-                            <option value="N/A" ${!val('reporting_manager') || val('reporting_manager') === 'N/A' ? 'selected' : ''}>None</option>
-                            ${state.allEmployees.map(empOpt => {
-                                if (empOpt.id === emp.id) return '';
-                                return `<option value="${empOpt.full_name}" ${val('reporting_manager') === empOpt.full_name || val('reporting_manager') === empOpt.username || val('reporting_manager') === empOpt.id ? 'selected' : ''}>${empOpt.full_name} (${empOpt.username})</option>`;
-                            }).join('')}
-                       </select>`
-                    : `<div class="text-sm font-semibold text-slate-800 py-1 border-b border-transparent min-h-[32px]">
-                            ${(function() {
-                                const mgrVal = val('reporting_manager');
-                                if (!mgrVal) return '<span class="text-slate-300 italic font-normal">Not provided</span>';
-                                const matchedMgr = state.allEmployees.find(e => e.id === mgrVal || e.username === mgrVal || e.full_name === mgrVal);
-                                return matchedMgr ? matchedMgr.full_name : mgrVal;
-                            })()}
-                       </div>`
-                    }
-                </div>
-            `;
-
-            const genderReadOnly = isAlwaysReadOnly('gender');
-            const genderSelect = `
-                <div class="flex flex-col">
-                    <div class="flex items-center justify-between mb-1">
-                        <label class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Gender</label>
-                        ${genderReadOnly && isEdit ? `<span class="text-[9px] text-slate-400 font-medium italic flex items-center cursor-help" title="Contact HR to update this field"><i data-lucide="lock" class="w-2.5 h-2.5 mr-0.5"></i> Locked</span>` : ''}
-                    </div>
-                    ${isEdit && !genderReadOnly
-                    ? `<select id="edit_gender" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-800 text-sm outline-none focus:border-brand-primary focus:ring-1 focus:ring-brand-primary transition-all shadow-sm">
-                            <option value="Male" ${val('gender') === 'Male' ? 'selected' : ''}>Male</option>
-                            <option value="Female" ${val('gender') === 'Female' ? 'selected' : ''}>Female</option>
-                            <option value="Other" ${val('gender') === 'Other' ? 'selected' : ''}>Other</option>
-                            <option value="N/A" ${!val('gender') || val('gender') === 'N/A' ? 'selected' : ''}>Not Specified</option>
-                           </select>`
-                    : `<div class="text-sm font-semibold text-slate-800 py-1 border-b border-transparent min-h-[32px]">${txt('gender')}</div>`
-                }
-                </div>
-            `;
-
-            const qualReadOnly = isAlwaysReadOnly('highest_qualification') || isEditOnceAndSet('highest_qualification');
-            const highestQualificationSelect = `
-                <div class="flex flex-col">
-                    <div class="flex items-center justify-between mb-1">
-                        <label class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Highest Qualification</label>
-                        ${qualReadOnly && isEdit ? `<span class="text-[9px] text-slate-400 font-medium italic flex items-center cursor-help" title="Contact HR to update this field"><i data-lucide="lock" class="w-2.5 h-2.5 mr-0.5"></i> Locked</span>` : ''}
-                    </div>
-                    ${isEdit && !qualReadOnly
-                    ? `<select id="edit_highest_qualification" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-800 text-sm outline-none focus:border-brand-primary focus:ring-1 focus:ring-brand-primary transition-all shadow-sm">
-                            <option value="10th" ${val('highest_qualification') === '10th' ? 'selected' : ''}>10th</option>
-                            <option value="12th" ${val('highest_qualification') === '12th' ? 'selected' : ''}>12th</option>
-                            <option value="Diploma" ${val('highest_qualification') === 'Diploma' ? 'selected' : ''}>Diploma</option>
-                            <option value="Graduate" ${val('highest_qualification') === 'Graduate' ? 'selected' : ''}>Graduate</option>
-                            <option value="Post Graduate" ${val('highest_qualification') === 'Post Graduate' ? 'selected' : ''}>Post Graduate</option>
-                            <option value="PhD" ${val('highest_qualification') === 'PhD' ? 'selected' : ''}>PhD</option>
-                            <option value="N/A" ${!val('highest_qualification') || val('highest_qualification') === 'N/A' ? 'selected' : ''}>Not Specified</option>
-                           </select>`
-                    : `<div class="text-sm font-semibold text-slate-800 py-1 border-b border-transparent min-h-[32px]">${txt('highest_qualification')}</div>`
-                }
-                </div>
-            `;
-
-            const relReadOnly = isAlwaysReadOnly('relationship_with_emergency_contact') || isEditOnceAndSet('relationship_with_emergency_contact');
-            const relationshipSelect = `
-                <div class="flex flex-col">
-                    <div class="flex items-center justify-between mb-1">
-                        <label class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Relationship</label>
-                        ${relReadOnly && isEdit ? `<span class="text-[9px] text-slate-400 font-medium italic flex items-center cursor-help" title="Contact HR to update this field"><i data-lucide="lock" class="w-2.5 h-2.5 mr-0.5"></i> Locked</span>` : ''}
-                    </div>
-                    ${isEdit && !relReadOnly
-                    ? `<select id="edit_relationship_with_emergency_contact" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-800 text-sm outline-none focus:border-brand-primary focus:ring-1 focus:ring-brand-primary transition-all shadow-sm">
-                            <option value="Father" ${val('relationship_with_emergency_contact') === 'Father' ? 'selected' : ''}>Father</option>
-                            <option value="Mother" ${val('relationship_with_emergency_contact') === 'Mother' ? 'selected' : ''}>Mother</option>
-                            <option value="Brother" ${val('relationship_with_emergency_contact') === 'Brother' ? 'selected' : ''}>Brother</option>
-                            <option value="Sister" ${val('relationship_with_emergency_contact') === 'Sister' ? 'selected' : ''}>Sister</option>
-                            <option value="Spouse" ${val('relationship_with_emergency_contact') === 'Spouse' ? 'selected' : ''}>Spouse</option>
-                            <option value="Friend" ${val('relationship_with_emergency_contact') === 'Friend' ? 'selected' : ''}>Friend</option>
-                            <option value="Guardian" ${val('relationship_with_emergency_contact') === 'Guardian' ? 'selected' : ''}>Guardian</option>
-                            <option value="Other" ${val('relationship_with_emergency_contact') === 'Other' ? 'selected' : ''}>Other</option>
-                            <option value="N/A" ${!val('relationship_with_emergency_contact') || val('relationship_with_emergency_contact') === 'N/A' ? 'selected' : ''}>Not Specified</option>
-                           </select>`
-                    : `<div class="text-sm font-semibold text-slate-800 py-1 border-b border-transparent min-h-[32px]">${txt('relationship_with_emergency_contact')}</div>`
-                }
-                </div>
-            `;
-
-            const emergencyReadOnly = isAlwaysReadOnly('emergency_contact') || isEditOnceAndSet('emergency_contact');
-            let emergencyName = '';
-            let emergencyPhone = '';
-            const rawEmergency = val('emergency_contact');
-            if (rawEmergency && rawEmergency.includes('-')) {
-                const parts = rawEmergency.split('-');
-                emergencyName = parts[0].trim();
-                emergencyPhone = parts[1].trim();
-            } else {
-                emergencyName = rawEmergency;
-            }
-
-            const emergencyContactBlock = `
-                <div class="flex flex-col">
-                    <div class="flex items-center justify-between mb-1">
-                        <label class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Emergency Contact Name & Phone</label>
-                        ${emergencyReadOnly && isEdit ? `<span class="text-[9px] text-slate-400 font-medium italic flex items-center cursor-help" title="Contact HR to update this field"><i data-lucide="lock" class="w-2.5 h-2.5 mr-0.5"></i> Locked</span>` : ''}
-                    </div>
-                    ${isEdit && !emergencyReadOnly
-                    ? `<div class="grid grid-cols-2 gap-4">
-                            <input type="text" id="edit_emergency_contact_name" value="${emergencyName}" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-800 text-sm outline-none focus:border-brand-primary focus:ring-1 focus:ring-brand-primary transition-all shadow-sm" placeholder="Contact Name">
-                            <input type="text" id="edit_emergency_contact_phone" value="${emergencyPhone}" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-800 text-sm outline-none focus:border-brand-primary focus:ring-1 focus:ring-brand-primary transition-all shadow-sm" placeholder="10-Digit Phone">
-                       </div>`
-                    : `<div class="text-sm font-semibold text-slate-800 py-1 border-b border-transparent min-h-[32px]">${txt('emergency_contact')}</div>`
-                }
-                </div>
-            `;
-
-            let bannerHtml = '';
-            if (emp.profile_unlocked) {
-                let timerText = "Profile editing temporarily unlocked by Admin. Compliance and locked fields can be updated once.";
-                if (emp.profile_unlocked_until) {
-                    timerText = `Profile editing temporarily unlocked by Admin. Time remaining: <span id="profile-unlock-countdown" class="font-bold text-emerald-600">--:--</span>`;
-                }
-                bannerHtml = `
-                    <div class="mb-6 p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 flex items-center shadow-sm">
-                        <i data-lucide="unlock" class="w-5 h-5 mr-3 text-emerald-600 shrink-0"></i>
-                        <div class="text-sm font-semibold">${timerText}</div>
-                    </div>
-                `;
-            } else if (emp.profile_edit_requested) {
-                bannerHtml = `
-                    <div class="mb-6 p-4 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 flex items-center shadow-sm">
-                        <i data-lucide="clock" class="w-5 h-5 mr-3 text-amber-600 animate-pulse shrink-0"></i>
-                        <div class="text-sm font-semibold">Profile unlock request is pending approval from Admin.</div>
-                    </div>
-                `;
-            } else if (!isEdit) {
-                bannerHtml = `
-                    <div class="mb-6 p-4 rounded-xl bg-slate-50 border border-slate-200 text-slate-700 flex items-center justify-between shadow-sm">
-                        <div class="flex items-center">
-                            <i data-lucide="lock" class="w-5 h-5 mr-3 text-slate-400 shrink-0"></i>
-                            <div class="text-xs md:text-sm font-medium text-slate-600">Banking, identity, and compliance fields are locked.</div>
-                        </div>
-                        <button type="button" onclick="requestProfileUnlock()" class="ml-4 px-3 py-1.5 bg-brand-primary hover:bg-indigo-700 text-white text-xs font-bold rounded-lg shadow-sm transition-colors flex items-center shrink-0">
-                            <i data-lucide="key-round" class="w-3.5 h-3.5 mr-1.5"></i> Request Edit Unlock
-                        </button>
-                    </div>
-                `;
-            }
-
-            const missingFields = checkMandatoryFieldsMissing(emp);
-            let missingAlertHtml = '';
-            if (missingFields.length > 0) {
-                missingAlertHtml = `
-                    <div class="mb-6 p-4 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 flex items-start shadow-sm mt-2">
-                        <i data-lucide="alert-triangle" class="w-5 h-5 mr-3 text-rose-600 shrink-0 mt-0.5 animate-bounce"></i>
-                        <div class="text-sm">
-                            <span class="font-bold text-rose-700">Missing Mandatory Profile Fields:</span> 
-                            Please complete the following details: 
-                            <span class="font-semibold text-rose-600">${missingFields.join(', ')}</span>.
-                        </div>
-                    </div>
-                `;
-            }
-
-            return `
-                <div class="max-w-5xl mx-auto pb-10">
-                    ${bannerHtml}
-                    ${missingAlertHtml}
-                    <form onsubmit="handleProfileSave(event)">
-                        <!-- Top Banner & Action Bar -->
-                        <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden mb-6 relative">
-                            <div class="h-32 bg-gradient-to-r from-slate-800 to-slate-900 relative"></div>
-                            
-                            <div class="absolute top-4 right-4 z-10 flex gap-2">
-                                ${isEdit ? `
-                                    <button type="button" onclick="toggleEditProfile()" class="px-4 py-2 bg-white/10 hover:bg-white/20 backdrop-blur border border-white/20 text-white text-sm font-medium rounded-lg transition-colors">Cancel</button>
-                                    <button type="submit" id="saveProfileBtn" class="px-4 py-2 bg-brand-accent hover:bg-emerald-600 text-white text-sm font-medium rounded-lg shadow-lg transition-colors flex items-center shadow-emerald-500/20"><i data-lucide="save" class="w-4 h-4 mr-2"></i> Save Changes</button>
-                                ` : `
-                                    <button type="button" onclick="openChangePasswordModal()" class="px-4 py-2 bg-white/10 hover:bg-white/20 backdrop-blur border border-white/20 text-[13px] font-medium rounded-lg shadow-sm transition-colors flex items-center text-rose-50 hover:text-white border-rose-300/30 hover:border-rose-300/50 hover:bg-rose-500/20"><i data-lucide="key" class="w-4 h-4 mr-2"></i> Password</button>
-                                    <button type="button" onclick="toggleEditProfile()" class="px-4 py-2 bg-white/10 hover:bg-white/20 backdrop-blur border border-white/20 text-white text-[13px] font-medium rounded-lg shadow-sm transition-colors flex items-center"><i data-lucide="edit-3" class="w-4 h-4 mr-2"></i> Edit Profile</button>
-                                `}
-                            </div>
-
-                            <div class="px-6 pb-6 md:px-8 relative">
-                                <div class="absolute -top-16 left-6 md:left-8 w-28 h-28 bg-white rounded-full p-1.5 shadow-lg border border-slate-100">
-                                    <div class="w-full h-full bg-slate-100 rounded-full flex items-center justify-center overflow-hidden relative group">
-                                        ${emp.photo && emp.photo !== 'N/A' ? `<img src="${CONFIG.API_BASE_URL}/${emp.photo}" class="w-full h-full object-cover">` : `<i data-lucide="user" class="w-12 h-12 text-slate-400"></i>`}
-                                        <div class="absolute inset-0 bg-black/60 hidden group-hover:flex items-center justify-center gap-4 transition-all">
-                                            <label for="upload-profile" class="cursor-pointer text-white flex flex-col items-center justify-center hover:text-brand-primary" title="Update Profile Photo">
-                                                <i data-lucide="camera" class="w-6 h-6 mb-0.5"></i>
-                                                <span class="text-[9px] font-bold">Update</span>
-                                            </label>
-                                            <input type="file" id="upload-profile" class="hidden" accept="image/*" onchange="handleFileUpload(event, 'profile', 'profile')">
-                                            ${emp.photo && emp.photo !== 'N/A' ? `
-                                            <button type="button" onclick="handleProfilePhotoDelete()" class="text-white flex flex-col items-center justify-center hover:text-red-400" title="Remove Profile Photo">
-                                                <i data-lucide="trash-2" class="w-6 h-6 mb-0.5"></i>
-                                                <span class="text-[9px] font-bold">Remove</span>
-                                            </button>
-                                            ` : ''}
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="pt-14 flex justify-between items-end">
-                                    <div>
-                                        <h2 class="text-2xl md:text-3xl font-black text-slate-800 tracking-tight">${emp.full_name || 'N/A'}</h2>
-                                        <p class="text-brand-primary font-bold text-sm tracking-wide uppercase mt-0.5">${emp.department || 'Employee'} &bull; @${emp.username}</p>
-                                    </div>
-                                    <div class="text-right hidden sm:block">
-                                        <div class="inline-flex items-center px-3 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs font-bold uppercase tracking-wider">
-                                            <span class="w-2 h-2 rounded-full bg-emerald-500 mr-2 animate-pulse"></span> Active
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="grid grid-cols-1 xl:grid-cols-3 gap-6">
-                            <!-- Left Column: Personal & Emergency -->
-                            <div class="space-y-6 xl:col-span-1">
-                                <!-- Personal Info Card -->
-                                <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
-                                    <h3 class="text-sm font-black text-slate-800 uppercase tracking-wider mb-5 flex items-center"><i data-lucide="user-circle" class="w-4 h-4 mr-2 text-brand-primary"></i> Personal Identity</h3>
-                                    <div class="space-y-4">
-                                        ${input('full_name', 'Full Legal Name', 'full_name')}
-                                        ${input('fathers_name', "Father's Name", 'fathers_name')}
-                                        <div class="grid grid-cols-2 gap-4">
-                                            ${input('date_of_birth', 'Date of Birth', 'date_of_birth', 'date')}
-                                            ${genderSelect}
-                                        </div>
-                                        <div class="grid grid-cols-2 gap-4">
-                                            ${input('adhar_number', 'Aadhaar Number', 'adhar_number')}
-                                            ${input('pan_number', 'PAN Number', 'pan_number')}
-                                        </div>
-                                        ${input('address', 'Permanent Address', 'address')}
-                                    </div>
-                                </div>
-
-                                <!-- Contact Info Card -->
-                                <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
-                                    <h3 class="text-sm font-black text-slate-800 uppercase tracking-wider mb-5 flex items-center"><i data-lucide="phone-call" class="w-4 h-4 mr-2 text-brand-primary"></i> Contact Data</h3>
-                                    <div class="space-y-4">
-                                        ${input('contact_number', 'Primary Phone', 'contact_number', 'tel')}
-                                        ${input('alternate_contact', 'Alternate Phone', 'alternate_contact', 'tel')}
-                                        ${input('email', 'Primary Email', 'email', 'email')}
-                                        ${input('alternate_email', 'Alternate Email', 'alternate_email', 'email')}
-                                    </div>
-                                </div>
-
-                                <!-- Emergency Card -->
-                                <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 border-t-4 border-t-rose-400">
-                                    <h3 class="text-sm font-black text-slate-800 uppercase tracking-wider mb-5 flex items-center"><i data-lucide="heart-pulse" class="w-4 h-4 mr-2 text-rose-500"></i> Emergency Contact</h3>
-                                    <div class="space-y-4">
-                                        ${emergencyContactBlock}
-                                        ${relationshipSelect}
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- Right Column: Professional, Bank & Compliance -->
-                            <div class="space-y-6 xl:col-span-2">
-                                <!-- Professional & Experience Card -->
-                                <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
-                                    <h3 class="text-sm font-black text-slate-800 uppercase tracking-wider mb-5 flex items-center"><i data-lucide="briefcase" class="w-4 h-4 mr-2 text-brand-primary"></i> Corporate & Experience</h3>
-                                    
-                                    <div class="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4 mb-6 pb-6 border-b border-slate-100">
-                                        ${input('date_of_joining', 'Date of Joining', 'date_of_joining', 'date')}
-                                        ${repMgrSelect}
-                                        ${highestQualificationSelect}
-                                        ${input('specialization', 'Specialization / Major', 'specialization')}
-                                    </div>
-                                    
-                                    <div class="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4 mb-6 pb-6 border-b border-slate-100">
-                                        ${input('experience', 'Total Experience', 'experience', 'text', 'e.g. 4 Years')}
-                                        ${input('previous_employer', 'Previous Employer', 'previous_employer')}
-                                        <div class="md:col-span-2">${input('previous_job_role', 'Previous Job Role', 'previous_job_role')}</div>
-                                    </div>
-
-                                    <div class="space-y-4">
-                                        <div class="flex flex-col">
-                                            <label class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Core Skills & Competencies</label>
-                                            ${isEdit
-                    ? `
-                                                <input type="text" id="edit_skills_input" onkeydown="handleSkillKeydown(event)" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-800 text-sm outline-none focus:border-brand-primary focus:ring-1 focus:ring-brand-primary transition-all shadow-sm" placeholder="Type a skill and press Enter to add">
-                                                <div id="edit_skills_container" class="flex flex-wrap gap-2 mt-3 mb-1">
-                                                    ${state.editSkills.map((s, i) => `
-                                                        <span class="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-bold bg-indigo-50 text-brand-primary border border-indigo-100">
-                                                            ${s} 
-                                                            <button type="button" onclick="removeSkill(${i})" class="ml-1.5 hover:text-indigo-800 text-sm leading-none focus:outline-none">&times;</button>
-                                                        </span>
-                                                    `).join('')}
-                                                </div>
-                                                `
-                    : `
-                                                <div class="text-sm font-semibold text-slate-800 py-1 min-h-[32px] flex flex-wrap gap-2">
-                                                    ${(function () {
-                        try {
-                            let s = emp.skills;
-                            if (!s || s === 'N/A' || s === '[]') return '<span class="text-slate-300 italic font-normal">Not provided</span>';
-                            let arr = (typeof s === 'string' && s.startsWith('[')) ? JSON.parse(s) : (typeof s === 'string' ? s.split(',') : s);
-                            return arr.map(skill => `<span class="px-2.5 py-1 bg-indigo-50 border border-indigo-100 text-brand-primary text-xs font-bold rounded-md">${skill.trim()}</span>`).join('');
-                        } catch (e) { return `<span class="px-2.5 py-1 bg-indigo-50 border border-indigo-100 text-brand-primary text-xs font-bold rounded-md">${emp.skills}</span>`; }
-                    })()}
-                                                </div>
-                                                `
-                }
-                                        </div>
-                                        ${input('resume', 'Resume / Portfolio Link', 'resume', 'url', 'https://drive.google.com/...')}
-                                    </div>
-                                </div>
-
-                                <!-- Bank & Compensation Card -->
-                                <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
-                                    <h3 class="text-sm font-black text-slate-800 uppercase tracking-wider mb-5 flex items-center"><i data-lucide="building" class="w-4 h-4 mr-2 text-brand-primary"></i> Banking & Payment</h3>
-                                    <div class="space-y-4">
-                                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                            ${input('account_holder_name', 'Account Holder Name', 'account_holder_name')}
-                                            ${input('bank_name', 'Bank Name', 'bank_name')}
-                                            ${input('bank_account', 'Account Number', 'bank_account')}
-                                            ${input('ifsc_code', 'IFSC / Routing Code', 'ifsc_code')}
-                                        </div>
-                                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                            ${input('upi_id', 'UPI ID', 'upi_id', 'text', 'e.g. user@okhdfcbank')}
-                                            ${input('tax_details', 'Tax Details (PAN/VAT)', 'tax_details')}
-                                        </div>
-                                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                            ${input('pf_number', 'PF Number', 'pf_number')}
-                                            ${input('esic_number', 'ESIC Number', 'esic_number')}
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <!-- Compliance Documents -->
-                                <div class="bg-slate-800 rounded-2xl border border-slate-900 shadow-sm p-6 text-white">
-                                    <h3 class="text-sm font-black text-white uppercase tracking-wider mb-5 flex items-center"><i data-lucide="shield-check" class="w-4 h-4 mr-2 text-emerald-400"></i> Compliance Uploads</h3>
-                                    <p class="text-xs text-slate-400 mb-6">${emp.compliance_verified ? 'Official compliance documents are verified and locked.' : 'Click any box to securely upload or overwrite your official compliance documents. Max size 5MB.'}</p>
-                                    
-                                    <div class="grid grid-cols-2 md:grid-cols-5 gap-3">
-                                        ${getUploadBoxHtml('Aadhar Front', 'adhar', 'front', emp.adhar_front)}
-                                        ${getUploadBoxHtml('Aadhar Back', 'adhar', 'back', emp.adhar_back)}
-                                        ${getUploadBoxHtml('PAN Front', 'pancard', 'front', emp.pan_front)}
-                                        ${getUploadBoxHtml('PAN Back', 'pancard', 'back', emp.pan_back)}
-                                        ${getUploadBoxHtml('Bank QR Code', 'qr_code', 'code', emp.qr_code)}
-                                    </div>
-                                </div>
-
-                            </div>
-                        </div>
-                    </form>
-                </div>
-            `;
-        }
+        
 
         function getUploadBoxHtml(label, type, subType, currentValue) {
             const emp = state.employeeData || {};
@@ -4254,7 +2956,7 @@ window.addConTaskRow = function () {
         }
 
         // --- Action Handlers ---
-        async function handleCheckIn(event) {
+        window.handleCheckIn = async function(event, workMode = 'Office') {
             event.preventDefault();
             const btn = event.currentTarget;
             const originalHtml = btn.innerHTML;
@@ -4262,7 +2964,13 @@ window.addConTaskRow = function () {
             btn.disabled = true;
 
             try {
-                await apiFetch('/attendance/check-in', { method: 'POST', body: {} });
+                await apiFetch('/attendance/check-in', {
+                    method: 'POST',
+                    body: {
+                        work_mode: workMode,
+                        device_info: navigator.userAgent
+                    }
+                });
                 showToast('Successfully checked in for today!', 'success');
                 await loadEmployeeWorkspaceData();
                 renderEmployeeApp();
@@ -4274,7 +2982,7 @@ window.addConTaskRow = function () {
             }
         }
 
-        async function handleCheckOut(event) {
+        window.handleCheckOut = async function(event) {
             event.preventDefault();
             const btn = event.currentTarget;
             const originalHtml = btn.innerHTML;
@@ -4286,7 +2994,12 @@ window.addConTaskRow = function () {
             btn.disabled = true;
 
             try {
-                await apiFetch('/attendance/check-out', { method: 'POST', body: {} });
+                await apiFetch('/attendance/check-out', {
+                    method: 'POST',
+                    body: {
+                        device_info: navigator.userAgent
+                    }
+                });
                 showToast('Successfully checked out. Have a great rest of your day!', 'success');
                 await loadEmployeeWorkspaceData();
                 renderEmployeeApp();
@@ -5072,16 +3785,63 @@ window.addConTaskRow = function () {
             return count;
         };
 
+        window.toggleLeaveHandoverSection = function(show) {
+            const container = document.getElementById('leave-handover-container');
+            const backupInput = document.getElementById('leave-backup');
+            const projectInput = document.getElementById('leave-project');
+            const summaryInput = document.getElementById('leave-work-summary');
+            
+            const reqStarBackup = document.getElementById('req-star-backup');
+            const reqStarProject = document.getElementById('req-star-project');
+            const reqStarSummary = document.getElementById('req-star-summary');
+
+            if (container) {
+                if (show) {
+                    container.classList.remove('hidden');
+                    if (backupInput) backupInput.required = true;
+                    if (projectInput) projectInput.required = true;
+                    if (summaryInput) summaryInput.required = true;
+                    if (reqStarBackup) reqStarBackup.classList.remove('hidden');
+                    if (reqStarProject) reqStarProject.classList.remove('hidden');
+                    if (reqStarSummary) reqStarSummary.classList.remove('hidden');
+                } else {
+                    container.classList.add('hidden');
+                    if (backupInput) backupInput.required = false;
+                    if (projectInput) projectInput.required = false;
+                    if (summaryInput) summaryInput.required = false;
+                    if (reqStarBackup) reqStarBackup.classList.add('hidden');
+                    if (reqStarProject) reqStarProject.classList.add('hidden');
+                    if (reqStarSummary) reqStarSummary.classList.add('hidden');
+                }
+            }
+            if (window.lucide) lucide.createIcons();
+        };
+
+        window.handleLeaveTypeChange = function(select) {
+            const isHandoverOnly = select.value === 'Work Handover Only';
+            const toggle = document.getElementById('toggle-leave-handover');
+            if (isHandoverOnly) {
+                if (toggle) toggle.checked = true;
+                window.toggleLeaveHandoverSection(true);
+            }
+            if (typeof window.updateLeaveDaysCalculation === 'function') {
+                window.updateLeaveDaysCalculation();
+            }
+        };
+
         window.updateLeaveDaysCalculation = function() {
             const startInput = document.getElementById('leave-start');
             const endInput = document.getElementById('leave-end');
             const durationSelect = document.getElementById('leave-duration');
+            const leaveTypeSelect = document.getElementById('leave-type');
             const calculationDiv = document.getElementById('leave-calculation-output');
             
             if (!startInput || !endInput || !durationSelect || !calculationDiv) return;
             
             const startVal = startInput.value;
             const durationVal = durationSelect.value;
+            const leaveType = leaveTypeSelect ? leaveTypeSelect.value : '';
+            const isHandoverOnly = leaveType === 'Work Handover Only';
             
             if (durationVal !== 'Full Day') {
                 endInput.value = startVal;
@@ -5096,22 +3856,34 @@ window.addConTaskRow = function () {
                 return;
             }
             
-            const days = window.calculateWorkingDays(startVal, endVal, durationVal !== 'Full Day');
+            let days = isHandoverOnly ? 0 : window.calculateWorkingDays(startVal, endVal, durationVal !== 'Full Day');
             
             if (new Date(endVal) < new Date(startVal)) {
                 calculationDiv.innerHTML = `<span class="text-rose-500 text-xs font-semibold">End date cannot be before start date</span>`;
                 return;
             }
             
-            calculationDiv.innerHTML = `
-                <div class="px-4 py-3 bg-indigo-50/50 border border-indigo-100 rounded-xl flex items-center justify-between mt-2 animate-in fade-in duration-200">
-                    <div class="flex items-center gap-2 text-indigo-900 text-sm">
-                        <i data-lucide="calculator" class="w-4 h-4 text-indigo-500"></i>
-                        <span>Total Working Days: <strong class="text-indigo-600 font-bold">${days} Day${days !== 1 ? 's' : ''}</strong></span>
+            if (isHandoverOnly) {
+                calculationDiv.innerHTML = `
+                    <div class="px-4 py-3 bg-emerald-50 border border-emerald-200 rounded-xl flex items-center justify-between mt-2 animate-in fade-in duration-200">
+                        <div class="flex items-center gap-2 text-emerald-900 text-sm">
+                            <i data-lucide="check-circle" class="w-4 h-4 text-emerald-600"></i>
+                            <span>Leave Balance Deduction: <strong class="text-emerald-700 font-bold">0 Days (Task Handover Only)</strong></span>
+                        </div>
+                        <span class="text-[10px] text-emerald-600 font-semibold">No leave quota will be consumed</span>
                     </div>
-                    <span class="text-[10px] text-slate-400 font-medium">Saturdays, Sundays & Public Holidays excluded</span>
-                </div>
-            `;
+                `;
+            } else {
+                calculationDiv.innerHTML = `
+                    <div class="px-4 py-3 bg-indigo-50/50 border border-indigo-100 rounded-xl flex items-center justify-between mt-2 animate-in fade-in duration-200">
+                        <div class="flex items-center gap-2 text-indigo-900 text-sm">
+                            <i data-lucide="calculator" class="w-4 h-4 text-indigo-500"></i>
+                            <span>Total Working Days: <strong class="text-indigo-600 font-bold">${days} Day${days !== 1 ? 's' : ''}</strong></span>
+                        </div>
+                        <span class="text-[10px] text-slate-400 font-medium">Saturdays, Sundays & Public Holidays excluded</span>
+                    </div>
+                `;
+            }
             if (window.lucide) lucide.createIcons();
         };
 
@@ -5226,711 +3998,11 @@ window.addConTaskRow = function () {
             if (window.lucide) lucide.createIcons();
         };
 
-        function getEmployeeLeaveRequestsTemplate() {
-            const sortedRequests = [...(state.myLeaveRequests || [])].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
-            
-            // Calculate balances
-            let usedCasual = 0;
-            let usedSick = 0;
-            let pendingCount = 0;
-            let totalUsed = 0;
-            
-            sortedRequests.forEach(req => {
-                if (req.status === 'Approved') {
-                    if (req.leave_type === 'Casual Leave') usedCasual += req.total_days || 0;
-                    else if (req.leave_type === 'Sick Leave') usedSick += req.total_days || 0;
-                    totalUsed += req.total_days || 0;
-                } else if (req.status === 'Pending') {
-                    pendingCount += req.total_days || 0;
-                }
-            });
-            
-            const remainingCasual = Math.max(12 - usedCasual, 0);
-            const remainingSick = Math.max(6 - usedSick, 0);
-            
-            let tableRows = '';
-            if (sortedRequests.length === 0) {
-                tableRows = '<tr><td colspan="7" class="px-6 py-8 text-center text-slate-500 font-medium">No leave requests found.</td></tr>';
-            } else {
-                tableRows = sortedRequests.map(req => {
-                    const startStr = new Date(req.start_date).toLocaleDateString();
-                    const endStr = new Date(req.end_date).toLocaleDateString();
-                    
-                    let statusColor = 'bg-slate-100 text-slate-700';
-                    if (req.status === 'Approved') statusColor = 'bg-emerald-100 text-emerald-800';
-                    if (req.status === 'Rejected') statusColor = 'bg-rose-100 text-rose-800';
-                    if (req.status === 'Pending') statusColor = 'bg-amber-100 text-amber-800';
-                    if (req.status === 'Cancelled') statusColor = 'bg-slate-200 text-slate-600';
-                    if (req.status === 'Cancellation Requested') statusColor = 'bg-orange-100 text-orange-800';
-                    
-                    const statusBadge = `<span class="px-2.5 py-1 ${statusColor} rounded-full text-xs font-bold border border-white/20 shadow-sm">${req.status}</span>`;
-                    
-                    const todayLocal = new Date();
-                    todayLocal.setHours(0, 0, 0, 0);
-                    const leaveEndDate = new Date(req.end_date);
-                    leaveEndDate.setHours(0, 0, 0, 0);
-                    const hasEnded = todayLocal.getTime() > leaveEndDate.getTime();
+        
 
-                    let actionBtn = '';
-                    if (req.status === 'Pending') {
-                        if (hasEnded) {
-                            actionBtn = `<span class="text-xs font-bold text-slate-400 italic">Leave Ended</span>`;
-                        } else {
-                            actionBtn = `<button onclick="window.cancelLeaveRequest('${req.id}')" class="text-rose-600 hover:text-rose-900 text-xs font-bold bg-rose-50 hover:bg-rose-100 px-2.5 py-1 rounded-lg border border-rose-200 transition-colors flex items-center gap-1 shadow-sm">Cancel</button>`;
-                        }
-                    } else if (req.status === 'Approved') {
-                        if (hasEnded) {
-                            actionBtn = `<span class="text-xs font-bold text-slate-400 italic">Leave Ended</span>`;
-                        } else {
-                            actionBtn = `<button onclick="window.cancelLeaveRequest('${req.id}')" class="text-amber-600 hover:text-amber-900 text-xs font-bold bg-amber-50 hover:bg-amber-100 px-2.5 py-1 rounded-lg border border-amber-200 transition-colors flex items-center gap-1 shadow-sm">Request Cancel</button>`;
-                        }
-                    } else if (req.status === 'Cancellation Requested') {
-                        actionBtn = `<span class="text-[10px] text-slate-400 font-semibold italic">Cancellation pending approval</span>`;
-                    } else {
-                        actionBtn = `<span class="text-xs text-slate-400">-</span>`;
-                    }
-                    
-                    let backupName = 'N/A';
-                    if (req.backup_employee_id && req.backup_employee_id !== 'N/A') {
-                        const backupEmp = (state.allEmployees || []).find(e => e.id === req.backup_employee_id);
-                        backupName = backupEmp ? backupEmp.full_name : req.backup_employee_id;
-                    }
-                    
-                    return `
-                        <tr onclick="window.showLeaveDetailsModal('${req.id}')" class="border-b border-slate-100 hover:bg-slate-50 transition-colors cursor-pointer text-xs">
-                            <td class="px-4 py-3 font-semibold text-slate-800">${startStr} - ${endStr}</td>
-                            <td class="px-4 py-3 text-slate-500 font-medium">${req.leave_type || 'Paid Leave'}</td>
-                            <td class="px-4 py-3 font-bold text-slate-700">${req.total_days || 1.0} d (${req.half_day_option || 'Full Day'})</td>
-                            <td class="px-4 py-3 text-slate-600 max-w-[150px] truncate" title="${req.reason}">${req.reason}</td>
-                            <td class="px-4 py-3 text-slate-500" title="Work Handover: ${req.pending_work_summary || 'N/A'}">
-                                <span class="font-semibold text-slate-600 truncate max-w-[120px] block">${backupName}</span>
-                            </td>
-                            <td class="px-4 py-3">${statusBadge}</td>
-                            <td class="px-4 py-3 text-right" onclick="event.stopPropagation()">${actionBtn}</td>
-                        </tr>
-                    `;
-                }).join('');
-            }
-            
-            const backupOptions = (state.allEmployees || [])
-                .filter(emp => emp.id !== state.user.id)
-                .map(emp => `<option value="${emp.id}">${emp.full_name}</option>`)
-                .join('');
-            
-            const todayStr = new Date().toISOString().split('T')[0];
-            
-            return `
-                <div class="max-w-5xl mx-auto space-y-6 fade-in">
-                    <!-- Dashboard Cards -->
-                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-                        <div class="bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-3xl p-5 text-white shadow-md relative overflow-hidden group hover:shadow-lg transition-all">
-                            <div class="absolute right-0 bottom-0 translate-y-4 translate-x-4 opacity-15 pointer-events-none group-hover:scale-110 transition-transform">
-                                <i data-lucide="calendar" class="w-24 h-24"></i>
-                            </div>
-                            <span class="text-xs font-bold uppercase tracking-wider text-indigo-100">Casual Leave Balance</span>
-                            <div class="text-3xl font-black mt-2">${remainingCasual} / 12</div>
-                            <div class="text-[11px] font-semibold text-indigo-100/90 mt-2">${usedCasual} days used this year</div>
-                        </div>
-                        <div class="bg-gradient-to-br from-rose-500 to-rose-600 rounded-3xl p-5 text-white shadow-md relative overflow-hidden group hover:shadow-lg transition-all">
-                            <div class="absolute right-0 bottom-0 translate-y-4 translate-x-4 opacity-15 pointer-events-none group-hover:scale-110 transition-transform">
-                                <i data-lucide="heart-pulse" class="w-24 h-24"></i>
-                            </div>
-                            <span class="text-xs font-bold uppercase tracking-wider text-rose-100">Sick Leave Balance</span>
-                            <div class="text-3xl font-black mt-2">${remainingSick} / 6</div>
-                            <div class="text-[11px] font-semibold text-rose-100/90 mt-2">${usedSick} days used this year</div>
-                        </div>
-                        <div class="bg-white border border-slate-200 rounded-3xl p-5 shadow-sm relative overflow-hidden group hover:shadow-md transition-all">
-                            <div class="absolute right-0 bottom-0 translate-y-4 translate-x-4 opacity-5 pointer-events-none group-hover:scale-110 transition-transform">
-                                <i data-lucide="check-circle-2" class="w-24 h-24 text-slate-900"></i>
-                            </div>
-                            <span class="text-xs font-bold uppercase tracking-wider text-slate-400">Total Leaves Approved</span>
-                            <div class="text-3xl font-black text-slate-800 mt-2">${totalUsed} Day${totalUsed !== 1 ? 's' : ''}</div>
-                            <div class="text-[11px] font-semibold text-slate-500 mt-2">Active leaves taken across all categories</div>
-                        </div>
-                        <div class="bg-white border border-slate-200 rounded-3xl p-5 shadow-sm relative overflow-hidden group hover:shadow-md transition-all">
-                            <div class="absolute right-0 bottom-0 translate-y-4 translate-x-4 opacity-5 pointer-events-none group-hover:scale-110 transition-transform">
-                                <i data-lucide="clock-4" class="w-24 h-24 text-slate-900"></i>
-                            </div>
-                            <span class="text-xs font-bold uppercase tracking-wider text-slate-400">Pending Approval</span>
-                            <div class="text-3xl font-black text-slate-800 mt-2">${pendingCount} Day${pendingCount !== 1 ? 's' : ''}</div>
-                            <div class="text-[11px] font-semibold text-slate-500 mt-2">Waiting for Manager approval</div>
-                        </div>
-                    </div>
+        
 
-                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                        <!-- Left Column: Form -->
-                        <div class="lg:col-span-2 space-y-6">
-                            <div class="bg-white rounded-3xl border border-slate-200 shadow-sm p-6 sm:p-8">
-                                <h3 class="text-lg font-bold text-slate-800 mb-6 flex items-center gap-2.5">
-                                    <i data-lucide="calendar-plus" class="w-5 h-5 text-indigo-600"></i> Apply for Leave
-                                </h3>
-                                <form onsubmit="handleLeaveRequestSubmit(event)" class="space-y-5">
-                                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        <div>
-                                            <label class="block text-xs font-black text-slate-400 uppercase tracking-wider mb-2">Leave Type <span class="text-rose-500">*</span></label>
-                                            <div class="relative">
-                                                <select id="leave-type" required class="input-field w-full pl-3 pr-8 py-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none text-sm text-slate-700 font-medium appearance-none focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all">
-                                                    <option value="Casual Leave" selected>Casual Leave</option>
-                                                    <option value="Sick Leave">Sick Leave</option>
-                                                    <option value="Paid Leave">Paid Leave</option>
-                                                    <option value="Unpaid Leave">Unpaid Leave</option>
-                                                </select>
-                                                <i data-lucide="chevron-down" class="w-4 h-4 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none"></i>
-                                            </div>
-                                        </div>
-                                        <div>
-                                            <label class="block text-xs font-black text-slate-400 uppercase tracking-wider mb-2">Duration <span class="text-rose-500">*</span></label>
-                                            <div class="relative">
-                                                <select id="leave-duration" required onchange="window.updateLeaveDaysCalculation()" class="input-field w-full pl-3 pr-8 py-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none text-sm text-slate-700 font-medium appearance-none focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all">
-                                                    <option value="Full Day" selected>Full Day</option>
-                                                    <option value="First Half">First Half (0.5 Day)</option>
-                                                    <option value="Second Half">Second Half (0.5 Day)</option>
-                                                </select>
-                                                <i data-lucide="chevron-down" class="w-4 h-4 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none"></i>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    
-                                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        <div>
-                                            <label class="block text-xs font-black text-slate-400 uppercase tracking-wider mb-2">Start Date <span class="text-rose-500">*</span></label>
-                                            <input type="date" id="leave-start" required min="${todayStr}" onchange="window.updateLeaveDaysCalculation()" class="input-field w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none text-sm text-slate-700 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all">
-                                        </div>
-                                        <div>
-                                            <label class="block text-xs font-black text-slate-400 uppercase tracking-wider mb-2">End Date <span class="text-rose-500">*</span></label>
-                                            <input type="date" id="leave-end" required min="${todayStr}" onchange="window.updateLeaveDaysCalculation()" class="input-field w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none text-sm text-slate-700 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all">
-                                        </div>
-                                    </div>
-                                    
-                                    <div id="leave-calculation-output"></div>
-
-                                    <div>
-                                        <div class="flex justify-between items-center mb-2">
-                                            <label class="block text-xs font-black text-slate-400 uppercase tracking-wider">Reason for Leave <span class="text-rose-500">*</span></label>
-                                            <span id="leave-reason-counter" class="text-[10px] text-slate-400">0 / 500 characters</span>
-                                        </div>
-                                        <textarea id="leave-reason" required rows="4" minlength="15" maxlength="500" oninput="window.autoExpandTextarea(this); document.getElementById('leave-reason-counter').innerText = this.value.length + ' / 500 characters'" class="input-field w-full px-4 py-3 bg-slate-50 border border-slate-300 rounded-xl outline-none text-sm text-slate-700 focus:bg-white focus:border-slate-800 focus:ring-2 focus:ring-slate-800/10 transition-all" placeholder="Explain the reason for leave clearly (minimum 15 characters, maximum 500 characters)..."></textarea>
-                                    </div>
-
-                                    <!-- Task Handover Section -->
-                                    <div class="bg-slate-50 border border-slate-200 rounded-2xl p-5 space-y-4">
-                                        <h4 class="text-xs font-black text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
-                                            <i data-lucide="shuffle" class="w-4 h-4 text-indigo-500"></i> Work Handover Details
-                                        </h4>
-                                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                            <div>
-                                                <label class="block text-[11px] font-bold text-slate-500 mb-2">Assigned Backup Employee <span class="text-rose-500">*</span></label>
-                                                <div class="relative">
-                                                    <select id="leave-backup" required class="input-field w-full pl-3 pr-8 py-2.5 bg-white border border-slate-200 rounded-xl outline-none text-sm text-slate-700 font-medium appearance-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all">
-                                                        <option value="N/A">-- Select Handover Employee --</option>
-                                                        ${backupOptions}
-                                                    </select>
-                                                    <i data-lucide="user-check" class="w-4 h-4 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none"></i>
-                                                </div>
-                                            </div>
-                                            <div>
-                                                <label class="block text-[11px] font-bold text-slate-500 mb-2">Deployment Pending? <span class="text-rose-500">*</span></label>
-                                                <div class="relative">
-                                                    <select id="leave-deployment" required class="input-field w-full pl-3 pr-8 py-2.5 bg-white border border-slate-200 rounded-xl outline-none text-sm text-slate-700 font-medium appearance-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all">
-                                                        <option value="No" selected>No</option>
-                                                        <option value="Yes">Yes</option>
-                                                    </select>
-                                                    <i data-lucide="server" class="w-4 h-4 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none"></i>
-                                                </div>
-                                            </div>
-                                            <div>
-                                                <label class="block text-[11px] font-bold text-slate-500 mb-2">Project <span class="text-rose-500">*</span></label>
-                                                <div class="relative">
-                                                    <select id="leave-project" required onchange="window.updateLeaveMilestones(this)" class="input-field w-full pl-3 pr-8 py-2.5 bg-white border border-slate-200 rounded-xl outline-none text-sm text-slate-700 font-medium appearance-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all">
-                                                        <option value="">-- Select Project --</option>
-                                                        ${state.projects.map(p => `<option value="${p.id}">${p.name}</option>`).join('')}
-                                                    </select>
-                                                    <i data-lucide="folder" class="w-4 h-4 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none"></i>
-                                                </div>
-                                            </div>
-                                            <div>
-                                                <label class="block text-[11px] font-bold text-slate-500 mb-2">Milestone</label>
-                                                <div class="relative">
-                                                    <select id="leave-milestone" onchange="window.handleLeaveMilestoneChange(this)" class="input-field w-full pl-3 pr-8 py-2.5 bg-white border border-slate-200 rounded-xl outline-none text-sm text-slate-700 font-medium appearance-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all">
-                                                        <option value="">General Task (No Milestone)</option>
-                                                    </select>
-                                                    <i data-lucide="target" class="w-4 h-4 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none"></i>
-                                                </div>
-                                            </div>
-                                            <div>
-                                                <label class="block text-[11px] font-bold text-slate-500 mb-2">Task Type <span class="text-rose-500">*</span></label>
-                                                <div class="relative">
-                                                    <select id="leave-task-type" required class="input-field w-full pl-3 pr-8 py-2.5 bg-white border border-slate-200 rounded-xl outline-none text-sm text-slate-700 font-medium appearance-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all">
-                                                        <option value="developer" selected>Engineering</option>
-                                                        <option value="content">Content</option>
-                                                        <option value="both">Both</option>
-                                                    </select>
-                                                    <i data-lucide="settings" class="w-4 h-4 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none"></i>
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <div>
-                                            <label class="block text-[11px] font-bold text-slate-500 mb-2">Pending Work Summary <span class="text-rose-500">*</span></label>
-                                            <textarea id="leave-work-summary" required rows="2" class="input-field w-full px-3 py-2 bg-white border border-slate-200 rounded-xl outline-none text-sm text-slate-700 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all" placeholder="Provide a summary of tasks handed over..."></textarea>
-                                        </div>
-                                    </div>
-
-                                    <div class="flex justify-end">
-                                        <button type="submit" id="btn-submit-leave" class="bg-brand-primary hover:bg-indigo-600 text-white font-bold py-3 px-8 rounded-xl shadow-lg transition-all flex items-center justify-center gap-2">
-                                            <i data-lucide="send" class="w-4 h-4"></i> Submit Request
-                                        </button>
-                                    </div>
-                                </form>
-                            </div>
-                        </div>
-
-                        <!-- Right Column: Holiday Calendar -->
-                        <div class="space-y-6">
-                            <div class="bg-white rounded-3xl border border-slate-200 shadow-sm p-6">
-                                <h3 class="text-sm font-black text-slate-800 uppercase tracking-wider mb-4 flex items-center gap-2">
-                                    <i data-lucide="calendar" class="w-4 h-4 text-slate-500"></i> Holiday Calendar 2026
-                                </h3>
-                                <p class="text-slate-500 text-xs mb-4">Note: Weekends (Saturdays and Sundays) and the following public holidays are automatically excluded from leave deductions.</p>
-                                <div class="space-y-2.5">
-                                    ${(state.holidays && state.holidays.length > 0) ? state.holidays.map(h => `
-                                        <div class="flex justify-between items-center p-2.5 bg-slate-50 hover:bg-slate-100/70 border border-slate-200/60 rounded-xl transition-all animate-in fade-in duration-200">
-                                            <div>
-                                                <span class="text-xs font-semibold text-slate-700">${h.name}</span>
-                                                <span class="block text-[9px] font-black uppercase tracking-wider text-slate-400 mt-0.5">${h.holiday_type} Holiday</span>
-                                            </div>
-                                            <span class="text-xs font-black text-slate-500 bg-white border border-slate-200 px-2 py-0.5 rounded-md">${new Date(h.date).toLocaleDateString([], {month: 'short', day: 'numeric'})}</span>
-                                        </div>
-                                    `).join('') : `
-                                        <div class="flex justify-between items-center p-2.5 bg-slate-50 hover:bg-slate-100/70 border border-slate-200/60 rounded-xl transition-all">
-                                            <span class="text-xs font-semibold text-slate-700">New Year's Day</span>
-                                            <span class="text-xs font-black text-slate-500 bg-white border border-slate-200 px-2 py-0.5 rounded-md">Jan 01</span>
-                                        </div>
-                                        <div class="flex justify-between items-center p-2.5 bg-slate-50 hover:bg-slate-100/70 border border-slate-200/60 rounded-xl transition-all">
-                                            <span class="text-xs font-semibold text-slate-700">Republic Day</span>
-                                            <span class="text-xs font-black text-slate-500 bg-white border border-slate-200 px-2 py-0.5 rounded-md">Jan 26</span>
-                                        </div>
-                                        <div class="flex justify-between items-center p-2.5 bg-slate-50 hover:bg-slate-100/70 border border-slate-200/60 rounded-xl transition-all">
-                                            <span class="text-xs font-semibold text-slate-700">Independence Day</span>
-                                            <span class="text-xs font-black text-slate-500 bg-white border border-slate-200 px-2 py-0.5 rounded-md">Aug 15</span>
-                                        </div>
-                                        <div class="flex justify-between items-center p-2.5 bg-slate-50 hover:bg-slate-100/70 border border-slate-200/60 rounded-xl transition-all">
-                                            <span class="text-xs font-semibold text-slate-700">Gandhi Jayanti</span>
-                                            <span class="text-xs font-black text-slate-500 bg-white border border-slate-200 px-2 py-0.5 rounded-md">Oct 02</span>
-                                        </div>
-                                        <div class="flex justify-between items-center p-2.5 bg-slate-50 hover:bg-slate-100/70 border border-slate-200/60 rounded-xl transition-all">
-                                            <span class="text-xs font-semibold text-slate-700">Christmas Day</span>
-                                            <span class="text-xs font-black text-slate-500 bg-white border border-slate-200 px-2 py-0.5 rounded-md">Dec 25</span>
-                                        </div>
-                                    `}
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- History Table -->
-                    <div class="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden mt-6">
-                        <div class="px-6 py-5 border-b border-slate-100 bg-slate-50 flex items-center justify-between">
-                            <h4 class="font-bold text-slate-800 flex items-center gap-2">
-                                <i data-lucide="history" class="w-5 h-5 text-slate-500"></i> My Leave History
-                            </h4>
-                            <span class="px-2.5 py-1 bg-indigo-100 text-brand-primary text-xs font-bold rounded-md">${sortedRequests.length} Total</span>
-                        </div>
-                        <div class="overflow-x-auto">
-                            <table class="w-full text-left whitespace-nowrap">
-                                <thead>
-                                    <tr class="bg-slate-50/50 border-b border-slate-200">
-                                        <th class="px-4 py-3.5 text-[11px] font-black uppercase tracking-wider text-slate-400">Duration</th>
-                                        <th class="px-4 py-3.5 text-[11px] font-black uppercase tracking-wider text-slate-400">Type</th>
-                                        <th class="px-4 py-3.5 text-[11px] font-black uppercase tracking-wider text-slate-400">Total Days</th>
-                                        <th class="px-4 py-3.5 text-[11px] font-black uppercase tracking-wider text-slate-400">Reason</th>
-                                        <th class="px-4 py-3.5 text-[11px] font-black uppercase tracking-wider text-slate-400">Backup Person</th>
-                                        <th class="px-4 py-3.5 text-[11px] font-black uppercase tracking-wider text-slate-400">Status</th>
-                                        <th class="px-4 py-3.5 text-[11px] font-black uppercase tracking-wider text-slate-400 text-right">Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody class="divide-y divide-slate-100">
-                                    ${tableRows}
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-            `;
-        }
-
-        function getEmployeeTimesheetsTemplate() {
-            const milestones = state.myMilestones || [];
-            const tasks = state.employeeTasks || [];
-
-            // Calculate overall metadata
-            const totalMilestones = milestones.length;
-            const totalTasks = tasks.length;
-            let totalHours = 0;
-            tasks.forEach(t => {
-                totalHours += parseFloat(t.hours_logged || 0);
-            });
-
-            // Render Raw Tasks Table
-            const sortedTasks = [...tasks].sort((a, b) => new Date(b.date || b.created_at) - new Date(a.date || a.created_at));
-            const tableRows = sortedTasks.map(t => {
-                const d = new Date(t.date || t.created_at);
-                const dateStr = d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
-                const timeStr = d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
-                
-                const project = t.project_id ? (state.projects.find(p => p.id === t.project_id)?.name || 'Project Attached') : 'General / No Project';
-                const milestone = t.milestone_id ? (milestones.find(m => m.id === t.milestone_id)?.milestone_name || 'Milestone Attached') : 'General Task';
-                
-                // 24 hour edit permission check
-                const createdTime = new Date(t.created_at).getTime();
-                const elapsedHours = (Date.now() - createdTime) / (1000 * 60 * 60);
-                const canEdit = elapsedHours <= 24;
-
-                let actionBtn = '';
-                if (canEdit) {
-                    actionBtn = `
-                        <button onclick="event.stopPropagation(); window.openEditTaskModal('${t.id}', '${t.task_type}')" class="inline-flex items-center gap-1 px-2.5 py-1 bg-indigo-50 hover:bg-indigo-600 text-indigo-650 hover:text-white border border-indigo-200 rounded-lg text-xs font-bold transition-all shadow-xs">
-                            <i data-lucide="edit-3" class="w-3 h-3"></i> Edit
-                        </button>
-                    `;
-                } else {
-                    actionBtn = `
-                        <span onclick="event.stopPropagation()" class="inline-flex items-center gap-1 px-2.5 py-1 bg-slate-50 text-slate-400 border border-slate-200 rounded-lg text-xs font-medium cursor-not-allowed" title="Locked (24h expired)">
-                            <i data-lucide="lock" class="w-3 h-3"></i> Locked
-                        </span>
-                    `;
-                }
-
-                const editedBadge = t.is_edited ? `
-                    <span class="inline-flex items-center gap-0.5 text-[8px] font-black bg-amber-50 text-amber-700 border border-amber-250 px-1.5 py-0.5 rounded shadow-sm">
-                        Edited
-                    </span>
-                ` : '';
-
-                // Handover Badge
-                let coveredEmpName = '';
-                if (t.handover_for_employee_id) {
-                    const coveredEmp = (state.allEmployees || []).find(e => e.id === t.handover_for_employee_id);
-                    coveredEmpName = coveredEmp ? coveredEmp.full_name : 'Colleague';
-                }
-                const handoverBadge = t.is_handover ? `
-                    <span class="inline-flex items-center gap-1 text-[9px] font-semibold bg-amber-50 text-amber-700 border border-amber-200 px-1.5 py-0.5 rounded-md mt-0.5 shadow-xs w-fit" title="Covering ${coveredEmpName}">
-                        Handover
-                    </span>
-                ` : '';
-
-                // Effort Metrics custom formatting (Culling zero values, displaying as premium badges)
-                let metricsText = '';
-                if (t.task_type === 'content_creator') {
-                    let customVals = {};
-                    try {
-                        customVals = t.custom_field_values ? (typeof t.custom_field_values === 'string' ? JSON.parse(t.custom_field_values) : t.custom_field_values) : {};
-                    } catch(e) {
-                        customVals = {};
-                    }
-                    
-                    const activeMetrics = [];
-                    if (customVals && typeof customVals === 'object' && Object.keys(customVals).length > 0) {
-                        Object.entries(customVals).forEach(([k, v]) => {
-                            const val = parseInt(v) || 0;
-                            if (val > 0) {
-                                activeMetrics.push({ name: k, value: val });
-                            }
-                        });
-                    } else {
-                        const standard = [
-                            { name: 'Reels', value: t.reels_count },
-                            { name: 'Videos', value: t.long_video_count },
-                            { name: 'Posters', value: t.poster_count },
-                            { name: 'Calls', value: t.calls_made }
-                        ];
-                        standard.forEach(m => {
-                            const val = parseInt(m.value) || 0;
-                            if (val > 0) {
-                                activeMetrics.push({ name: m.name, value: val });
-                            }
-                        });
-                    }
-
-                    if (activeMetrics.length > 0) {
-                        metricsText = activeMetrics.map(m => {
-                            let displayName = m.name.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
-                            if (displayName.toLowerCase().includes('reel')) displayName = 'Reels';
-                            else if (displayName.toLowerCase().includes('video') || displayName.toLowerCase().includes('youtube')) displayName = 'Videos';
-                            else if (displayName.toLowerCase().includes('call')) displayName = 'Calls';
-                            else if (displayName.toLowerCase().includes('post') || displayName.toLowerCase().includes('graphic')) displayName = 'Posts';
-                            
-                            return `${m.value} ${displayName}`;
-                        }).join(', ');
-                    }
-                }
-
-                const hoursLoggedVal = parseFloat(t.hours_logged) || 0.0;
-                const hoursBadge = `
-                    <span class="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md text-[9px] font-bold bg-indigo-50 text-indigo-750 border border-indigo-100 shrink-0">
-                        <i data-lucide="clock" class="w-2.5 h-2.5 text-indigo-550"></i> ${hoursLoggedVal.toFixed(1)} hrs
-                    </span>
-                `;
-
-                const metricsBadge = metricsText ? `
-                    <span class="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md text-[9px] font-bold bg-rose-50 text-rose-700 border border-rose-100 truncate max-w-[120px]" title="${metricsText}">
-                        ${metricsText}
-                    </span>
-                ` : '';
-
-                const effortMetricHtml = `
-                    <div class="flex items-center gap-1.5 flex-wrap">
-                        ${hoursBadge}
-                        ${metricsBadge}
-                    </div>
-                `;
-
-                const taskTypeLabel = t.task_type === 'developer' ? 'Developer' : 'Content Creator';
-                const taskTypeColor = t.task_type === 'developer' ? 'bg-indigo-50 text-indigo-700 border-indigo-200' : 'bg-rose-50 text-rose-700 border-rose-200';
-                const taskTypeIcon = t.task_type === 'developer' ? 'terminal' : 'video';
-
-                return `
-                    <tr onclick="window.openTaskDetailsModal('${t.id}')" class="border-b border-slate-100 hover:bg-slate-50/70 transition-colors cursor-pointer">
-                        <td class="px-4 py-2.5 whitespace-nowrap text-left">
-                            <div class="text-xs font-bold text-slate-800">${dateStr}</div>
-                            <div class="text-[10px] text-slate-400 font-semibold mt-0.5">${timeStr}</div>
-                        </td>
-                        <td class="px-4 py-2.5 text-xs text-slate-800">
-                            <div class="font-bold text-slate-800 truncate max-w-[150px]" title="${project}">${project}</div>
-                            <div class="text-[10px] text-slate-450 font-medium truncate max-w-[150px] mt-0.5" title="${milestone}">${milestone}</div>
-                        </td>
-                        <td class="px-4 py-2.5 whitespace-nowrap">
-                            <div class="flex flex-col gap-1 items-start">
-                                <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[9px] font-black uppercase tracking-wider border ${taskTypeColor} shadow-xs">
-                                    <i data-lucide="${taskTypeIcon}" class="w-3 h-3"></i>
-                                    ${taskTypeLabel}
-                                </span>
-                                <span class="text-[9px] text-slate-400 font-semibold uppercase tracking-wider ml-0.5">${t.work_type || 'General'}</span>
-                                ${handoverBadge}
-                            </div>
-                        </td>
-                        <td class="px-4 py-2.5 text-xs text-slate-600 max-w-[280px]">
-                            <div class="pl-2 border-l border-slate-200 text-slate-600 font-medium truncate" title="Click to view details: ${t.task_performed || 'N/A'}">
-                                ${t.task_performed || 'N/A'}
-                            </div>
-                            ${editedBadge}
-                        </td>
-                        <td class="px-4 py-2.5 whitespace-nowrap">${effortMetricHtml}</td>
-                        <td class="px-4 py-2.5 text-right whitespace-nowrap" onclick="event.stopPropagation()">${actionBtn}</td>
-                    </tr>
-                `;
-            }).join('') || '<tr><td colspan="6" class="px-4 py-6 text-center text-slate-500 font-medium">No tasks logged yet.</td></tr>';
-
-            return `
-                <div class="max-w-5xl mx-auto space-y-6 fade-in overflow-visible">
-                    <!-- KPI Cards Row -->
-                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-5">
-                        <div class="bg-white border border-slate-200/70 rounded-2xl p-5 shadow-xs relative overflow-hidden group hover:shadow-md hover:-translate-y-0.5 transition-all duration-200">
-                            <div class="absolute right-0 bottom-0 translate-y-3 translate-x-3 opacity-5 pointer-events-none group-hover:scale-110 transition-transform">
-                                <i data-lucide="target" class="w-20 h-20 text-indigo-900"></i>
-                            </div>
-                            <div class="flex items-center justify-between">
-                                <span class="text-[10px] font-black uppercase tracking-wider text-slate-400">Assigned Milestones</span>
-                                <div class="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center">
-                                    <i data-lucide="target" class="w-4.5 h-4.5"></i>
-                                </div>
-                            </div>
-                            <div class="text-3xl font-black text-slate-800 mt-3">${totalMilestones}</div>
-                            <div class="text-[10px] font-bold text-slate-400 mt-2">Active & legacy milestones</div>
-                        </div>
-                        
-                        <div class="bg-white border border-slate-200/70 rounded-2xl p-5 shadow-xs relative overflow-hidden group hover:shadow-md hover:-translate-y-0.5 transition-all duration-200">
-                            <div class="absolute right-0 bottom-0 translate-y-3 translate-x-3 opacity-5 pointer-events-none group-hover:scale-110 transition-transform">
-                                <i data-lucide="clipboard-list" class="w-20 h-20 text-slate-900"></i>
-                            </div>
-                            <div class="flex items-center justify-between">
-                                <span class="text-[10px] font-black uppercase tracking-wider text-slate-400">Tasks Logged</span>
-                                <div class="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center">
-                                    <i data-lucide="clipboard-list" class="w-4.5 h-4.5"></i>
-                                </div>
-                            </div>
-                            <div class="text-3xl font-black text-slate-800 mt-3">${totalTasks}</div>
-                            <div class="text-[10px] font-bold text-slate-400 mt-2">Total submissions till date</div>
-                        </div>
-
-                        <div class="bg-gradient-to-br from-indigo-500 to-indigo-650 rounded-2xl p-5 text-white shadow-md relative overflow-hidden group hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200">
-                            <div class="absolute right-0 bottom-0 translate-y-3 translate-x-3 opacity-15 pointer-events-none group-hover:scale-110 transition-transform">
-                                <i data-lucide="clock" class="w-20 h-20"></i>
-                            </div>
-                            <div class="flex items-center justify-between">
-                                <span class="text-[10px] font-black uppercase tracking-wider text-indigo-150">Total Hours Logged</span>
-                                <div class="w-8 h-8 rounded-lg bg-white/10 text-white flex items-center justify-center border border-white/20">
-                                    <i data-lucide="clock" class="w-4.5 h-4.5"></i>
-                                </div>
-                            </div>
-                            <div class="text-3xl font-black mt-3">${totalHours.toFixed(1)} hrs</div>
-                            <div class="text-[10px] font-bold text-indigo-150 mt-2">Accumulated effort logged</div>
-                        </div>
-                    </div>
-
-                    <!-- Content Area -->
-                    <div class="space-y-4">
-                        <div class="flex items-center justify-between">
-                            <h3 class="text-lg font-black text-slate-800 flex items-center gap-2">
-                                <i data-lucide="history" class="w-5 h-5 text-indigo-600"></i> Timesheet Entry Logs History
-                            </h3>
-                        </div>
-                        <div class="bg-white border border-slate-200/80 rounded-2xl overflow-hidden shadow-sm transition-all duration-300">
-                            <div class="overflow-x-auto">
-                                <table class="w-full text-left table-fixed border-collapse">
-                                    <thead>
-                                        <tr class="bg-slate-50/70 border-b border-slate-200 text-slate-450 text-[10px] font-black uppercase tracking-wider">
-                                            <th class="px-4 py-3 w-[15%]">Logged Time</th>
-                                            <th class="px-4 py-3 w-[20%]">Project / Milestone</th>
-                                            <th class="px-4 py-3 w-[15%] font-medium">Task Type</th>
-                                            <th class="px-4 py-3 w-[30%]">Task Performed Details</th>
-                                            <th class="px-4 py-3 w-[12%]">Effort Metric</th>
-                                            <th class="px-4 py-3 w-[8%] text-right">Actions</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody class="divide-y divide-slate-100">
-                                        ${tableRows}
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            `;
-        }
-
-        function getProjectsMilestonesTemplate() {
-            const milestones = state.myMilestones || [];
-            const tasks = state.employeeTasks || [];
-
-            const totalMilestones = milestones.length;
-            const totalTasks = tasks.length;
-            let totalHours = 0;
-            tasks.forEach(t => {
-                totalHours += parseFloat(t.hours_logged || 0);
-            });
-
-            // Group milestones by project for the projects cards grid
-            const projectsWithMilestones = {};
-            (state.projects || []).forEach(p => {
-                projectsWithMilestones[p.id] = {
-                    project: p,
-                    milestones: []
-                };
-            });
-            milestones.forEach(m => {
-                if (projectsWithMilestones[m.project_id]) {
-                    projectsWithMilestones[m.project_id].milestones.push(m);
-                } else {
-                    projectsWithMilestones[m.project_id] = {
-                        project: { id: m.project_id, name: m.projectName || 'Project', client: 'Internal', team: 'General' },
-                        milestones: [m]
-                    };
-                }
-            });
-
-            const projectCardsList = Object.values(projectsWithMilestones).map(group => {
-                const p = group.project;
-                const projMilestones = group.milestones;
-                const projectTasks = tasks.filter(t => t.project_id === p.id);
-                const projectHours = projectTasks.reduce((sum, t) => sum + parseFloat(t.hours_logged || 0), 0);
-                const projectTasksCount = projectTasks.length;
-
-                return `
-                    <div class="bg-white border border-slate-200 rounded-3xl p-5 shadow-sm hover:shadow-md transition-all flex flex-col justify-between group">
-                        <div>
-                            <div class="flex items-start justify-between gap-3 mb-3">
-                                <div class="p-2.5 bg-indigo-50 text-brand-primary rounded-xl shrink-0 group-hover:bg-brand-primary group-hover:text-white transition-colors duration-200">
-                                    <i data-lucide="folder" class="w-5 h-5"></i>
-                                </div>
-                                <span class="px-2.5 py-1 bg-slate-100 text-slate-600 rounded-lg text-xs font-bold border border-slate-200">
-                                    ${projMilestones.length} Milestone${projMilestones.length === 1 ? '' : 's'}
-                                </span>
-                            </div>
-                            <h4 class="font-bold text-slate-800 text-base leading-tight mb-1 group-hover:text-brand-primary transition-colors duration-200">${p.name}</h4>
-                            <p class="text-xs text-slate-400 font-semibold mb-3">${p.client || 'Internal Client'} &bull; ${p.team || 'General Team'}</p>
-
-                            <div class="grid grid-cols-2 gap-2 mt-4 pt-3 border-t border-slate-100 text-xs font-semibold text-slate-600">
-                                <div class="bg-slate-50 p-2.5 rounded-xl border border-slate-100">
-                                    <span class="block text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">Tasks Logged</span>
-                                    <span class="text-slate-700">${projectTasksCount} Entries</span>
-                                </div>
-                                <div class="bg-slate-50 p-2.5 rounded-xl border border-slate-100">
-                                    <span class="block text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">Hours Invested</span>
-                                    <span class="text-brand-primary font-black">${projectHours.toFixed(1)} hrs</span>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="mt-4 pt-3 border-t border-slate-100">
-                            <button onclick="window.openProjectMilestonesModal('${p.id}')"
-                                class="w-full flex items-center justify-center gap-1.5 px-4 py-2 bg-indigo-50 hover:bg-brand-primary text-brand-primary hover:text-white rounded-xl text-xs font-bold transition-all shadow-sm">
-                                View Milestones <i data-lucide="arrow-right" class="w-3.5 h-3.5"></i>
-                            </button>
-                        </div>
-                    </div>
-                `;
-            }).join('') || `<div class="col-span-full bg-white border border-slate-200 rounded-3xl p-8 text-center text-slate-500 font-medium">No assigned projects or milestones found.</div>`;
-
-            return `
-                <div class="max-w-5xl mx-auto space-y-6 fade-in overflow-visible">
-                    <!-- KPI Cards Row -->
-                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-5">
-                        <div class="bg-white border border-slate-200/70 rounded-2xl p-5 shadow-xs relative overflow-hidden group hover:shadow-md hover:-translate-y-0.5 transition-all duration-200">
-                            <div class="absolute right-0 bottom-0 translate-y-3 translate-x-3 opacity-5 pointer-events-none group-hover:scale-110 transition-transform">
-                                <i data-lucide="target" class="w-20 h-20 text-indigo-900"></i>
-                            </div>
-                            <div class="flex items-center justify-between">
-                                <span class="text-[10px] font-black uppercase tracking-wider text-slate-400">Assigned Milestones</span>
-                                <div class="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center">
-                                    <i data-lucide="target" class="w-4.5 h-4.5"></i>
-                                </div>
-                            </div>
-                            <div class="text-3xl font-black text-slate-800 mt-3">${totalMilestones}</div>
-                            <div class="text-[10px] font-bold text-slate-400 mt-2">Active & legacy milestones</div>
-                        </div>
-                        
-                        <div class="bg-white border border-slate-200/70 rounded-2xl p-5 shadow-xs relative overflow-hidden group hover:shadow-md hover:-translate-y-0.5 transition-all duration-200">
-                            <div class="absolute right-0 bottom-0 translate-y-3 translate-x-3 opacity-5 pointer-events-none group-hover:scale-110 transition-transform">
-                                <i data-lucide="clipboard-list" class="w-20 h-20 text-slate-900"></i>
-                            </div>
-                            <div class="flex items-center justify-between">
-                                <span class="text-[10px] font-black uppercase tracking-wider text-slate-400">Tasks Logged</span>
-                                <div class="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center">
-                                    <i data-lucide="clipboard-list" class="w-4.5 h-4.5"></i>
-                                </div>
-                            </div>
-                            <div class="text-3xl font-black text-slate-800 mt-3">${totalTasks}</div>
-                            <div class="text-[10px] font-bold text-slate-400 mt-2">Total submissions till date</div>
-                        </div>
-
-                        <div class="bg-gradient-to-br from-indigo-500 to-indigo-650 rounded-2xl p-5 text-white shadow-md relative overflow-hidden group hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200">
-                            <div class="absolute right-0 bottom-0 translate-y-3 translate-x-3 opacity-15 pointer-events-none group-hover:scale-110 transition-transform">
-                                <i data-lucide="clock" class="w-20 h-20"></i>
-                            </div>
-                            <div class="flex items-center justify-between">
-                                <span class="text-[10px] font-black uppercase tracking-wider text-indigo-150">Total Hours Logged</span>
-                                <div class="w-8 h-8 rounded-lg bg-white/10 text-white flex items-center justify-center border border-white/20">
-                                    <i data-lucide="clock" class="w-4.5 h-4.5"></i>
-                                </div>
-                            </div>
-                            <div class="text-3xl font-black mt-3">${totalHours.toFixed(1)} hrs</div>
-                            <div class="text-[10px] font-bold text-indigo-150 mt-2">Accumulated effort logged</div>
-                        </div>
-                    </div>
-
-                    <!-- Content Area -->
-                    <div class="space-y-4">
-                        <div class="flex items-center justify-between">
-                            <h3 class="text-lg font-black text-slate-800 flex items-center gap-2">
-                                <i data-lucide="folder-kanban" class="w-5 h-5 text-indigo-600"></i> Project Milestones
-                            </h3>
-                        </div>
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            ${projectCardsList}
-                        </div>
-                    </div>
-                </div>
-            `;
-        }
+        
 
         window.openProjectMilestonesModal = function (projectId) {
             const project = state.projects.find(p => p.id === projectId);
@@ -6217,10 +4289,50 @@ window.addConTaskRow = function () {
                 hourOptions += `<option value="${h}" ${selected}>${label}</option>`;
             }
 
+            // Generate Project Options
+            let projectOptions = '<option value="">-- General / No Project --</option>';
+            (state.projects || []).forEach(p => {
+                const selected = String(p.id) === String(task.project_id) ? 'selected' : '';
+                projectOptions += `<option value="${p.id}" ${selected}>${p.name}</option>`;
+            });
+
             let fieldsHtml = '';
 
             if (isDev) {
+                // Generate Milestone Options for developers
+                let milestoneOptions = '<option value="">General Task (No Milestone)</option>';
+                if (task.project_id) {
+                    const timelines = state.projectTimelines ? state.projectTimelines[task.project_id] : null;
+                    if (timelines && timelines.length > 0) {
+                        timelines.forEach(m => {
+                            const selected = String(m.id) === String(task.milestone_id) ? 'selected' : '';
+                            milestoneOptions += `<option value="${m.id}" ${selected}>${m.milestone_name} (${m.status})</option>`;
+                        });
+                    }
+                }
+
                 fieldsHtml = `
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 mb-1">Project / Workspace *</label>
+                            <div class="relative">
+                                <select id="edit-task-project" onchange="window.updateEditTaskProjectChange(this, true)" class="input-field w-full pl-3 pr-8 py-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none text-sm font-medium appearance-none">
+                                    ${projectOptions}
+                                </select>
+                                <i data-lucide="chevron-down" class="w-4 h-4 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none"></i>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 mb-1">Milestone / Task</label>
+                            <div class="relative">
+                                <select id="edit-task-milestone" class="input-field w-full pl-3 pr-8 py-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none text-sm font-medium appearance-none">
+                                    ${milestoneOptions}
+                                </select>
+                                <i data-lucide="chevron-down" class="w-4 h-4 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none"></i>
+                            </div>
+                        </div>
+                    </div>
+
                     <div class="grid grid-cols-2 gap-4">
                         <div>
                             <label class="block text-xs font-bold text-slate-500 mb-1">Hours Logged *</label>
@@ -6400,6 +4512,18 @@ window.addConTaskRow = function () {
                 fieldsHtml = `
                     <div class="grid grid-cols-2 gap-4">
                         <div>
+                            <label class="block text-xs font-bold text-slate-500 mb-1">Project / Workspace *</label>
+                            <div class="relative">
+                                <select id="edit-task-project" onchange="window.updateEditTaskProjectChange(this, false)" class="input-field w-full pl-3 pr-8 py-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none text-sm font-medium appearance-none">
+                                    ${projectOptions}
+                                </select>
+                                <i data-lucide="chevron-down" class="w-4 h-4 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none"></i>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
                             <label class="block text-xs font-bold text-slate-500 mb-1">Hours Logged *</label>
                             <div class="relative">
                                 <select id="edit-task-hours" required class="input-field w-full pl-3 pr-8 py-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none text-sm font-medium appearance-none">
@@ -6439,7 +4563,9 @@ window.addConTaskRow = function () {
                         </div>
                     </div>
 
-                    ${metricsHtml}
+                    <div id="edit-task-metrics-container" class="space-y-4">
+                        ${metricsHtml}
+                    </div>
 
                     <div>
                         <label class="block text-xs font-bold text-slate-500 mb-1">No Project Reason (If no project assigned)</label>
@@ -6477,6 +4603,96 @@ window.addConTaskRow = function () {
             }
         };
 
+        window.updateEditTaskProjectChange = async function(selectEl, isDev) {
+            const projectId = selectEl.value;
+            const modal = selectEl.closest('form');
+            
+            if (isDev) {
+                const milestoneSelect = modal.querySelector('#edit-task-milestone');
+                if (milestoneSelect) {
+                    milestoneSelect.disabled = true;
+                    milestoneSelect.innerHTML = '<option value="">Loading Milestones...</option>';
+                    
+                    let milestoneOptions = '<option value="">General Task (No Milestone)</option>';
+                    if (projectId) {
+                        let timelines = state.projectTimelines ? state.projectTimelines[projectId] : null;
+                        if (!timelines) {
+                            timelines = await apiFetch(`/projects/timeline/${projectId}`).catch(() => []);
+                            if (state.projectTimelines) state.projectTimelines[projectId] = timelines;
+                        }
+                        if (timelines && timelines.length > 0) {
+                            timelines.forEach(m => {
+                                milestoneOptions += `<option value="${m.id}">${m.milestone_name} (${m.status})</option>`;
+                            });
+                        }
+                    }
+                    milestoneSelect.innerHTML = milestoneOptions;
+                    milestoneSelect.disabled = false;
+                }
+            } else {
+                const p = (state.projects || []).find(proj => String(proj.id) === String(projectId));
+                let agreement = [];
+                try {
+                    agreement = p && typeof p.content_agreement === 'string' ? JSON.parse(p.content_agreement) : (p ? (p.content_agreement || []) : []);
+                } catch (e) {
+                    agreement = [];
+                }
+                
+                const metricsContainer = modal.querySelector('#edit-task-metrics-container');
+                if (metricsContainer) {
+                    if (p && (p.project_type === 'Content' || agreement.length > 0)) {
+                        const fieldsHtmlStr = agreement.map(item => {
+                            return `
+                                <div>
+                                    <label class="block text-xs font-bold text-slate-500 mb-1">${item.name}</label>
+                                    <input type="number" data-field-name="${item.name.replace(/"/g, '&quot;')}" class="edit-task-custom-field input-field w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl outline-none text-sm" min="0" value="0">
+                                </div>
+                            `;
+                        }).join('');
+                        metricsContainer.innerHTML = `
+                            <div class="grid grid-cols-2 gap-4">
+                                ${fieldsHtmlStr}
+                            </div>
+                            <div class="grid grid-cols-2 gap-4 mt-4">
+                                <div>
+                                    <label class="block text-xs font-bold text-slate-500 mb-1">Upload Deadline</label>
+                                    <input type="date" id="edit-task-upload-deadline" class="input-field w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl outline-none text-sm">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-bold text-slate-500 mb-1">Next Date of Giving</label>
+                                    <input type="date" id="edit-task-next-delivery-date" class="input-field w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl outline-none text-sm">
+                                </div>
+                            </div>
+                        `;
+                    } else {
+                        metricsContainer.innerHTML = `
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-xs font-bold text-slate-500 mb-1">Reels Count</label>
+                                    <input type="number" id="edit-task-reels" min="0" value="0" class="input-field w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl outline-none text-sm">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-bold text-slate-500 mb-1">Long Video Count</label>
+                                    <input type="number" id="edit-task-videos" min="0" value="0" class="input-field w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl outline-none text-sm">
+                                </div>
+                            </div>
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-xs font-bold text-slate-500 mb-1">Poster Count</label>
+                                    <input type="number" id="edit-task-posters" min="0" value="0" class="input-field w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl outline-none text-sm">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-bold text-slate-500 mb-1">Calls Made</label>
+                                    <input type="number" id="edit-task-calls" min="0" value="0" class="input-field w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl outline-none text-sm">
+                                </div>
+                            </div>
+                        `;
+                    }
+                }
+            }
+            if (window.lucide) lucide.createIcons();
+        };
+
         window.submitEditTaskForm = async function(event, taskId, taskType) {
             event.preventDefault();
             const btn = document.getElementById('btnEditSubmit');
@@ -6486,6 +4702,8 @@ window.addConTaskRow = function () {
 
             const isDev = taskType === 'developer';
             const payload = {
+                project_id: document.getElementById('edit-task-project')?.value || null,
+                milestone_id: document.getElementById('edit-task-milestone')?.value || null,
                 hours_logged: parseFloat(document.getElementById('edit-task-hours').value),
                 task_performed: document.getElementById('edit-task-performed').value,
                 sprint: document.getElementById('edit-task-sprint')?.value || 'N/A',
@@ -6575,27 +4793,43 @@ window.addConTaskRow = function () {
             const durationVal = document.getElementById('leave-duration').value;
             const reason = document.getElementById('leave-reason').value;
             const leave_type = document.getElementById('leave-type').value;
-            const backup_employee_id = document.getElementById('leave-backup').value;
-            const deployment_pending = document.getElementById('leave-deployment').value;
-            const pending_work_summary = document.getElementById('leave-work-summary').value;
 
-            const project_id = document.getElementById('leave-project').value;
-            const milestone_id = document.getElementById('leave-milestone').value;
-            const task_type = document.getElementById('leave-task-type').value;
+            const isHandoverToggleOn = document.getElementById('toggle-leave-handover')?.checked || leave_type === 'Work Handover Only';
 
-            if (!project_id) {
-                showToast("Please select a project for the handover.", "error");
-                btn.innerHTML = ogHtml; btn.disabled = false;
-                return;
+            let backup_employee_id = "N/A";
+            let deployment_pending = "No";
+            let pending_work_summary = "N/A";
+            let project_id = null;
+            let milestone_id = null;
+            let task_type = null;
+
+            if (isHandoverToggleOn) {
+                backup_employee_id = document.getElementById('leave-backup')?.value || "N/A";
+                deployment_pending = document.getElementById('leave-deployment')?.value || "No";
+                pending_work_summary = (document.getElementById('leave-work-summary')?.value || "").trim();
+                project_id = document.getElementById('leave-project')?.value || null;
+                milestone_id = document.getElementById('leave-milestone')?.value || null;
+                task_type = document.getElementById('leave-task-type')?.value || null;
+
+                if (!project_id) {
+                    showToast("Please select a project for the handover.", "error");
+                    btn.innerHTML = ogHtml; btn.disabled = false;
+                    return;
+                }
+
+                if (!milestone_id && !pending_work_summary) {
+                    showToast("Description of the task is mandatory when no milestone is selected.", "error");
+                    btn.innerHTML = ogHtml; btn.disabled = false;
+                    return;
+                }
+
+                if (!pending_work_summary) {
+                    pending_work_summary = "Task handover assigned to backup employee.";
+                }
             }
 
-            if (!milestone_id && !pending_work_summary.trim()) {
-                showToast("Description of the task is mandatory when no milestone is selected.", "error");
-                btn.innerHTML = ogHtml; btn.disabled = false;
-                return;
-            }
-
-            const total_days = window.calculateWorkingDays(start_date, end_date, durationVal !== 'Full Day');
+            const isHandoverOnly = leave_type === 'Work Handover Only';
+            const total_days = isHandoverOnly ? 0 : window.calculateWorkingDays(start_date, end_date, durationVal !== 'Full Day');
 
             if (new Date(start_date) > new Date(end_date)) {
                 showToast("End Date cannot be before Start Date.", "error");
@@ -6623,7 +4857,7 @@ window.addConTaskRow = function () {
                     method: 'POST',
                     body: payload
                 });
-                showToast("Leave request submitted successfully!", "success");
+                showToast(isHandoverOnly ? "Work handover logged successfully!" : "Leave request submitted successfully!", "success");
                 await loadEmployeeWorkspaceData();
                 routeApp('leave-requests');
             } catch (error) {
@@ -6754,9 +4988,9 @@ window.addConTaskRow = function () {
 
             if (state.user.role.toLowerCase() === 'admin') {
                 if (state.user.access_level === 'ManagerAdmin') {
-                    window.location.href = 'manager.html';
+                    window.location.href = '../manager/manager.html';
                 } else {
-                    window.location.href = 'admin.html';
+                    window.location.href = '../admin/admin.html';
                 }
                 return;
             }
@@ -6822,7 +5056,3 @@ window.addConTaskRow = function () {
                 }, 310);
             }
         };
-    </script>
-</body>
-
-</html>
