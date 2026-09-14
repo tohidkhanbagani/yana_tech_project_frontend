@@ -310,12 +310,13 @@ async function handleManagerPasswordChange(e) {
   }
 
   try {
-    await apiFetch('/admins/me/password', {
-      method: 'PUT',
+    await apiFetch('/auth/change-password', {
+      method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         current_password: currentPass,
-        new_password: newPass
+        new_password: newPass,
+        confirm_password: confirmPass
       })
     });
     if (typeof showToast === 'function') showToast("Password updated successfully!", "success");

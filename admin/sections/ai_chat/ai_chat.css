@@ -1,0 +1,374 @@
+/* ==========================================================================
+   YANA OS - AI Agent Studio & MCP Tool Invocation Interface (PRB-087)
+   Enterprise Production Design System: Linear / Cursor Inspired Aesthetics
+   ========================================================================== */
+
+/* --- Root Container: Full Bleed Edge-to-Edge --- */
+.ai-chat-root {
+  height: calc(100vh - 4rem); /* Full height below the 4rem admin top navbar */
+  max-height: calc(100vh - 4rem);
+  width: 100%;
+  display: flex;
+  position: relative;
+  overflow: hidden;
+  background-color: #ffffff;
+}
+
+/* Minimal Smooth Scrollbars */
+.ai-chat-scroll::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+.ai-chat-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+.ai-chat-scroll::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 9999px;
+}
+.ai-chat-scroll::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* --- Session History Popover Items --- */
+.ai-session-item {
+  position: relative;
+  transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.ai-session-item:hover {
+  background-color: #f8fafc;
+}
+
+/* --- Message Rows & Layout --- */
+.ai-msg-row {
+  opacity: 0;
+  animation: aiMsgFadeIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes aiMsgFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* User Message Bubble: Crisp, Professional & High Contrast */
+.ai-user-bubble {
+  background-color: #0f172a;
+  color: #f8fafc;
+  border-radius: 1rem 1rem 0.25rem 1rem;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.08);
+  word-break: break-word;
+  overflow-wrap: anywhere;
+}
+
+/* AI Assistant Message Container: Clean, Spacious, Un-cramped */
+.ai-assistant-body {
+  word-break: break-word;
+  overflow-wrap: anywhere;
+  color: #1e293b;
+}
+
+/* Streaming Blinking Cursor */
+.ai-streaming-cursor {
+  display: inline-block;
+  width: 6px;
+  height: 14px;
+  background-color: #6366f1;
+  margin-left: 2px;
+  vertical-align: middle;
+  border-radius: 1px;
+  animation: aiCursorBlink 0.75s infinite;
+}
+
+@keyframes aiCursorBlink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+/* Pulsing Thinking Indicator */
+.ai-thinking-dots span {
+  display: inline-block;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background-color: #6366f1;
+  margin: 0 2px;
+  animation: aiThinkingPulse 1.2s infinite ease-in-out both;
+}
+.ai-thinking-dots span:nth-child(1) { animation-delay: -0.32s; }
+.ai-thinking-dots span:nth-child(2) { animation-delay: -0.16s; }
+
+@keyframes aiThinkingPulse {
+  0%, 80%, 100% { transform: scale(0.6); opacity: 0.3; }
+  40% { transform: scale(1.1); opacity: 1; }
+}
+
+/* --- Developer Trace: MCP Tool Execution Block --- */
+.mcp-trace-container {
+  border: 1px solid #e2e8f0;
+  border-radius: 0.625rem;
+  background-color: #f8fafc;
+  overflow: hidden;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+  transition: border-color 0.2s ease;
+}
+.mcp-trace-container:hover {
+  border-color: #cbd5e1;
+}
+
+.mcp-trace-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.5rem 0.75rem;
+  background-color: #ffffff;
+  border-bottom: 1px solid #f1f5f9;
+  cursor: pointer;
+  user-select: none;
+}
+
+.mcp-trace-badge-running {
+  background-color: #fffbeb;
+  color: #b45309;
+  border: 1px solid #fde68a;
+  animation: mcpTracePulse 1.5s infinite alternate;
+}
+
+@keyframes mcpTracePulse {
+  0% { opacity: 0.8; }
+  100% { opacity: 1; box-shadow: 0 0 8px rgba(245, 158, 11, 0.35); }
+}
+
+.mcp-trace-badge-success {
+  background-color: #f0fdf4;
+  color: #15803d;
+  border: 1px solid #bbf7d0;
+}
+
+.mcp-terminal-box {
+  background-color: #0b0f19;
+  color: #e2e8f0;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  font-size: 0.725rem;
+  line-height: 1.4;
+  padding: 0.75rem;
+  border-radius: 0.375rem;
+  overflow-x: auto;
+}
+
+/* Syntax Color Tokens */
+.json-key { color: #93c5fd; }
+.json-string { color: #86efac; }
+.json-number { color: #fde047; }
+.json-boolean { color: #f472b6; }
+.json-null { color: #94a3b8; }
+
+/* --- Telemetry Ribbons --- */
+.ai-telemetry-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.15rem 0.45rem;
+  border-radius: 0.375rem;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.675rem;
+  font-weight: 600;
+  background-color: #f1f5f9;
+  color: #475569;
+  border: 1px solid #e2e8f0;
+  letter-spacing: -0.01em;
+}
+
+.ai-telemetry-badge-user {
+  background-color: rgba(255, 255, 255, 0.1);
+  color: #cbd5e1;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+/* --- Markdown Content Styling --- */
+.ai-markdown-content h1,
+.ai-markdown-content h2,
+.ai-markdown-content h3,
+.ai-markdown-content h4 {
+  font-weight: 700;
+  color: #0f172a;
+  letter-spacing: -0.02em;
+  margin-top: 1rem;
+  margin-bottom: 0.4rem;
+}
+.ai-markdown-content h1 { font-size: 1.125rem; }
+.ai-markdown-content h2 { font-size: 1.025rem; }
+.ai-markdown-content h3 { font-size: 0.925rem; }
+.ai-markdown-content h4 { font-size: 0.85rem; }
+
+.ai-markdown-content p {
+  margin-bottom: 0.7rem;
+  line-height: 1.625;
+  color: #334155;
+  font-size: 0.825rem;
+}
+.ai-markdown-content p:last-child {
+  margin-bottom: 0;
+}
+
+.ai-markdown-content ul,
+.ai-markdown-content ol {
+  margin-left: 1.25rem;
+  margin-bottom: 0.7rem;
+  color: #334155;
+  font-size: 0.825rem;
+  line-height: 1.55;
+}
+.ai-markdown-content ul { list-style-type: disc; }
+.ai-markdown-content ol { list-style-type: decimal; }
+.ai-markdown-content li { margin-bottom: 0.25rem; }
+
+.ai-markdown-content code:not(pre code) {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.775rem;
+  background-color: #f1f5f9;
+  color: #4338ca;
+  padding: 0.15rem 0.35rem;
+  border-radius: 0.25rem;
+  border: 1px solid #e2e8f0;
+}
+
+.ai-markdown-content pre {
+  background-color: #0b0f19;
+  border-radius: 0.5rem;
+  padding: 0.75rem 1rem;
+  margin: 0.75rem 0;
+  overflow-x: auto;
+  border: 1px solid #1e293b;
+}
+
+.ai-markdown-content pre code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.75rem;
+  color: #f8fafc;
+  line-height: 1.45;
+}
+
+.ai-markdown-content table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.75rem;
+  margin: 0.75rem 0;
+  border-radius: 0.375rem;
+  overflow: hidden;
+  border: 1px solid #e2e8f0;
+}
+
+.ai-markdown-content th {
+  background-color: #f8fafc;
+  font-weight: 700;
+  text-transform: uppercase;
+  font-size: 0.675rem;
+  letter-spacing: 0.05em;
+  color: #475569;
+  padding: 0.45rem 0.65rem;
+  border-bottom: 1px solid #e2e8f0;
+  text-align: left;
+}
+
+.ai-markdown-content td {
+  padding: 0.45rem 0.65rem;
+  border-bottom: 1px solid #f1f5f9;
+  color: #334155;
+}
+.ai-markdown-content tr:last-child td {
+  border-bottom: none;
+}
+.ai-markdown-content tr:hover td {
+  background-color: #f8fafc;
+}
+
+.ai-markdown-content blockquote {
+  border-left: 3px solid #6366f1;
+  padding: 0.35rem 0.75rem;
+  margin: 0.75rem 0;
+  font-style: italic;
+  color: #475569;
+  background-color: #f8fafc;
+  border-radius: 0 0.375rem 0.375rem 0;
+}
+
+.ai-callout {
+  border-radius: 0.5rem;
+  padding: 0.65rem 0.8rem;
+  margin: 0.65rem 0;
+  font-size: 0.775rem;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+}
+.ai-callout-warning {
+  background-color: #fffbeb;
+  border: 1px solid #fde68a;
+  color: #92400e;
+}
+.ai-callout-info {
+  background-color: #eff6ff;
+  border: 1px solid #bfdbfe;
+  color: #1e40af;
+}
+.ai-callout-success {
+  background-color: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  color: #166534;
+}
+
+/* --- Prompt Starter Cards: Sleek & Modern --- */
+.ai-hero-card {
+  border: 1px solid #e2e8f0;
+  border-radius: 0.75rem;
+  background-color: #ffffff;
+  padding: 0.875rem 1rem;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  cursor: pointer;
+  user-select: none;
+}
+.ai-hero-card:hover {
+  border-color: #6366f1;
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px -4px rgba(99, 102, 241, 0.12);
+}
+
+/* --- Upward Popovers & Flyouts (Claude & Gemini Pattern) --- */
+#ai-tools-menu,
+#ai-chatbar-model-menu {
+  animation: aiFlyoutUp 0.18s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  transform-origin: bottom center;
+}
+
+#ai-history-popover {
+  animation: aiFlyoutDown 0.18s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  transform-origin: top right;
+}
+
+@keyframes aiFlyoutUp {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes aiFlyoutDown {
+  from {
+    opacity: 0;
+    transform: translateY(-6px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}

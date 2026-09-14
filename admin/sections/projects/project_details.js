@@ -181,11 +181,13 @@ async function deleteProjectChecklistTemplate(id, projectId) {
     }
 }
 
-async function openProjectDetails(projectId) {
+async function openProjectDetails(projectId, defaultTab = null) {
     const p = state.allProjects.find((x) => String(x.id) === String(projectId));
     if (!p) return;
 
-    if (!state.activeProject || String(state.activeProject.id) !== String(projectId)) {
+    if (defaultTab) {
+        state.activeProjectTab = defaultTab;
+    } else if (!state.activeProject || String(state.activeProject.id) !== String(projectId)) {
         state.activeProjectTab = "overview";
     }
 
@@ -220,14 +222,6 @@ async function openProjectDetails(projectId) {
     }
 
     renderAdminApp();
-
-    const todayStr = new Date().toISOString().split('T')[0];
-    const dueReceivable = (state.projectReceivables || []).find(r => !r.is_done && r.due_date <= todayStr);
-    if (dueReceivable) {
-        setTimeout(() => {
-        showReceivableReminderPopup(dueReceivable);
-        }, 300);
-    }
 }
 
 function closeProjectDetails() {

@@ -6,14 +6,20 @@ function getEmployeeLeaveRequestsTemplate() {
             const totalPaid = parseFloat(empData.total_paid_leaves ?? 18.0);
             const usedPaid = parseFloat(empData.used_paid_leaves ?? 0.0);
             const remainingPaid = Math.max(totalPaid - usedPaid, 0);
+            const cfPaid = parseFloat(empData.carried_forward_paid_leaves ?? 0.0);
+            const mPaid = parseFloat(empData.monthly_paid_leaves ?? 1.5);
 
             const totalCasual = parseFloat(empData.total_casual_leaves ?? 6.0);
             const usedCasual = parseFloat(empData.used_casual_leaves ?? 0.0);
             const remainingCasual = Math.max(totalCasual - usedCasual, 0);
+            const cfCasual = parseFloat(empData.carried_forward_casual_leaves ?? 0.0);
+            const mCasual = parseFloat(empData.monthly_casual_leaves ?? 0.5);
 
             const totalSick = parseFloat(empData.total_sick_leaves ?? 6.0);
             const usedSick = parseFloat(empData.used_sick_leaves ?? 0.0);
             const remainingSick = Math.max(totalSick - usedSick, 0);
+            const cfSick = parseFloat(empData.carried_forward_sick_leaves ?? 0.0);
+            const mSick = parseFloat(empData.monthly_sick_leaves ?? 0.5);
 
             let pendingCount = 0;
             let totalUsed = 0;
@@ -103,31 +109,55 @@ function getEmployeeLeaveRequestsTemplate() {
                 <div class="max-w-5xl mx-auto space-y-6 fade-in">
                     <!-- Dashboard Cards -->
                     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-                        <div class="bg-gradient-to-br from-emerald-500 to-teal-600 rounded-3xl p-4 text-white shadow-md relative overflow-hidden group hover:shadow-lg transition-all">
+                        <div class="bg-gradient-to-br from-emerald-500 to-teal-600 rounded-3xl p-4 text-white shadow-md relative overflow-hidden group hover:shadow-lg transition-all flex flex-col justify-between">
                             <div class="absolute right-0 bottom-0 translate-y-4 translate-x-4 opacity-15 pointer-events-none group-hover:scale-110 transition-transform">
                                 <i data-lucide="check-circle" class="w-20 h-20"></i>
                             </div>
-                            <span class="text-[10px] font-extrabold uppercase tracking-wider text-emerald-100">Paid Leave Balance</span>
-                            <div class="text-2xl font-black mt-1.5">${remainingPaid} / ${totalPaid}</div>
-                            <div class="text-[11px] font-semibold text-emerald-100/90 mt-1">${usedPaid} days used</div>
+                            <div>
+                                <span class="text-[10px] font-extrabold uppercase tracking-wider text-emerald-100">Paid Leave Balance</span>
+                                <div class="text-2xl font-black mt-1">${remainingPaid.toFixed(1)} <span class="text-xs font-semibold text-emerald-100/80">/ ${totalPaid.toFixed(1)} Days</span></div>
+                            </div>
+                            <div class="mt-2 pt-2 border-t border-white/20 text-[10px] space-y-0.5">
+                                <div class="font-bold text-emerald-100 flex items-center gap-1">
+                                    <span class="bg-white/20 px-1.5 py-0.5 rounded text-[9px]">+${cfPaid.toFixed(1)}d Carried</span>
+                                    <span>+${mPaid.toFixed(1)}d/mo</span>
+                                </div>
+                                <div class="text-emerald-100/80 font-medium">${usedPaid.toFixed(1)}d used this month</div>
+                            </div>
                         </div>
 
-                        <div class="bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-3xl p-4 text-white shadow-md relative overflow-hidden group hover:shadow-lg transition-all">
+                        <div class="bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-3xl p-4 text-white shadow-md relative overflow-hidden group hover:shadow-lg transition-all flex flex-col justify-between">
                             <div class="absolute right-0 bottom-0 translate-y-4 translate-x-4 opacity-15 pointer-events-none group-hover:scale-110 transition-transform">
                                 <i data-lucide="calendar" class="w-20 h-20"></i>
                             </div>
-                            <span class="text-[10px] font-extrabold uppercase tracking-wider text-indigo-100">Casual Leave Balance</span>
-                            <div class="text-2xl font-black mt-1.5">${remainingCasual} / ${totalCasual}</div>
-                            <div class="text-[11px] font-semibold text-indigo-100/90 mt-1">${usedCasual} days used</div>
+                            <div>
+                                <span class="text-[10px] font-extrabold uppercase tracking-wider text-indigo-100">Casual Leave Balance</span>
+                                <div class="text-2xl font-black mt-1">${remainingCasual.toFixed(1)} <span class="text-xs font-semibold text-indigo-100/80">/ ${totalCasual.toFixed(1)} Days</span></div>
+                            </div>
+                            <div class="mt-2 pt-2 border-t border-white/20 text-[10px] space-y-0.5">
+                                <div class="font-bold text-indigo-100 flex items-center gap-1">
+                                    <span class="bg-white/20 px-1.5 py-0.5 rounded text-[9px]">+${cfCasual.toFixed(1)}d Carried</span>
+                                    <span>+${mCasual.toFixed(1)}d/mo</span>
+                                </div>
+                                <div class="text-indigo-100/80 font-medium">${usedCasual.toFixed(1)}d used this month</div>
+                            </div>
                         </div>
 
-                        <div class="bg-gradient-to-br from-rose-500 to-rose-600 rounded-3xl p-4 text-white shadow-md relative overflow-hidden group hover:shadow-lg transition-all">
+                        <div class="bg-gradient-to-br from-rose-500 to-rose-600 rounded-3xl p-4 text-white shadow-md relative overflow-hidden group hover:shadow-lg transition-all flex flex-col justify-between">
                             <div class="absolute right-0 bottom-0 translate-y-4 translate-x-4 opacity-15 pointer-events-none group-hover:scale-110 transition-transform">
                                 <i data-lucide="heart-pulse" class="w-20 h-20"></i>
                             </div>
-                            <span class="text-[10px] font-extrabold uppercase tracking-wider text-rose-100">Sick Leave Balance</span>
-                            <div class="text-2xl font-black mt-1.5">${remainingSick} / ${totalSick}</div>
-                            <div class="text-[11px] font-semibold text-rose-100/90 mt-1">${usedSick} days used</div>
+                            <div>
+                                <span class="text-[10px] font-extrabold uppercase tracking-wider text-rose-100">Sick Leave Balance</span>
+                                <div class="text-2xl font-black mt-1">${remainingSick.toFixed(1)} <span class="text-xs font-semibold text-rose-100/80">/ ${totalSick.toFixed(1)} Days</span></div>
+                            </div>
+                            <div class="mt-2 pt-2 border-t border-white/20 text-[10px] space-y-0.5">
+                                <div class="font-bold text-rose-100 flex items-center gap-1">
+                                    <span class="bg-white/20 px-1.5 py-0.5 rounded text-[9px]">+${cfSick.toFixed(1)}d Carried</span>
+                                    <span>+${mSick.toFixed(1)}d/mo</span>
+                                </div>
+                                <div class="text-rose-100/80 font-medium">${usedSick.toFixed(1)}d used this month</div>
+                            </div>
                         </div>
 
                         <div class="bg-white border border-slate-200 rounded-3xl p-4 shadow-sm relative overflow-hidden group hover:shadow-md transition-all">

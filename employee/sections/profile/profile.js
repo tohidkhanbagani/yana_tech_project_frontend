@@ -323,6 +323,90 @@ function getEmployeeProfileTemplate() {
 
                             <!-- Right Column: Professional, Bank & Compliance -->
                             <div class="space-y-6 xl:col-span-2">
+                                <!-- Leave Balance & Carry-Forward Inventory Card -->
+                                <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
+                                    <div class="flex items-center justify-between mb-3">
+                                        <h3 class="text-sm font-black text-slate-800 uppercase tracking-wider flex items-center">
+                                            <i data-lucide="calendar-range" class="w-4 h-4 mr-2 text-brand-primary"></i> Leave Balance & Carry-Forward Ledger
+                                        </h3>
+                                        <span class="inline-flex items-center gap-1.5 px-2.5 py-1 bg-emerald-50 text-emerald-700 text-xs font-bold rounded-full border border-emerald-200">
+                                            <i data-lucide="refresh-cw" class="w-3 h-3"></i> Monthly Rollover Active
+                                        </span>
+                                    </div>
+                                    <p class="text-xs text-slate-500 mb-4">Unused leaves from previous months automatically carry forward to your balance on the 1st of every month.</p>
+                                    
+                                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
+                                        <!-- Paid Leaves -->
+                                        <div class="bg-emerald-50/70 border border-emerald-100 rounded-xl p-3.5 flex flex-col justify-between">
+                                            <div>
+                                                <div class="flex items-center justify-between mb-1">
+                                                    <span class="text-[10px] font-black uppercase text-emerald-800 tracking-wider">Paid Leaves</span>
+                                                    <span class="text-[9px] font-bold text-emerald-700 bg-emerald-100 px-1.5 py-0.5 rounded">+${(emp.monthly_paid_leaves ?? 1.5).toFixed(1)}/mo</span>
+                                                </div>
+                                                <div class="text-xl font-black text-slate-900 mt-1">
+                                                    ${Math.max(0, ((emp.total_paid_leaves ?? 18.0) - (emp.used_paid_leaves ?? 0.0))).toFixed(1)} <span class="text-[11px] text-slate-500 font-semibold">Days Left</span>
+                                                </div>
+                                            </div>
+                                            <div class="mt-3 pt-2 border-t border-emerald-200/60 text-[10px] space-y-0.5 text-emerald-900">
+                                                <div class="flex justify-between">
+                                                    <span class="text-slate-500">Carried Forward:</span>
+                                                    <span class="font-bold text-emerald-700">${(emp.carried_forward_paid_leaves || 0.0).toFixed(1)} Days</span>
+                                                </div>
+                                                <div class="flex justify-between">
+                                                    <span class="text-slate-500">Used This Month:</span>
+                                                    <span class="font-bold text-slate-700">${(emp.used_paid_leaves || 0.0).toFixed(1)} Days</span>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <!-- Casual Leaves -->
+                                        <div class="bg-blue-50/70 border border-blue-100 rounded-xl p-3.5 flex flex-col justify-between">
+                                            <div>
+                                                <div class="flex items-center justify-between mb-1">
+                                                    <span class="text-[10px] font-black uppercase text-blue-800 tracking-wider">Casual Leaves</span>
+                                                    <span class="text-[9px] font-bold text-blue-700 bg-blue-100 px-1.5 py-0.5 rounded">+${(emp.monthly_casual_leaves ?? 0.5).toFixed(1)}/mo</span>
+                                                </div>
+                                                <div class="text-xl font-black text-slate-900 mt-1">
+                                                    ${Math.max(0, ((emp.total_casual_leaves ?? 6.0) - (emp.used_casual_leaves ?? 0.0))).toFixed(1)} <span class="text-[11px] text-slate-500 font-semibold">Days Left</span>
+                                                </div>
+                                            </div>
+                                            <div class="mt-3 pt-2 border-t border-blue-200/60 text-[10px] space-y-0.5 text-blue-900">
+                                                <div class="flex justify-between">
+                                                    <span class="text-slate-500">Carried Forward:</span>
+                                                    <span class="font-bold text-blue-700">${(emp.carried_forward_casual_leaves || 0.0).toFixed(1)} Days</span>
+                                                </div>
+                                                <div class="flex justify-between">
+                                                    <span class="text-slate-500">Used This Month:</span>
+                                                    <span class="font-bold text-slate-700">${(emp.used_casual_leaves || 0.0).toFixed(1)} Days</span>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <!-- Sick Leaves -->
+                                        <div class="bg-purple-50/70 border border-purple-100 rounded-xl p-3.5 flex flex-col justify-between">
+                                            <div>
+                                                <div class="flex items-center justify-between mb-1">
+                                                    <span class="text-[10px] font-black uppercase text-purple-800 tracking-wider">Sick Leaves</span>
+                                                    <span class="text-[9px] font-bold text-purple-700 bg-purple-100 px-1.5 py-0.5 rounded">+${(emp.monthly_sick_leaves ?? 0.5).toFixed(1)}/mo</span>
+                                                </div>
+                                                <div class="text-xl font-black text-slate-900 mt-1">
+                                                    ${Math.max(0, ((emp.total_sick_leaves ?? 6.0) - (emp.used_sick_leaves ?? 0.0))).toFixed(1)} <span class="text-[11px] text-slate-500 font-semibold">Days Left</span>
+                                                </div>
+                                            </div>
+                                            <div class="mt-3 pt-2 border-t border-purple-200/60 text-[10px] space-y-0.5 text-purple-900">
+                                                <div class="flex justify-between">
+                                                    <span class="text-slate-500">Carried Forward:</span>
+                                                    <span class="font-bold text-purple-700">${(emp.carried_forward_sick_leaves || 0.0).toFixed(1)} Days</span>
+                                                </div>
+                                                <div class="flex justify-between">
+                                                    <span class="text-slate-500">Used This Month:</span>
+                                                    <span class="font-bold text-slate-700">${(emp.used_sick_leaves || 0.0).toFixed(1)} Days</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
                                 <!-- Professional & Experience Card -->
                                 <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
                                     <h3 class="text-sm font-black text-slate-800 uppercase tracking-wider mb-5 flex items-center"><i data-lucide="briefcase" class="w-4 h-4 mr-2 text-brand-primary"></i> Corporate & Experience</h3>

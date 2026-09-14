@@ -3,7 +3,7 @@
          */
 
         const CONFIG = {
-            API_BASE_URL: 'https://yana-tech-project-backend-d0sj.onrender.com',
+            API_BASE_URL: 'http://localhost:8000',
             TOKEN_KEY: 'yana_os_token',
             LOGIN_URL: '../login.html'
         };
@@ -146,7 +146,7 @@
 
                     try {
                         const response = await fetch(`${CONFIG.API_BASE_URL}${endpoint}`, { ...options, headers });
-                        if (response.status === 401) { logout(false); throw new Error("Session expired."); }
+                        if (response.status === 401) { redirectToLogin(true); throw new Error("Session expired."); }
                         const data = await response.json().catch(() => ({}));
                         if (!response.ok) {
                             let errMsg = "An unexpected error occurred.";
@@ -184,7 +184,7 @@
 
             try {
                 const response = await fetch(`${CONFIG.API_BASE_URL}${endpoint}`, { ...options, headers });
-                if (response.status === 401) { logout(false); throw new Error("Session expired."); }
+                if (response.status === 401) { redirectToLogin(true); throw new Error("Session expired."); }
                 const data = await response.json().catch(() => ({}));
                 if (!response.ok) {
                     let errMsg = "An unexpected error occurred.";
@@ -206,10 +206,50 @@
             }
         }
 
+        // --- Redirection Engine & Auth Actions ---
+        let isRedirectingToLogin = false;
+        function redirectToLogin(clearStorage = true) {
+            if (isRedirectingToLogin) return;
+            isRedirectingToLogin = true;
+            if (clearStorage) {
+                localStorage.removeItem(CONFIG.TOKEN_KEY);
+            }
+            if (typeof ws !== 'undefined' && ws) {
+                try {
+                    ws.onclose = null;
+                    ws.close(1000, "Redirecting to login");
+                } catch (e) {}
+                ws = null;
+            }
+            window.location.replace(CONFIG.LOGIN_URL);
+        }
+
         async function logout(showNotification = true) {
+            const token = localStorage.getItem(CONFIG.TOKEN_KEY);
             localStorage.removeItem(CONFIG.TOKEN_KEY);
-            if (showNotification) await customAlert("Logged Out", "Logged out successfully");
-            window.location.href = CONFIG.LOGIN_URL;
+
+            if (typeof ws !== 'undefined' && ws) {
+                try {
+                    ws.onclose = null;
+                    ws.close(1000, "User logged out");
+                } catch (e) {}
+                ws = null;
+            }
+
+            if (token) {
+                try {
+                    await fetch(`${CONFIG.API_BASE_URL}/auth/logout`, {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': `Bearer ${token}`
+                        }
+                    });
+                } catch (e) {
+                    console.warn("Backend logout failed:", e);
+                }
+            }
+
+            window.location.replace(CONFIG.LOGIN_URL);
         }
 
         // --- Data Loaders ---
@@ -367,9 +407,9 @@
                                         </div>
                                     </div>
                                     <div class="w-8 h-8 rounded-full bg-indigo-100 text-brand-primary flex items-center justify-center font-bold shadow-sm">
-                                        ${state.user.sub.charAt(0).toUpperCase()}
+                                        ${(state.user?.sub || state.user?.username || 'E').charAt(0).toUpperCase()}
                                     </div>
-                                    <span class="font-medium text-slate-700 hidden sm:inline-block">${state.user.sub}</span>
+                                    <span class="font-medium text-slate-700 hidden sm:inline-block">${state.user?.sub || state.user?.username || ''}</span>
                                 </div>
                             </header>
                             
@@ -3347,12 +3387,16 @@ window.addConTaskRow = function () {
             const html = `
                 <form onsubmit="handleChangePassword(event)" class="space-y-4">
                     <div>
+                        <label class="block text-sm font-semibold text-slate-700 mb-1">Current Password *</label>
+                        <input type="password" id="cp_current" required class="input-field w-full px-4 py-2 bg-white border border-slate-200 rounded-lg outline-none text-sm shadow-sm" placeholder="••••••••">
+                    </div>
+                    <div>
                         <label class="block text-sm font-semibold text-slate-700 mb-1">New Password *</label>
-                        <input type="password" id="cp_new" required minlength="8" class="input-field w-full px-4 py-2 bg-white border border-slate-200 rounded-lg outline-none text-sm shadow-sm" placeholder="••••••••">
+                        <input type="password" id="cp_new" required minlength="6" class="input-field w-full px-4 py-2 bg-white border border-slate-200 rounded-lg outline-none text-sm shadow-sm" placeholder="••••••••">
                     </div>
                     <div>
                         <label class="block text-sm font-semibold text-slate-700 mb-1">Confirm New Password *</label>
-                        <input type="password" id="cp_confirm" required minlength="8" class="input-field w-full px-4 py-2 bg-white border border-slate-200 rounded-lg outline-none text-sm shadow-sm" placeholder="••••••••">
+                        <input type="password" id="cp_confirm" required minlength="6" class="input-field w-full px-4 py-2 bg-white border border-slate-200 rounded-lg outline-none text-sm shadow-sm" placeholder="••••••••">
                     </div>
                     <div class="mt-6 flex justify-end gap-3 pt-4 border-t border-slate-100">
                         <button type="button" onclick="closeModal()" class="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg font-medium transition-colors">Cancel</button>
@@ -3368,10 +3412,16 @@ window.addConTaskRow = function () {
 
         async function handleChangePassword(e) {
             e.preventDefault();
+            const currentPass = document.getElementById('cp_current').value;
             const pass = document.getElementById('cp_new').value;
             const confirm = document.getElementById('cp_confirm').value;
+
+            if (!currentPass) {
+                showToast("Please enter your current password!", "error");
+                return;
+            }
             if (pass !== confirm) {
-                showToast("Passwords do not match!", "error");
+                showToast("New passwords do not match!", "error");
                 return;
             }
 
@@ -3381,9 +3431,13 @@ window.addConTaskRow = function () {
             btn.disabled = true;
 
             try {
-                await apiFetch('/employees/update/' + state.user.id, {
-                    method: 'PUT',
-                    body: { password: pass }
+                await apiFetch('/auth/change-password', {
+                    method: 'POST',
+                    body: {
+                        current_password: currentPass,
+                        new_password: pass,
+                        confirm_password: confirm
+                    }
                 });
                 showToast("Password updated successfully!", "success");
                 closeModal();
@@ -4959,21 +5013,39 @@ window.addConTaskRow = function () {
             };
             ws.onclose = (event) => {
                 if (event.code === 1008) {
-                    console.log("WebSocket connection rejected due to authentication failure. Stopping reconnection.");
+                    console.warn("WebSocket connection rejected due to authentication failure (1008). Redirecting to login.");
+                    redirectToLogin(true);
                     return;
                 }
-                setTimeout(setupWebSocket, 3000);
+                if (localStorage.getItem(CONFIG.TOKEN_KEY)) {
+                    setTimeout(setupWebSocket, 3000);
+                }
             };
             ws.onerror = () => ws.close();
         }
 
+        // Window Focus / Visibility Resumption Listener (Instant Session Check)
+        window.addEventListener("focus", async () => {
+            const token = localStorage.getItem(CONFIG.TOKEN_KEY);
+            if (!token) return;
+            try {
+                const checkRes = await fetch(`${CONFIG.API_BASE_URL}/auth/me`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                if (!checkRes.ok) {
+                    console.warn("Backend rejected session key on window focus. Redirecting to login.");
+                    redirectToLogin(true);
+                }
+            } catch (e) {}
+        });
+
         // --- Bootstrap Application ---
-        document.addEventListener('DOMContentLoaded', () => {
+        document.addEventListener('DOMContentLoaded', async () => {
             const token = localStorage.getItem(CONFIG.TOKEN_KEY);
 
             // Hard Auth Check
             if (!token) {
-                window.location.href = CONFIG.LOGIN_URL;
+                redirectToLogin(false);
                 return;
             }
 
@@ -4981,16 +5053,38 @@ window.addConTaskRow = function () {
 
             // Validate expiration and role isolation (Kick admins back to admin.html, kick expired to login.html)
             if (!state.user || state.user.exp * 1000 < Date.now()) {
-                localStorage.removeItem(CONFIG.TOKEN_KEY);
-                window.location.href = CONFIG.LOGIN_URL;
+                console.warn("Session expired or invalid token. Redirecting to login.");
+                redirectToLogin(true);
+                return;
+            }
+
+            // PRE-FLIGHT AUTH VERIFICATION: Confirm backend acknowledges session key before loading framework
+            try {
+                const verifyRes = await fetch(`${CONFIG.API_BASE_URL}/auth/me`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                if (!verifyRes.ok) {
+                    console.warn("Backend rejected session key on pre-flight check. Redirecting to login immediately.");
+                    redirectToLogin(true);
+                    return;
+                }
+                const verifiedUser = await verifyRes.json();
+                state.user = {
+                    ...state.user,
+                    ...verifiedUser,
+                    sub: verifiedUser.sub || verifiedUser.username || state.user?.sub || ''
+                };
+            } catch (authErr) {
+                console.error("Authentication pre-flight error:", authErr);
+                redirectToLogin(true);
                 return;
             }
 
             if (state.user.role.toLowerCase() === 'admin') {
                 if (state.user.access_level === 'ManagerAdmin') {
-                    window.location.href = '../manager/manager.html';
+                    window.location.replace('../manager/manager.html');
                 } else {
-                    window.location.href = '../admin/admin.html';
+                    window.location.replace('../admin/admin.html');
                 }
                 return;
             }

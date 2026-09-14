@@ -233,11 +233,21 @@ function getAdminProfileTemplate() {
             </div>
 
             <form id="admin-profile-security-form" onsubmit="handleAdminProfileSecuritySubmit(event)" class="space-y-6">
-              <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div>
-                  <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-2">New Password</label>
+                  <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-2">Current Password *</label>
                   <div class="relative">
-                    <input type="password" id="admin-profile-password" placeholder="••••••••" autocomplete="new-password" oninput="checkAdminPasswordStrength(this.value)" class="w-full pl-4 pr-12 py-2.5 bg-white border border-slate-200 rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-brand-primary font-medium" />
+                    <input type="password" id="admin-profile-current-password" required placeholder="••••••••" autocomplete="current-password" class="w-full pl-4 pr-12 py-2.5 bg-white border border-slate-200 rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-brand-primary font-medium" />
+                    <button type="button" onclick="toggleAdminPasswordVisibility('admin-profile-current-password', 'admin-curr-pwd-eye')" aria-label="Toggle password visibility" class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors p-1 rounded-lg">
+                      <i id="admin-curr-pwd-eye" data-lucide="eye" class="w-5 h-5"></i>
+                    </button>
+                  </div>
+                </div>
+
+                <div>
+                  <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-2">New Password *</label>
+                  <div class="relative">
+                    <input type="password" id="admin-profile-password" required placeholder="••••••••" autocomplete="new-password" oninput="checkAdminPasswordStrength(this.value)" class="w-full pl-4 pr-12 py-2.5 bg-white border border-slate-200 rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-brand-primary font-medium" />
                     <button type="button" onclick="toggleAdminPasswordVisibility('admin-profile-password', 'admin-pwd-eye')" aria-label="Toggle password visibility" class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors p-1 rounded-lg">
                       <i id="admin-pwd-eye" data-lucide="eye" class="w-5 h-5"></i>
                     </button>
@@ -255,9 +265,9 @@ function getAdminProfileTemplate() {
                 </div>
 
                 <div>
-                  <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-2">Confirm New Password</label>
+                  <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-2">Confirm New Password *</label>
                   <div class="relative">
-                    <input type="password" id="admin-profile-confirm-password" placeholder="••••••••" autocomplete="new-password" class="w-full pl-4 pr-12 py-2.5 bg-white border border-slate-200 rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-brand-primary font-medium" />
+                    <input type="password" id="admin-profile-confirm-password" required placeholder="••••••••" autocomplete="new-password" class="w-full pl-4 pr-12 py-2.5 bg-white border border-slate-200 rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-brand-primary font-medium" />
                     <button type="button" onclick="toggleAdminPasswordVisibility('admin-profile-confirm-password', 'admin-confirm-pwd-eye')" aria-label="Toggle confirm password visibility" class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors p-1 rounded-lg">
                       <i id="admin-confirm-pwd-eye" data-lucide="eye" class="w-5 h-5"></i>
                     </button>
@@ -558,31 +568,38 @@ async function handleAdminProfileSecuritySubmit(event) {
   event.preventDefault();
   if (!state.activeAdminProfile) return;
 
+  const currentPassword = document.getElementById('admin-profile-current-password').value;
   const password = document.getElementById('admin-profile-password').value;
   const confirmPassword = document.getElementById('admin-profile-confirm-password').value;
 
+  if (!currentPassword) {
+    showToast("Please enter your current password.", "error");
+    return;
+  }
   if (!password) {
     showToast("Please enter a new password.", "error");
     return;
   }
-
   if (password !== confirmPassword) {
     showToast("Passwords do not match.", "error");
     return;
   }
 
   try {
-    const res = await apiFetch(`/admins/update/${state.activeAdminProfile.id}`, {
-      method: 'PUT',
-      body: { password: password }
+    const res = await apiFetch('/auth/change-password', {
+      method: 'POST',
+      body: {
+        current_password: currentPassword,
+        new_password: password,
+        confirm_password: confirmPassword
+      }
     });
 
     if (res) {
       showToast("Password updated successfully!", "success");
+      document.getElementById('admin-profile-current-password').value = '';
       document.getElementById('admin-profile-password').value = '';
       document.getElementById('admin-profile-confirm-password').value = '';
-      state.activeAdminProfile = res;
-      renderAdminApp();
     }
   } catch (err) {
     showToast("Failed to update credentials: " + err.message, "error");

@@ -416,7 +416,7 @@ function getEmployeeDashboardTemplate() {
 
             return `
                 <div class="mb-8 mt-2">
-                    <h3 class="text-2xl md:text-3xl font-black text-slate-800 mb-1.5 tracking-tight">Welcome back, ${state.employeeData?.full_name || state.user.sub}</h3>
+                    <h3 class="text-2xl md:text-3xl font-black text-slate-800 mb-1.5 tracking-tight">Welcome back, ${state.employeeData?.full_name || state.user?.sub || state.user?.username || 'Employee'}</h3>
                     <p class="text-slate-500 text-sm font-medium">Manage your active projects, timeline milestones, and work submissions.</p>
                 </div>
 

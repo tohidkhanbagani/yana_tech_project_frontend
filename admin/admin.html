@@ -224,6 +224,16 @@
         display: none;
       }
 
+      #main-sidebar.sidebar-collapsed .nav-group-header {
+        display: none !important;
+      }
+
+      #main-sidebar.sidebar-collapsed .nav-group-divider {
+        display: block !important;
+        margin: 0.5rem 0.75rem !important;
+        border-top: 1px solid rgba(51, 65, 85, 0.4) !important;
+      }
+
       #main-sidebar.sidebar-collapsed .h-16 {
         padding-left: 0 !important;
         padding-right: 0 !important;
@@ -331,7 +341,60 @@
       pointer-events: none !important;
       transition: filter 0.3s ease;
     }
+
+    /* All-in-One Non-Scrollable Admin Sidebar Rules (PRB-090) */
+    #main-sidebar {
+      overflow-y: hidden !important;
+    }
+    #sidebar-nav {
+      scrollbar-width: none !important;
+      -ms-overflow-style: none !important;
+    }
+    #sidebar-nav::-webkit-scrollbar {
+      display: none !important;
+      width: 0 !important;
+      height: 0 !important;
+    }
+    @media (max-height: 800px) {
+      .nav-btn {
+        padding-top: 0.25rem !important;
+        padding-bottom: 0.25rem !important;
+        font-size: 0.7rem !important;
+      }
+      .nav-group-header {
+        padding-top: 0.25rem !important;
+        padding-bottom: 0.1rem !important;
+      }
+    }
+    @media (max-height: 680px) {
+      #main-sidebar .h-13 {
+        height: 2.75rem !important;
+      }
+      .nav-btn {
+        padding-top: 0.2rem !important;
+        padding-bottom: 0.2rem !important;
+        font-size: 0.68rem !important;
+      }
+      .nav-btn i {
+        width: 0.875rem !important;
+        height: 0.875rem !important;
+        margin-right: 0.5rem !important;
+      }
+      .nav-group-header {
+        padding-top: 0.15rem !important;
+        padding-bottom: 0.05rem !important;
+        font-size: 0.55rem !important;
+      }
+      #main-sidebar .p-2 {
+        padding: 0.35rem !important;
+      }
+    }
   </style>
+
+  <!-- AI Agent Studio & MCP Tool Invocation Interface Styles (PRB-087) -->
+  <link rel="stylesheet" href="sections/ai_chat/ai_chat.css" />
+  <!-- Universal Project Payments & Cash Flow Hub Styles (PRB-090) -->
+  <link rel="stylesheet" href="sections/projects/project_payments.css" />
 </head>
 
 <body class="text-slate-800 antialiased h-screen w-screen overflow-hidden">
@@ -744,12 +807,15 @@
 <script src="sections/projects/project_tooltip.js"></script>
 <script src="sections/projects/project_directory.js"></script>
 <script src="sections/projects/project_details.js"></script>
+<script src="sections/projects/project_payments.js"></script>
 <script src="sections/clients/clients.js"></script>
 <script src="sections/workforce/workforce.js"></script>
 <script src="sections/attendance/attendance.js"></script>
 <script src="sections/timesheets/timesheets.js"></script>
+<script src="sections/payroll/payroll.js"></script>
 <script src="sections/profile/profile.js"></script>
 <script src="sections/operations/operational_obligations.js"></script>
+<script src="sections/ai_chat/ai_chat.js"></script>
 
 
   <!-- Credentials Modal Overlay -->

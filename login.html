@@ -194,8 +194,18 @@
         document.getElementById('year').textContent = new Date().getFullYear();
         lucide.createIcons();
 
+        const getApiBaseUrl = () => {
+            if (window.location.origin && window.location.origin.includes(':8000')) {
+                return window.location.origin;
+            }
+            if (window.location.hostname === 'yana-frontend.vercel.app' || window.location.hostname.endsWith('vercel.app')) {
+                return 'https://yana-tech-project-backend-d0sj.onrender.com';
+            }
+            return 'http://localhost:8000';
+        };
+
         const CONFIG = {
-            API_BASE_URL: 'https://yana-tech-project-backend-d0sj.onrender.com', 
+            API_BASE_URL: getApiBaseUrl(),
             TOKEN_KEY: 'yana_os_token'
         };
 
@@ -304,20 +314,36 @@
             }
         });
 
-        // Redirect if already logged in
-        window.addEventListener('DOMContentLoaded', () => {
+        // Redirect if already logged in (Verified with Backend)
+        window.addEventListener('DOMContentLoaded', async () => {
             const token = localStorage.getItem(CONFIG.TOKEN_KEY);
             if (token) {
                 const decoded = parseJwt(token);
                 if (decoded && decoded.exp * 1000 > Date.now()) {
-                    if (decoded.role.toLowerCase() === 'admin') {
-                        if (decoded.access_level === 'ManagerAdmin') {
-                            window.location.href = 'manager/manager.html';
+                    try {
+                        const response = await fetch(`${CONFIG.API_BASE_URL}/auth/me`, {
+                            headers: { 'Authorization': `Bearer ${token}` }
+                        });
+                        if (response.ok) {
+                            const verifiedUser = await response.json();
+                            if (verifiedUser.role && verifiedUser.role.toLowerCase() === 'admin') {
+                                if (verifiedUser.access_level === 'ManagerAdmin') {
+                                    window.location.replace('manager/manager.html');
+                                } else {
+                                    window.location.replace('admin/admin.html');
+                                }
+                            } else {
+                                window.location.replace('employee/employee.html');
+                            }
+                            return;
                         } else {
-                            window.location.href = 'admin/admin.html';
+                            // Backend rejected session key or session is over
+                            console.warn("Session key rejected by backend on login check. Clearing token.");
+                            localStorage.removeItem(CONFIG.TOKEN_KEY);
                         }
-                    } else {
-                        window.location.href = 'employee/employee.html';
+                    } catch (e) {
+                        console.warn("Unable to verify session with backend:", e);
+                        localStorage.removeItem(CONFIG.TOKEN_KEY);
                     }
                 } else {
                     localStorage.removeItem(CONFIG.TOKEN_KEY);

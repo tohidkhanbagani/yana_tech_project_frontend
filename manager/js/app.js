@@ -4,7 +4,7 @@
 
     // --- Configuration ---
     const CONFIG = {
-      API_BASE_URL: "https://yana-tech-project-backend-d0sj.onrender.com",
+      API_BASE_URL: "http://localhost:8000",
       TOKEN_KEY: "yana_os_token",
       LOGIN_URL: "../login.html",
     };
@@ -313,7 +313,7 @@
               headers,
             });
             if (response.status === 401) {
-              logout(false);
+              redirectToLogin(true);
               throw new Error("Session expired.");
             }
             const data = await response.json().catch(() => ({}));
@@ -358,7 +358,7 @@
           headers,
         });
         if (response.status === 401) {
-          logout(false);
+          redirectToLogin(true);
           throw new Error("Session expired.");
         }
         const data = await response.json().catch(() => ({}));
@@ -387,12 +387,50 @@
       }
     }
 
-    // --- Auth Actions ---
+    // --- Redirection Engine & Auth Actions ---
+    let isRedirectingToLogin = false;
+    function redirectToLogin(clearStorage = true) {
+      if (isRedirectingToLogin) return;
+      isRedirectingToLogin = true;
+      if (clearStorage) {
+        localStorage.removeItem(CONFIG.TOKEN_KEY);
+      }
+      if (typeof ws !== "undefined" && ws) {
+        try {
+          ws.onclose = null;
+          ws.close(1000, "Redirecting to login");
+        } catch (e) {}
+        ws = null;
+      }
+      window.location.replace(CONFIG.LOGIN_URL);
+    }
+
     async function logout(showNotification = true) {
+      const token = localStorage.getItem(CONFIG.TOKEN_KEY);
       localStorage.removeItem(CONFIG.TOKEN_KEY);
-      if (showNotification)
-        await customAlert("Logged Out", "Logged out successfully");
-      window.location.href = CONFIG.LOGIN_URL;
+
+      if (typeof ws !== "undefined" && ws) {
+        try {
+          ws.onclose = null;
+          ws.close(1000, "User logged out");
+        } catch (e) {}
+        ws = null;
+      }
+
+      if (token) {
+        try {
+          await fetch(`${CONFIG.API_BASE_URL}/auth/logout`, {
+            method: "POST",
+            headers: {
+              "Authorization": `Bearer ${token}`
+            }
+          });
+        } catch (e) {
+          console.warn("Backend logout failed:", e);
+        }
+      }
+
+      window.location.replace(CONFIG.LOGIN_URL);
     }
 
     // --- Admin Data Loaders ---
@@ -3414,7 +3452,7 @@
         const isCloud = activeDoc.file_url_or_path.startsWith("http");
         const fileLink = isCloud
           ? activeDoc.file_url_or_path
-          : `${CONFIG.API_BASE_URL}/${activeDoc.file_url_or_path.replace(/\\/g, "/")}`;
+          : `http://localhost:8000/${activeDoc.file_url_or_path.replace(/\\/g, "/")}`;
 
         // Construct Parsed Content View (Algorithms Output)
         let parsedContentHtml = "";
@@ -7104,10 +7142,13 @@
       };
       ws.onclose = (event) => {
         if (event.code === 1008) {
-          console.log("WebSocket connection rejected due to authentication failure. Stopping reconnection.");
+          console.warn("WebSocket connection rejected due to authentication failure (1008). Redirecting to login.");
+          redirectToLogin(true);
           return;
         }
-        setTimeout(setupWebSocket, 3000);
+        if (localStorage.getItem(CONFIG.TOKEN_KEY)) {
+          setTimeout(setupWebSocket, 3000);
+        }
       };
       ws.onerror = () => ws.close();
     }
@@ -7150,13 +7191,28 @@
       }
     };
 
+    // Window Focus / Visibility Resumption Listener (Instant Session Check)
+    window.addEventListener("focus", async () => {
+      const token = localStorage.getItem(CONFIG.TOKEN_KEY);
+      if (!token) return;
+      try {
+        const checkRes = await fetch(`${CONFIG.API_BASE_URL}/auth/me`, {
+          headers: { "Authorization": `Bearer ${token}` }
+        });
+        if (!checkRes.ok) {
+          console.warn("Backend rejected session key on window focus. Redirecting to login.");
+          redirectToLogin(true);
+        }
+      } catch (e) {}
+    });
+
     // --- Bootstrap Application ---
     document.addEventListener("DOMContentLoaded", async () => {
       const token = localStorage.getItem(CONFIG.TOKEN_KEY);
       const appDiv = document.getElementById("app");
 
       if (!token) {
-        window.location.href = CONFIG.LOGIN_URL;
+        redirectToLogin(false);
         return;
       }
 
@@ -7166,17 +7222,35 @@
         !state.user ||
         state.user.exp * 1000 < Date.now()
       ) {
-        await customAlert(
-          "Session Error",
-          "Unauthorized or expired session. Redirecting to login.",
-        );
-        localStorage.removeItem(CONFIG.TOKEN_KEY);
-        window.location.href = CONFIG.LOGIN_URL;
+        console.warn("Session expired or invalid token. Redirecting to login.");
+        redirectToLogin(true);
+        return;
+      }
+
+      // PRE-FLIGHT AUTH VERIFICATION: Confirm backend acknowledges session key before loading framework
+      try {
+        const verifyRes = await fetch(`${CONFIG.API_BASE_URL}/auth/me`, {
+          headers: { "Authorization": `Bearer ${token}` }
+        });
+        if (!verifyRes.ok) {
+          console.warn("Backend rejected session key on pre-flight check. Redirecting to login immediately.");
+          redirectToLogin(true);
+          return;
+        }
+        const verifiedUser = await verifyRes.json();
+        state.user = {
+          ...state.user,
+          ...verifiedUser,
+          sub: verifiedUser.sub || verifiedUser.username || state.user?.sub || ""
+        };
+      } catch (authErr) {
+        console.error("Authentication pre-flight error:", authErr);
+        redirectToLogin(true);
         return;
       }
 
       if (state.user.role.toLowerCase() === "employee") {
-        window.location.href = "../employee/employee.html";
+        window.location.replace("../employee/employee.html");
         return;
       }
 
@@ -7184,12 +7258,8 @@
         state.user.role.toLowerCase() !== "admin" ||
         (state.user.access_level !== "ManagerAdmin" && state.user.access_level !== "SystemAdmin")
       ) {
-        await customAlert(
-          "Session Error",
-          "Unauthorized access level. Redirecting to appropriate portal.",
-        );
-        localStorage.removeItem(CONFIG.TOKEN_KEY);
-        window.location.href = CONFIG.LOGIN_URL;
+        console.warn("Unauthorized access level for manager portal. Redirecting to login.");
+        redirectToLogin(true);
         return;
       }
 

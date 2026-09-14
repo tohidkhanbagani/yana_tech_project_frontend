@@ -4,7 +4,7 @@
 
     // --- Configuration ---
     const CONFIG = {
-      API_BASE_URL: "https://yana-tech-project-backend-d0sj.onrender.com",
+      API_BASE_URL: "http://localhost:8000",
       TOKEN_KEY: "yana_os_token",
       LOGIN_URL: "../login.html",
     };
@@ -59,6 +59,14 @@
       incChartFilter: '12',
       profitChartYear: 'all',
       metadataTab: 'sprints',
+
+      // Payroll & Calculations Local State (PRB-079)
+      selectedPayrollMonth: sessionStorage.getItem("lastPayrollMonth") || new Date().toISOString().slice(0, 7),
+      payrollData: null,
+      payrollShiftAdjustments: [],
+      payrollSearchTerm: '',
+      payrollStatusFilter: 'all',
+      isPayrollLoading: false,
     };
 
     // --- Chart Instances ---
@@ -239,6 +247,8 @@
       setTimeout(() => {
         modal.classList.add("hidden");
         modal.classList.remove("flex");
+        content.classList.remove("max-w-3xl", "max-w-4xl");
+        content.classList.add("max-w-2xl");
         content.innerHTML = "";
       }, 300);
     }
@@ -386,7 +396,7 @@
               headers,
             });
             if (response.status === 401) {
-              logout(false);
+              redirectToLogin(true);
               throw new Error("Session expired.");
             }
             const data = await response.json().catch(() => ({}));
@@ -431,7 +441,7 @@
           headers,
         });
         if (response.status === 401) {
-          logout(false);
+          redirectToLogin(true);
           throw new Error("Session expired.");
         }
         const data = await response.json().catch(() => ({}));
@@ -460,12 +470,50 @@
       }
     }
 
-    // --- Auth Actions ---
+    // --- Redirection Engine & Auth Actions ---
+    let isRedirectingToLogin = false;
+    function redirectToLogin(clearStorage = true) {
+      if (isRedirectingToLogin) return;
+      isRedirectingToLogin = true;
+      if (clearStorage) {
+        localStorage.removeItem(CONFIG.TOKEN_KEY);
+      }
+      if (typeof ws !== "undefined" && ws) {
+        try {
+          ws.onclose = null;
+          ws.close(1000, "Redirecting to login");
+        } catch (e) {}
+        ws = null;
+      }
+      window.location.replace(CONFIG.LOGIN_URL);
+    }
+
     async function logout(showNotification = true) {
+      const token = localStorage.getItem(CONFIG.TOKEN_KEY);
       localStorage.removeItem(CONFIG.TOKEN_KEY);
-      if (showNotification)
-        await customAlert("Logged Out", "Logged out successfully");
-      window.location.href = CONFIG.LOGIN_URL;
+
+      if (typeof ws !== "undefined" && ws) {
+        try {
+          ws.onclose = null;
+          ws.close(1000, "User logged out");
+        } catch (e) {}
+        ws = null;
+      }
+
+      if (token) {
+        try {
+          await fetch(`${CONFIG.API_BASE_URL}/auth/logout`, {
+            method: "POST",
+            headers: {
+              "Authorization": `Bearer ${token}`
+            }
+          });
+        } catch (e) {
+          console.warn("Backend logout failed:", e);
+        }
+      }
+
+      window.location.replace(CONFIG.LOGIN_URL);
     }
 
     // --- Admin Data Loaders ---
@@ -530,6 +578,32 @@
         } else if (view === "obligations") {
           const obligations = await apiFetch("/obligations/all").catch(() => []);
           state.allObligations = Array.isArray(obligations) ? obligations : [];
+        } else if (view === "payroll") {
+          const currentMonth = state.selectedPayrollMonth || new Date().toISOString().slice(0, 7);
+          state.selectedPayrollMonth = currentMonth;
+          const [payrollData, shiftAdjustments, employees] = await Promise.all([
+            apiFetch(`/payroll/calculate?month_year=${currentMonth}`).catch(() => null),
+            apiFetch(`/payroll/shift-adjustments?month_year=${currentMonth}`).catch(() => []),
+            apiFetch("/employees/all").catch(() => [])
+          ]);
+          state.payrollData = payrollData;
+          state.payrollShiftAdjustments = Array.isArray(shiftAdjustments) ? shiftAdjustments : [];
+          if (Array.isArray(employees) && employees.length > 0) {
+            state.allEmployees = employees;
+          }
+        } else if (view === "project_payments") {
+          const [payments, receivables, summary, projects, clients] = await Promise.all([
+            apiFetch("/projects/payments/all").catch(() => []),
+            apiFetch("/projects/receivables/all").catch(() => []),
+            apiFetch("/projects/payments/summary").catch(() => null),
+            apiFetch("/projects/all").catch(() => []),
+            apiFetch("/clients/all").catch(() => [])
+          ]);
+          state.universalPayments = Array.isArray(payments) ? payments : [];
+          state.universalReceivables = Array.isArray(receivables) ? receivables : [];
+          state.universalPaymentsSummary = summary;
+          if (Array.isArray(projects) && projects.length > 0) state.allProjects = projects;
+          if (Array.isArray(clients) && clients.length > 0) state.allClients = clients;
         }
         
         lazyLoadedViews[view] = true;
@@ -745,6 +819,12 @@
         contentHtml = getAdminActivityLogsTemplate();
       else if (state.adminView === "obligations")
         contentHtml = getAdminObligationsTemplate();
+      else if (state.adminView === "payroll")
+        contentHtml = getAdminPayrollTemplate();
+      else if (state.adminView === "project_payments")
+        contentHtml = typeof getAdminProjectPaymentsTemplate === "function" ? getAdminProjectPaymentsTemplate() : "<div class='p-8 text-center text-slate-500'>Loading Project Payments...</div>";
+      else if (state.adminView === "ai_chat")
+        contentHtml = typeof getAdminAIChatTemplate === "function" ? getAdminAIChatTemplate() : "<div class='p-8 text-center text-slate-500'>Loading AI Agent Studio...</div>";
 
 
       // ARCHITECTURE FIX: If the App Shell isn't drawn yet, draw everything.
@@ -760,51 +840,90 @@
 
                         <!-- Admin Sidebar -->
                         <aside id="main-sidebar" class="w-64 bg-slate-900 text-slate-300 flex flex-col shrink-0 transition-transform duration-300 z-50 fixed md:relative h-full -translate-x-full md:translate-x-0 border-r border-slate-800 ${sidebarClass}">
-                            <div class="h-16 flex items-center px-6 bg-slate-950 border-b border-slate-800 shrink-0">
-                                <div class="w-8 h-8 bg-brand-accent rounded-md flex items-center justify-center mr-3 shadow-lg">
-                                    <i data-lucide="shield" class="text-white w-5 h-5"></i>
+                            <div class="h-13 flex items-center px-4 bg-slate-950 border-b border-slate-800 shrink-0">
+                                <div class="w-7 h-7 bg-brand-accent rounded-md flex items-center justify-center mr-2.5 shadow-md">
+                                    <i data-lucide="shield" class="text-white w-4 h-4"></i>
                                 </div>
-                                <span class="font-bold text-white text-lg tracking-tight">Yana <span class="text-brand-accent font-normal">Admin</span></span>
+                                <span class="font-bold text-white text-base tracking-tight">Yana <span class="text-brand-accent font-normal">Admin</span></span>
                             </div>
-                            <nav class="flex-1 px-4 py-6 space-y-2 overflow-y-auto" id="sidebar-nav">
-                                <button onclick="routeApp('dashboard')" data-view="dashboard" class="nav-btn w-full flex items-center px-4 py-3 rounded-xl transition-all">
-                                    <i data-lucide="pie-chart" class="w-5 h-5 mr-3"></i> <span class="font-medium">Dashboard</span>
+                            <nav class="flex-1 px-2.5 py-1.5 space-y-0.5 overflow-hidden flex flex-col justify-between select-none" id="sidebar-nav">
+                                <!-- Group 1: Core -->
+                                <div class="nav-group-header px-2.5 pt-1 pb-0.5 text-[9px] font-extrabold uppercase tracking-wider text-slate-500">Overview</div>
+                                <button onclick="routeApp('dashboard')" data-view="dashboard" title="Executive Dashboard" class="nav-btn w-full flex items-center px-2.5 py-1.5 rounded-lg transition-all text-xs font-medium">
+                                    <i data-lucide="pie-chart" class="w-4 h-4 mr-2.5 shrink-0"></i> <span>Dashboard</span>
                                 </button>
-                                <button onclick="routeApp('projects')" data-view="projects" class="nav-btn w-full flex items-center px-4 py-3 rounded-xl transition-all">
-                                    <i data-lucide="folder-kanban" class="w-5 h-5 mr-3"></i> <span class="font-medium">Project Control</span>
+
+                                <div class="nav-group-divider my-1 border-t border-slate-800/60 hidden"></div>
+
+                                <!-- Group 2: Operations -->
+                                <div class="nav-group-header px-2.5 pt-1.5 pb-0.5 text-[9px] font-extrabold uppercase tracking-wider text-slate-500">Operations</div>
+                                <button onclick="routeApp('projects')" data-view="projects" title="Project Control" class="nav-btn w-full flex items-center px-2.5 py-1.5 rounded-lg transition-all text-xs font-medium">
+                                    <i data-lucide="folder-kanban" class="w-4 h-4 mr-2.5 shrink-0"></i> <span>Project Control</span>
                                 </button>
-                                <button onclick="routeApp('clients')" data-view="clients" class="nav-btn w-full flex items-center px-4 py-3 rounded-xl transition-all">
-                                    <i data-lucide="briefcase" class="w-5 h-5 mr-3"></i> <span class="font-medium">Clients</span>
+                                <button onclick="routeApp('clients')" data-view="clients" title="Client Accounts" class="nav-btn w-full flex items-center px-2.5 py-1.5 rounded-lg transition-all text-xs font-medium">
+                                    <i data-lucide="briefcase" class="w-4 h-4 mr-2.5 shrink-0"></i> <span>Clients</span>
                                 </button>
-                                <button onclick="routeApp('workforce')" data-view="workforce" class="nav-btn w-full flex items-center px-4 py-3 rounded-xl transition-all">
-                                    <i data-lucide="users" class="w-5 h-5 mr-3"></i> <span class="font-medium">Workforce</span>
+                                <button onclick="routeApp('workforce')" data-view="workforce" title="Workforce Management" class="nav-btn w-full flex items-center px-2.5 py-1.5 rounded-lg transition-all text-xs font-medium">
+                                    <i data-lucide="users" class="w-4 h-4 mr-2.5 shrink-0"></i> <span>Workforce</span>
                                 </button>
-                                <button onclick="routeApp('attendance', 'logs')" data-view="attendance-logs" class="nav-btn w-full flex items-center px-4 py-3 rounded-xl transition-all">
-                                    <i data-lucide="calendar" class="w-5 h-5 mr-3"></i> <span class="font-medium">Attendance Logs</span>
+
+                                <div class="nav-group-divider my-1 border-t border-slate-800/60 hidden"></div>
+
+                                <!-- Group 3: Time & Attendance -->
+                                <div class="nav-group-header px-2.5 pt-1.5 pb-0.5 text-[9px] font-extrabold uppercase tracking-wider text-slate-500">Time & Attendance</div>
+                                <button onclick="routeApp('attendance', 'logs')" data-view="attendance-logs" title="Daily Attendance Logs" class="nav-btn w-full flex items-center px-2.5 py-1.5 rounded-lg transition-all text-xs font-medium">
+                                    <i data-lucide="calendar-check" class="w-4 h-4 mr-2.5 shrink-0"></i> <span>Attendance Logs</span>
                                 </button>
-                                <button onclick="routeApp('attendance', 'login')" data-view="attendance-login" class="nav-btn w-full flex items-center px-4 py-3 rounded-xl transition-all">
-                                    <i data-lucide="shield-check" class="w-5 h-5 mr-3"></i> <span class="font-medium">Login History</span>
+                                <button onclick="routeApp('attendance', 'login')" data-view="attendance-login" title="System Login History" class="nav-btn w-full flex items-center px-2.5 py-1.5 rounded-lg transition-all text-xs font-medium">
+                                    <i data-lucide="shield-check" class="w-4 h-4 mr-2.5 shrink-0"></i> <span>Login History</span>
                                 </button>
-                                <button onclick="routeApp('attendance', 'leave')" data-view="attendance-leave" class="nav-btn w-full flex items-center px-4 py-3 rounded-xl transition-all">
-                                    <i data-lucide="calendar-days" class="w-5 h-5 mr-3"></i> <span class="font-medium">Leave Requests</span>
+                                <button onclick="routeApp('attendance', 'leave')" data-view="attendance-leave" title="Employee Leave Requests" class="nav-btn w-full flex items-center px-2.5 py-1.5 rounded-lg transition-all text-xs font-medium">
+                                    <i data-lucide="calendar-days" class="w-4 h-4 mr-2.5 shrink-0"></i> <span>Leave Requests</span>
                                 </button>
-                                <button onclick="routeApp('timesheets')" data-view="timesheets" class="nav-btn w-full flex items-center px-4 py-3 rounded-xl transition-all">
-                                    <i data-lucide="book-open" class="w-5 h-5 mr-3"></i> <span class="font-medium">Financial Ledger</span>
+
+                                <div class="nav-group-divider my-1 border-t border-slate-800/60 hidden"></div>
+
+                                <!-- Group 4: Finance & Payroll -->
+                                <div class="nav-group-header px-2.5 pt-1.5 pb-0.5 text-[9px] font-extrabold uppercase tracking-wider text-slate-500">Finance & Payroll</div>
+                                <button onclick="routeApp('payroll')" data-view="payroll" title="Employee Pay & Payroll Engine" class="nav-btn w-full flex items-center px-2.5 py-1.5 rounded-lg transition-all text-xs font-medium">
+                                    <i data-lucide="calculator" class="w-4 h-4 mr-2.5 shrink-0"></i> <span>Employee Pay</span>
                                 </button>
-                                <button onclick="routeApp('obligations')" data-view="obligations" class="nav-btn w-full flex items-center px-4 py-3 rounded-xl transition-all">
-                                    <i data-lucide="receipt" class="w-5 h-5 mr-3"></i> <span class="font-medium">Office Bills & Rent</span>
+                                <button onclick="routeApp('project_payments')" data-view="project_payments" title="Universal Project Payments & Cash Flow Hub" class="nav-btn w-full flex items-center px-2.5 py-1.5 rounded-lg transition-all text-xs font-medium">
+                                    <i data-lucide="indian-rupee" class="w-4 h-4 mr-2.5 shrink-0 text-emerald-400"></i> <span>Project Payments</span>
                                 </button>
-                                <button onclick="routeApp('activity_logs')" data-view="activity_logs" class="nav-btn w-full flex items-center px-4 py-3 rounded-xl transition-all">
-                                    <i data-lucide="file-text" class="w-5 h-5 mr-3"></i> <span class="font-medium">Activity Logger</span>
+                                <button onclick="routeApp('timesheets')" data-view="timesheets" title="Financial Timesheets Ledger" class="nav-btn w-full flex items-center px-2.5 py-1.5 rounded-lg transition-all text-xs font-medium">
+                                    <i data-lucide="book-open" class="w-4 h-4 mr-2.5 shrink-0"></i> <span>Financial Ledger</span>
                                 </button>
-                                <button onclick="routeApp('profile')" data-view="profile" class="nav-btn w-full flex items-center px-4 py-3 rounded-xl transition-all">
-                                    <i data-lucide="user" class="w-5 h-5 mr-3"></i> <span class="font-medium">My Profile</span>
+                                <button onclick="routeApp('obligations')" data-view="obligations" title="Recurring Office Bills & Rent" class="nav-btn w-full flex items-center px-2.5 py-1.5 rounded-lg transition-all text-xs font-medium">
+                                    <i data-lucide="receipt" class="w-4 h-4 mr-2.5 shrink-0"></i> <span>Office Bills & Rent</span>
+                                </button>
+
+                                <div class="nav-group-divider my-1 border-t border-slate-800/60 hidden"></div>
+
+                                <!-- Group: AI Intelligence & MCP Tools -->
+                                <div class="nav-group-header px-2.5 pt-1.5 pb-0.5 text-[9px] font-extrabold uppercase tracking-wider text-indigo-400 flex items-center justify-between">
+                                    <span class="flex items-center gap-1.5"><i data-lucide="sparkles" class="w-3 h-3 text-indigo-400"></i> AI Intelligence</span>
+                                    <span class="px-1.5 py-0.2 rounded bg-indigo-500/20 text-indigo-300 font-mono text-[9px] border border-indigo-500/30">MCP</span>
+                                </div>
+                                <button onclick="routeApp('ai_chat')" data-view="ai_chat" title="AI Agent Studio & MCP Hub" class="nav-btn w-full flex items-center px-2.5 py-1.5 rounded-lg transition-all text-xs font-medium group">
+                                    <i data-lucide="bot" class="w-4 h-4 mr-2.5 shrink-0 text-indigo-400 group-hover:text-indigo-300"></i> <span>AI Agent Studio</span>
+                                </button>
+
+                                <div class="nav-group-divider my-1 border-t border-slate-800/60 hidden"></div>
+
+                                <!-- Group 5: System & Settings -->
+                                <div class="nav-group-header px-2.5 pt-1.5 pb-0.5 text-[9px] font-extrabold uppercase tracking-wider text-slate-500">System</div>
+                                <button onclick="routeApp('activity_logs')" data-view="activity_logs" title="System Activity & Audit Log" class="nav-btn w-full flex items-center px-2.5 py-1.5 rounded-lg transition-all text-xs font-medium">
+                                    <i data-lucide="file-text" class="w-4 h-4 mr-2.5 shrink-0"></i> <span>Activity Logger</span>
+                                </button>
+                                <button onclick="routeApp('profile')" data-view="profile" title="Administrator Profile" class="nav-btn w-full flex items-center px-2.5 py-1.5 rounded-lg transition-all text-xs font-medium">
+                                    <i data-lucide="user" class="w-4 h-4 mr-2.5 shrink-0"></i> <span>My Profile</span>
                                 </button>
 
                             </nav>
-                            <div class="p-4 border-t border-slate-800">
-                                <button onclick="logout()" class="w-full flex items-center px-4 py-3 rounded-xl hover:bg-brand-alert hover:text-white transition-all group">
-                                    <i data-lucide="log-out" class="w-5 h-5 mr-3 group-hover:text-white text-slate-400 transition-colors"></i> <span class="font-medium">Logout</span>
+                            <div class="p-2 border-t border-slate-800 shrink-0">
+                                <button onclick="logout()" class="w-full flex items-center px-2.5 py-1.5 rounded-lg hover:bg-brand-alert hover:text-white transition-all group text-xs font-medium">
+                                    <i data-lucide="log-out" class="w-4 h-4 mr-2.5 group-hover:text-white text-slate-400 transition-colors"></i> <span>Logout</span>
                                 </button>
                             </div>
                         </aside>
@@ -817,10 +936,17 @@
                                         <i data-lucide="menu" class="w-6 h-6" aria-hidden="true"></i>
                                     </button>
                                     <h2 id="header-title" class="text-xl font-bold text-slate-800 tracking-tight capitalize">
-                                        ${state.adminView === "dashboard" ? "Executive Dashboard" : state.adminView.replace("-", " ")}
+                                        ${state.adminView === "dashboard" ? "Executive Dashboard" : state.adminView === "payroll" ? "Employee Pay & Payroll Engine" : state.adminView === "ai_chat" ? "AI Agent Studio & MCP Hub" : state.adminView === "project_payments" ? "Universal Project Payments & Cash Flow Hub" : state.adminView.replace("-", " ")}
                                     </h2>
                                 </div>
                                 <div class="flex items-center gap-3 md:gap-4">
+                                    <!-- AI Agent Studio Quick Launcher Button -->
+                                    <button onclick="routeApp('ai_chat')" id="header-ai-agent-btn" aria-label="Open AI Agent Studio" class="flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-indigo-950/70 via-purple-950/50 to-slate-900/70 hover:from-indigo-900/90 hover:to-slate-900/90 text-indigo-200 hover:text-white rounded-xl text-xs font-bold border border-indigo-500/40 transition-all select-none shadow-sm focus-visible:ring-2 focus-visible:ring-indigo-500 cursor-pointer group">
+                                        <i data-lucide="sparkles" class="w-4 h-4 text-indigo-400 group-hover:rotate-12 transition-transform"></i>
+                                        <span class="hidden sm:inline">AI Agent</span>
+                                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                                    </button>
+
                                     <button onclick="toggleFinancialVisibility()" id="financial-toggle-btn" aria-label="Toggle Financial Data Visibility" class="flex items-center gap-2 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold border border-slate-200 transition-colors select-none shadow-sm focus-visible:ring-2 focus-visible:ring-brand-primary">
                                         <i data-lucide="${state.hideFinancials ? 'eye-off' : 'eye'}" id="financial-toggle-icon" class="w-4 h-4 text-slate-500" aria-hidden="true"></i>
                                         <span id="financial-toggle-text">${state.hideFinancials ? 'Show Financials' : 'Hide Financials'}</span>
@@ -872,8 +998,8 @@
                                 </div>
                             </header>
 
-                            <main class="flex-1 overflow-y-auto p-4 md:p-8" id="main-scroll-area">
-                                <div class="max-w-7xl mx-auto" id="dynamic-content-area">
+                            <main class="${state.adminView === 'ai_chat' ? 'flex-1 overflow-hidden p-0 flex flex-col' : 'flex-1 overflow-y-auto p-4 md:p-8'}" id="main-scroll-area">
+                                <div class="${state.adminView === 'ai_chat' ? 'w-full h-full flex-1 flex flex-col overflow-hidden' : 'max-w-7xl mx-auto'}" id="dynamic-content-area">
                                     ${contentHtml}
                                 </div>
                             </main>
@@ -884,12 +1010,26 @@
       } else {
         // ARCHITECTURE FIX: Shell exists. Just swap the inner content.
         const dynamicArea = document.getElementById("dynamic-content-area");
+        const mainScrollArea = document.getElementById("main-scroll-area");
         if (dynamicArea) {
+          if (state.adminView === "ai_chat") {
+            if (mainScrollArea) mainScrollArea.className = "flex-1 overflow-hidden p-0 flex flex-col";
+            dynamicArea.className = "w-full h-full flex-1 flex flex-col overflow-hidden";
+          } else {
+            if (mainScrollArea) mainScrollArea.className = "flex-1 overflow-y-auto p-4 md:p-8";
+            dynamicArea.className = "max-w-7xl mx-auto";
+          }
           dynamicArea.innerHTML = contentHtml;
 
           document.getElementById("header-title").innerText =
             state.adminView === "dashboard"
               ? "Executive Dashboard"
+              : state.adminView === "payroll"
+              ? "Employee Pay & Payroll Engine"
+              : state.adminView === "ai_chat"
+              ? "AI Agent Studio & MCP Hub"
+              : state.adminView === "project_payments"
+              ? "Universal Project Payments & Cash Flow Hub"
               : state.adminView.replace("-", " ");
 
           document.querySelectorAll(".nav-btn").forEach((btn) => {
@@ -907,10 +1047,10 @@
 
             if (isActive) {
               btn.className =
-                "nav-btn w-full flex items-center px-4 py-3 rounded-xl transition-all bg-brand-primary text-white shadow-md";
+                "nav-btn w-full flex items-center px-2.5 py-1.5 rounded-lg transition-all text-xs font-semibold bg-indigo-600 text-white shadow-md shadow-indigo-900/30";
             } else {
               btn.className =
-                "nav-btn w-full flex items-center px-4 py-3 rounded-xl transition-all hover:bg-slate-800 hover:text-white text-slate-300";
+                "nav-btn w-full flex items-center px-2.5 py-1.5 rounded-lg transition-all text-xs font-medium hover:bg-slate-800/80 hover:text-white text-slate-400";
             }
           });
 
@@ -919,6 +1059,12 @@
           updateCapacityLeakageModalDOM();
           if (state.adminView === "projects" && typeof renderAdminProjectsTable === "function") {
             renderAdminProjectsTable();
+          }
+          if (state.adminView === "project_payments" && typeof initAdminProjectPayments === "function") {
+            initAdminProjectPayments();
+          }
+          if (state.adminView === "ai_chat" && typeof initAdminAIChat === "function") {
+            initAdminAIChat();
           }
           return; // EXIT EARLY so we don't double-trigger below
         }
@@ -940,10 +1086,10 @@
 
         if (isActive) {
           btn.className =
-            "nav-btn w-full flex items-center px-4 py-3 rounded-xl transition-all bg-brand-primary text-white shadow-md";
+            "nav-btn w-full flex items-center px-2.5 py-1.5 rounded-lg transition-all text-xs font-semibold bg-indigo-600 text-white shadow-md shadow-indigo-900/30";
         } else {
           btn.className =
-            "nav-btn w-full flex items-center px-4 py-3 rounded-xl transition-all hover:bg-slate-800 hover:text-white text-slate-300";
+            "nav-btn w-full flex items-center px-2.5 py-1.5 rounded-lg transition-all text-xs font-medium hover:bg-slate-800/80 hover:text-white text-slate-400";
         }
       });
 
@@ -952,6 +1098,12 @@
       updateCapacityLeakageModalDOM();
       if (state.adminView === "projects" && typeof renderAdminProjectsTable === "function") {
         renderAdminProjectsTable();
+      }
+      if (state.adminView === "project_payments" && typeof initAdminProjectPayments === "function") {
+        initAdminProjectPayments();
+      }
+      if (state.adminView === "ai_chat" && typeof initAdminAIChat === "function") {
+        initAdminAIChat();
       }
     }
 
@@ -3730,6 +3882,13 @@
             `;
     }
 
+    window.openProjectInUniversalPayments = function(projectId) {
+      if (window.universalPaymentState) {
+        window.universalPaymentState.selectedProject = projectId;
+      }
+      routeApp('project_payments');
+    };
+
     function getProjectPaymentsTab(p) {
 
       const payments = state.activeProjectPayments || [];
@@ -3757,6 +3916,22 @@
       const todayStr = new Date().toISOString().split('T')[0];
 
       return `
+            <!-- Universal Controller Quick Banner -->
+            <div class="bg-indigo-50/70 border border-indigo-100 rounded-2xl p-4 mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div class="flex items-center gap-3">
+                    <div class="w-9 h-9 rounded-xl bg-indigo-600 text-white flex items-center justify-center shrink-0 shadow-sm">
+                        <i data-lucide="wallet" class="w-5 h-5"></i>
+                    </div>
+                    <div>
+                        <h4 class="text-xs font-bold text-indigo-950">Universal Project Payments & Cash Flow Hub</h4>
+                        <p class="text-[11px] text-indigo-700 font-medium">Manage project receivables, milestone schedules, and live cash flow reconciliations in the Universal Controller.</p>
+                    </div>
+                </div>
+                <button onclick="openProjectInUniversalPayments('${p.id}')" class="px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl shadow-sm transition-all flex items-center gap-1.5 shrink-0 self-start sm:self-auto">
+                    <i data-lucide="external-link" class="w-3.5 h-3.5"></i> Open in Universal Controller
+                </button>
+            </div>
+
             <!-- Billing Details Card -->
             <div class="bg-gradient-to-r from-slate-50 to-slate-100/50 p-5 rounded-2xl border border-slate-200 shadow-sm mb-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div class="w-full">
@@ -4228,7 +4403,9 @@ function openAddExpenseModal() {
                         <label class="block text-sm font-semibold text-slate-700 mb-1">Frequency *</label>
                         <select id="rec_frequency" class="input-field w-full px-4 py-2 bg-white border border-slate-200 rounded-lg outline-none text-sm shadow-sm">
                             <option value="Custom Date">One-time / Custom Date</option>
+                            <option value="Weekly">Weekly Recurring</option>
                             <option value="Monthly">Monthly Recurring</option>
+                            <option value="Yearly">Yearly Recurring</option>
                         </select>
                     </div>
                 </div>
@@ -4740,7 +4917,7 @@ function openAddExpenseModal() {
         if (isCloud) {
           fileLink = activeDoc.file_url_or_path;
         } else if (!isPasted && activeDoc.file_url_or_path) {
-          fileLink = `${CONFIG.API_BASE_URL}/${activeDoc.file_url_or_path.replace(/\\/g, "/")}`;
+          fileLink = `http://localhost:8000/${activeDoc.file_url_or_path.replace(/\\/g, "/")}`;
         }
 
         // Construct Parsed Content View (Algorithms Output)
@@ -6275,6 +6452,7 @@ function openAddExpenseModal() {
         }
       };
 
+      window._currentEditingProject = p;
       openModal(
         isEdit ? "Edit Project Workspace" : "Initialize New Project",
         formHtml,
@@ -6314,7 +6492,7 @@ function openAddExpenseModal() {
       const container = document.getElementById("billing_fields_container");
       if (!container) return;
 
-      const p = state.activeProject;
+      const p = window._currentEditingProject || state.activeProject;
       let html = "";
 
       if (type === "Fixed Price") {
@@ -7657,23 +7835,52 @@ function openAddExpenseModal() {
                                     <i data-lucide="sliders" class="w-3 h-3"></i> Manage Quotas
                                 </button>
                             </div>
-                            <div class="grid grid-cols-3 gap-2.5">
-                                <div class="bg-emerald-50/60 p-2 rounded-xl border border-emerald-100/80">
-                                    <p class="text-[9px] font-bold text-emerald-700 uppercase tracking-wider mb-0.5">Paid Leaves</p>
-                                    <div class="text-xs font-extrabold text-slate-900">
-                                        ${((emp.total_paid_leaves !== undefined && emp.total_paid_leaves !== null ? emp.total_paid_leaves : 18.0) - (emp.used_paid_leaves || 0.0)).toFixed(1)} <span class="text-[9px] text-slate-500 font-medium">/ ${emp.total_paid_leaves !== undefined && emp.total_paid_leaves !== null ? emp.total_paid_leaves : 18.0} Days Left</span>
+                            <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                                <div class="bg-emerald-50/70 p-2.5 rounded-xl border border-emerald-100 flex flex-col justify-between">
+                                    <div>
+                                        <div class="flex items-center justify-between">
+                                            <p class="text-[9px] font-bold text-emerald-800 uppercase tracking-wider">Paid Leaves</p>
+                                            <span class="text-[9px] font-bold text-emerald-700 bg-emerald-100/80 px-1.5 py-0.5 rounded-md">+${(emp.monthly_paid_leaves ?? 1.5).toFixed(1)}/mo</span>
+                                        </div>
+                                        <div class="text-sm font-black text-slate-900 mt-1">
+                                            ${Math.max(0, ((emp.total_paid_leaves !== undefined && emp.total_paid_leaves !== null ? emp.total_paid_leaves : 18.0) - (emp.used_paid_leaves || 0.0))).toFixed(1)} <span class="text-[10px] text-slate-500 font-semibold">Days Available</span>
+                                        </div>
+                                    </div>
+                                    <div class="mt-2 pt-1.5 border-t border-emerald-200/50 flex flex-wrap items-center justify-between text-[9px] text-emerald-900 font-medium">
+                                        <span>Carried: <strong class="font-bold text-emerald-700">${(emp.carried_forward_paid_leaves || 0.0).toFixed(1)}d</strong></span>
+                                        <span>Used: <strong class="font-bold text-slate-600">${(emp.used_paid_leaves || 0.0).toFixed(1)}d</strong></span>
                                     </div>
                                 </div>
-                                <div class="bg-blue-50/60 p-2 rounded-xl border border-blue-100/80">
-                                    <p class="text-[9px] font-bold text-blue-700 uppercase tracking-wider mb-0.5">Casual Leaves</p>
-                                    <div class="text-xs font-extrabold text-slate-900">
-                                        ${((emp.total_casual_leaves !== undefined && emp.total_casual_leaves !== null ? emp.total_casual_leaves : 6.0) - (emp.used_casual_leaves || 0.0)).toFixed(1)} <span class="text-[9px] text-slate-500 font-medium">/ ${emp.total_casual_leaves !== undefined && emp.total_casual_leaves !== null ? emp.total_casual_leaves : 6.0} Days Left</span>
+
+                                <div class="bg-blue-50/70 p-2.5 rounded-xl border border-blue-100 flex flex-col justify-between">
+                                    <div>
+                                        <div class="flex items-center justify-between">
+                                            <p class="text-[9px] font-bold text-blue-800 uppercase tracking-wider">Casual Leaves</p>
+                                            <span class="text-[9px] font-bold text-blue-700 bg-blue-100/80 px-1.5 py-0.5 rounded-md">+${(emp.monthly_casual_leaves ?? 0.5).toFixed(1)}/mo</span>
+                                        </div>
+                                        <div class="text-sm font-black text-slate-900 mt-1">
+                                            ${Math.max(0, ((emp.total_casual_leaves !== undefined && emp.total_casual_leaves !== null ? emp.total_casual_leaves : 6.0) - (emp.used_casual_leaves || 0.0))).toFixed(1)} <span class="text-[10px] text-slate-500 font-semibold">Days Available</span>
+                                        </div>
+                                    </div>
+                                    <div class="mt-2 pt-1.5 border-t border-blue-200/50 flex flex-wrap items-center justify-between text-[9px] text-blue-900 font-medium">
+                                        <span>Carried: <strong class="font-bold text-blue-700">${(emp.carried_forward_casual_leaves || 0.0).toFixed(1)}d</strong></span>
+                                        <span>Used: <strong class="font-bold text-slate-600">${(emp.used_casual_leaves || 0.0).toFixed(1)}d</strong></span>
                                     </div>
                                 </div>
-                                <div class="bg-purple-50/60 p-2 rounded-xl border border-purple-100/80">
-                                    <p class="text-[9px] font-bold text-purple-700 uppercase tracking-wider mb-0.5">Sick Leaves</p>
-                                    <div class="text-xs font-extrabold text-slate-900">
-                                        ${((emp.total_sick_leaves !== undefined && emp.total_sick_leaves !== null ? emp.total_sick_leaves : 6.0) - (emp.used_sick_leaves || 0.0)).toFixed(1)} <span class="text-[9px] text-slate-500 font-medium">/ ${emp.total_sick_leaves !== undefined && emp.total_sick_leaves !== null ? emp.total_sick_leaves : 6.0} Days Left</span>
+
+                                <div class="bg-purple-50/70 p-2.5 rounded-xl border border-purple-100 flex flex-col justify-between">
+                                    <div>
+                                        <div class="flex items-center justify-between">
+                                            <p class="text-[9px] font-bold text-purple-800 uppercase tracking-wider">Sick Leaves</p>
+                                            <span class="text-[9px] font-bold text-purple-700 bg-purple-100/80 px-1.5 py-0.5 rounded-md">+${(emp.monthly_sick_leaves ?? 0.5).toFixed(1)}/mo</span>
+                                        </div>
+                                        <div class="text-sm font-black text-slate-900 mt-1">
+                                            ${Math.max(0, ((emp.total_sick_leaves !== undefined && emp.total_sick_leaves !== null ? emp.total_sick_leaves : 6.0) - (emp.used_sick_leaves || 0.0))).toFixed(1)} <span class="text-[10px] text-slate-500 font-semibold">Days Available</span>
+                                        </div>
+                                    </div>
+                                    <div class="mt-2 pt-1.5 border-t border-purple-200/50 flex flex-wrap items-center justify-between text-[9px] text-purple-900 font-medium">
+                                        <span>Carried: <strong class="font-bold text-purple-700">${(emp.carried_forward_sick_leaves || 0.0).toFixed(1)}d</strong></span>
+                                        <span>Used: <strong class="font-bold text-slate-600">${(emp.used_sick_leaves || 0.0).toFixed(1)}d</strong></span>
                                     </div>
                                 </div>
                             </div>
@@ -9547,10 +9754,13 @@ function openAddExpenseModal() {
       
       ws.onclose = (event) => {
         if (event.code === 1008) {
-          console.log("WebSocket connection rejected due to authentication failure. Stopping reconnection.");
+          console.warn("WebSocket connection rejected due to authentication failure (1008). Redirecting to login.");
+          redirectToLogin(true);
           return;
         }
-        setTimeout(setupWebSocket, 3000);
+        if (localStorage.getItem(CONFIG.TOKEN_KEY)) {
+          setTimeout(setupWebSocket, 3000);
+        }
       };
       ws.onerror = () => ws.close();
     }
@@ -9593,13 +9803,28 @@ function openAddExpenseModal() {
       }
     };
 
+    // Window Focus / Visibility Resumption Listener (Instant Session Check)
+    window.addEventListener("focus", async () => {
+      const token = localStorage.getItem(CONFIG.TOKEN_KEY);
+      if (!token) return;
+      try {
+        const checkRes = await fetch(`${CONFIG.API_BASE_URL}/auth/me`, {
+          headers: { "Authorization": `Bearer ${token}` }
+        });
+        if (!checkRes.ok) {
+          console.warn("Backend rejected session key on window focus. Redirecting to login.");
+          redirectToLogin(true);
+        }
+      } catch (e) {}
+    });
+
     // --- Bootstrap Application ---
     async function bootstrapApp() {
       try {
         const token = localStorage.getItem(CONFIG.TOKEN_KEY);
 
         if (!token) {
-          window.location.href = CONFIG.LOGIN_URL;
+          redirectToLogin(false);
           return;
         }
 
@@ -9611,20 +9836,41 @@ function openAddExpenseModal() {
           state.user.exp * 1000 < Date.now()
         ) {
           console.warn("Session expired or invalid token. Redirecting to login.");
-          localStorage.removeItem(CONFIG.TOKEN_KEY);
-          window.location.href = CONFIG.LOGIN_URL;
+          redirectToLogin(true);
+          return;
+        }
+
+        // PRE-FLIGHT AUTH VERIFICATION: Confirm backend acknowledges session key before loading framework
+        try {
+          const verifyRes = await fetch(`${CONFIG.API_BASE_URL}/auth/me`, {
+            headers: { "Authorization": `Bearer ${token}` }
+          });
+          if (!verifyRes.ok) {
+            console.warn("Backend rejected session key on pre-flight check. Redirecting to login immediately.");
+            redirectToLogin(true);
+            return;
+          }
+          const verifiedUser = await verifyRes.json();
+          state.user = {
+            ...state.user,
+            ...verifiedUser,
+            sub: verifiedUser.sub || verifiedUser.username || state.user?.sub || ""
+          };
+        } catch (authErr) {
+          console.error("Authentication pre-flight error:", authErr);
+          redirectToLogin(true);
           return;
         }
 
         if (!state.user.role || state.user.role.toLowerCase() !== "admin") {
           console.warn("User role is not admin. Redirecting to employee portal.");
-          window.location.href = "../employee/employee.html";
+          window.location.replace("../employee/employee.html");
           return;
         }
 
         if (state.user.access_level === "ManagerAdmin") {
           console.warn("User access level is ManagerAdmin. Redirecting to manager portal.");
-          window.location.href = "../manager/manager.html";
+          window.location.replace("../manager/manager.html");
           return;
         }
 
@@ -9637,20 +9883,7 @@ function openAddExpenseModal() {
         await routeApp(lastView, lastTab);
       } catch (err) {
         console.error("Critical error during app bootstrap:", err);
-        const appDiv = document.getElementById("app");
-        if (appDiv) {
-          appDiv.innerHTML = `
-            <div class="h-screen w-screen flex flex-col items-center justify-center bg-slate-50 p-6 text-center">
-              <div class="p-4 bg-rose-100 text-rose-600 rounded-2xl mb-4">
-                <i data-lucide="alert-triangle" class="w-10 h-10"></i>
-              </div>
-              <h2 class="text-xl font-bold text-slate-800 mb-2">Workspace Load Error</h2>
-              <p class="text-xs text-slate-500 mb-4">An unexpected error occurred while initializing the admin workspace.</p>
-              <button onclick="localStorage.removeItem('${CONFIG.TOKEN_KEY}'); window.location.href='${CONFIG.LOGIN_URL}';" class="px-5 py-2.5 bg-slate-900 text-white font-bold text-xs rounded-xl shadow-md">Return to Login</button>
-            </div>
-          `;
-          if (window.lucide) lucide.createIcons();
-        }
+        redirectToLogin(true);
       }
     }
 
@@ -10348,6 +10581,35 @@ function openAddExpenseModal() {
       const log = state.auditLogsData.logs.find(l => String(l.id) === String(logId));
       if (!log) return;
 
+      const d = (typeof log.details === 'object' && log.details !== null) ? log.details : {};
+      const empName = d.employee_name || (log.target_name && !d.manager_name && (log.action.includes('EMPLOYEE') || log.action.includes('profile')) ? log.target_name : null);
+      const empId = d.employee_id || (empName ? log.target_id : null);
+      const mgrName = d.manager_name || (log.target_name && log.action.includes('MANAGER') ? log.target_name : null);
+      const mgrId = d.manager_id || (mgrName ? log.target_id : null);
+
+      let personnelCard = '';
+      if (empName || mgrName) {
+        personnelCard = `
+          <div class="mb-4 p-3 bg-indigo-50/70 border border-indigo-100 rounded-xl space-y-1.5">
+            <div class="text-[11px] font-bold uppercase tracking-wider text-indigo-700 flex items-center gap-1.5">
+              <i data-lucide="users" class="w-3.5 h-3.5"></i> Involved Personnel
+            </div>
+            ${empName ? `
+              <div class="flex items-center justify-between text-xs">
+                <span class="text-slate-600 font-medium">Employee Name: <strong class="text-slate-900 font-bold">${empName}</strong></span>
+                <span class="font-mono text-[11px] text-slate-500 bg-white/80 px-2 py-0.5 rounded border border-indigo-100">${empId || 'N/A'}</span>
+              </div>
+            ` : ''}
+            ${mgrName ? `
+              <div class="flex items-center justify-between text-xs">
+                <span class="text-slate-600 font-medium">Manager Name: <strong class="text-slate-900 font-bold">${mgrName}</strong></span>
+                <span class="font-mono text-[11px] text-slate-500 bg-white/80 px-2 py-0.5 rounded border border-indigo-100">${mgrId || 'N/A'}</span>
+              </div>
+            ` : ''}
+          </div>
+        `;
+      }
+
       const jsonStr = JSON.stringify(log.details || {}, null, 2);
       const modalHtml = `
         <div id="auditLogModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
@@ -10357,15 +10619,19 @@ function openAddExpenseModal() {
                 <h3 class="text-lg font-bold text-slate-800 flex items-center gap-2">
                   <i data-lucide="file-text" class="w-5 h-5 text-indigo-600"></i> Audit Log Details
                 </h3>
-                <p class="text-xs text-slate-400 font-medium">Action: ${log.action} | User: ${log.user_id}</p>
+                <p class="text-xs text-slate-400 font-medium">Action: <span class="font-bold text-slate-700">${log.action}</span> | Performed By: <span class="font-bold text-slate-700">${log.user_name || log.user_id}</span></p>
               </div>
               <button onclick="document.getElementById('auditLogModal').remove()" class="text-slate-400 hover:text-slate-600 p-1 rounded-lg hover:bg-slate-100 transition-colors">
                 <i data-lucide="x" class="w-5 h-5"></i>
               </button>
             </div>
             <div class="mt-4">
-              <p class="text-xs font-semibold text-slate-600 mb-1">Timestamp: ${log.timestamp ? new Date(log.timestamp).toLocaleString() : 'N/A'}</p>
-              <p class="text-xs font-semibold text-slate-600 mb-2">Target ID: <span class="font-mono bg-slate-100 px-1.5 py-0.5 rounded text-slate-700">${log.target_id || 'N/A'}</span></p>
+              <div class="grid grid-cols-2 gap-2 text-xs mb-3 text-slate-600">
+                <p><span class="font-semibold text-slate-500">Timestamp:</span> ${log.timestamp ? new Date(log.timestamp).toLocaleString() : 'N/A'}</p>
+                <p><span class="font-semibold text-slate-500">Actor ID:</span> <span class="font-mono bg-slate-100 px-1 py-0.5 rounded text-slate-700">${log.user_id || 'System'}</span></p>
+                <p class="col-span-2"><span class="font-semibold text-slate-500">Target / Entity:</span> <span class="font-bold text-slate-800">${log.target_name || log.target_id || 'N/A'}</span> ${log.target_name && log.target_id ? `<span class="font-mono text-[10px] text-slate-500 ml-1">(${log.target_id})</span>` : ''}</p>
+              </div>
+              ${personnelCard}
               <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Payload JSON Details</label>
               <pre class="bg-slate-950 text-emerald-400 p-4 rounded-xl text-xs font-mono max-h-72 overflow-y-auto shadow-inner">${jsonStr}</pre>
             </div>
@@ -10393,14 +10659,21 @@ function openAddExpenseModal() {
           case 'PROJECT_CREATE': return '<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-700 border border-emerald-200">PROJECT CREATE</span>';
           case 'PROJECT_UPDATE': return '<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-100 text-blue-700 border border-blue-200">PROJECT UPDATE</span>';
           case 'PROJECT_DELETE': return '<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 text-rose-700 border border-rose-200">PROJECT DELETE</span>';
+          case 'EMPLOYEE_CREATE': return '<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-700 border border-emerald-200">EMP CREATE</span>';
           case 'EMPLOYEE_ASSIGN': return '<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-indigo-100 text-indigo-700 border border-indigo-200">EMPLOYEE ASSIGN</span>';
           case 'EMPLOYEE_REMOVE': return '<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 text-rose-700 border border-rose-200">EMPLOYEE REMOVE</span>';
+          case 'EMPLOYEE_DELETE': return '<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 text-rose-700 border border-rose-200">EMPLOYEE DELETE</span>';
+          case 'ADMIN_UPDATE': return '<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-purple-100 text-purple-700 border border-purple-200">ADMIN UPDATE</span>';
+          case 'ADMIN_DELETE': return '<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 text-rose-700 border border-rose-200">ADMIN DELETE</span>';
+          case 'MANAGER_UPDATE': return '<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-700 border border-amber-200">MANAGER UPDATE</span>';
+          case 'MANAGER_DELETE': return '<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 text-rose-700 border border-rose-200">MANAGER DELETE</span>';
           case 'ASSIGNMENT_RATE_UPDATE': return '<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-700 border border-amber-200">RATE UPDATE</span>';
           case 'PROFILE_UPDATE':
           case 'EMPLOYEE_PROFILE_UPDATE': return '<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-purple-100 text-purple-700 border border-purple-200">PROFILE UPDATE</span>';
           case 'CLIENT_CREATE': return '<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-teal-100 text-teal-700 border border-teal-200">CLIENT CREATE</span>';
           case 'UPDATE_LEAVE_STATUS':
           case 'LEAVE_STATUS_UPDATE': return '<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-orange-100 text-orange-700 border border-orange-200">LEAVE STATUS</span>';
+          case 'LEAVE_QUOTA_UPDATE': return '<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-orange-100 text-orange-700 border border-orange-200">QUOTA UPDATE</span>';
           case 'SUBMIT_LEAVE_REQUEST': return '<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-indigo-100 text-indigo-700 border border-indigo-200">LEAVE SUBMIT</span>';
           case 'CANCEL_LEAVE_REQUEST': return '<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 text-rose-700 border border-rose-200">LEAVE CANCEL</span>';
           case 'REQUEST_LEAVE_CANCELLATION': return '<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 text-rose-700 border border-rose-200">CANCEL REQ</span>';
@@ -10410,16 +10683,44 @@ function openAddExpenseModal() {
 
       const logsRows = data.logs.map(log => {
         const timeStr = log.timestamp ? new Date(log.timestamp).toLocaleString() : 'N/A';
-        const detailSummary = log.details ? (typeof log.details === 'object' ? JSON.stringify(log.details) : String(log.details)) : 'No payload';
-        const truncatedSummary = detailSummary.length > 55 ? detailSummary.substring(0, 55) + '...' : detailSummary;
+        const d = (typeof log.details === 'object' && log.details !== null) ? log.details : {};
+
+        // Extract key human-readable label
+        let summaryPrefix = '';
+        if (d.employee_name) {
+          summaryPrefix = `<span class="font-bold text-slate-800">${d.employee_name}</span>`;
+        } else if (d.manager_name) {
+          summaryPrefix = `<span class="font-bold text-slate-800">${d.manager_name}</span>`;
+        } else if (d.project_name) {
+          summaryPrefix = `<span class="font-bold text-slate-800">${d.project_name}</span>`;
+        }
+
+        const rawJson = log.details ? (typeof log.details === 'object' ? JSON.stringify(log.details) : String(log.details)) : 'No payload';
+        const detailSummary = summaryPrefix ? `${summaryPrefix} &middot; <span class="text-slate-400 font-mono">${rawJson}</span>` : `<span class="font-mono text-slate-500">${rawJson}</span>`;
+
+        const userNameDisplay = log.user_name || log.user_id || 'System';
+        const userSubtitle = (log.user_name && log.user_id && log.user_name !== log.user_id && log.user_id !== 'SYSTEM')
+          ? `<span class="text-[10px] font-normal text-slate-400 block">${log.user_id}</span>`
+          : '';
+
+        const targetDisplay = log.target_name || log.target_id || 'N/A';
+        const targetSubtitle = (log.target_name && log.target_id && log.target_name !== log.target_id)
+          ? `<span class="text-[10px] font-mono text-slate-400 block truncate max-w-[140px]" title="${log.target_id}">${log.target_id}</span>`
+          : '';
 
         return `
           <tr class="hover:bg-slate-50/80 transition-colors border-b border-slate-100">
             <td class="px-4 py-3 text-xs font-semibold text-slate-500 whitespace-nowrap">${timeStr}</td>
-            <td class="px-4 py-3 text-xs font-bold text-slate-800">${log.user_id || 'System'}</td>
+            <td class="px-4 py-3 text-xs font-bold text-slate-800">
+              <div>${userNameDisplay}</div>
+              ${userSubtitle}
+            </td>
             <td class="px-4 py-3 whitespace-nowrap">${getActionBadge(log.action)}</td>
-            <td class="px-4 py-3 text-xs font-mono text-slate-600">${log.target_id || 'N/A'}</td>
-            <td class="px-4 py-3 text-xs text-slate-600 max-w-xs truncate" title="${detailSummary.replace(/"/g, '&quot;')}">${truncatedSummary}</td>
+            <td class="px-4 py-3 text-xs text-slate-700 font-medium">
+              <div>${targetDisplay}</div>
+              ${targetSubtitle}
+            </td>
+            <td class="px-4 py-3 text-xs text-slate-600 max-w-xs truncate" title="${rawJson.replace(/"/g, '&quot;')}">${detailSummary}</td>
             <td class="px-4 py-3 text-right">
               <button onclick="window.showAuditLogDetailsModal('${log.id}')" class="px-2.5 py-1 bg-slate-100 hover:bg-indigo-50 text-indigo-600 font-bold text-[11px] rounded-lg border border-slate-200 hover:border-indigo-200 transition-colors flex items-center gap-1 inline-flex">
                 <i data-lucide="eye" class="w-3.5 h-3.5"></i> Details
@@ -10475,7 +10776,7 @@ function openAddExpenseModal() {
                 <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Search User / Action / Details</label>
                 <div class="relative">
                   <i data-lucide="search" class="w-4 h-4 absolute left-3 top-2.5 text-slate-400"></i>
-                  <input type="text" value="${state.auditLogSearch || ''}" onchange="window.handleAuditLogSearch(this.value)" placeholder="Search username, project ID, details..." class="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-xl outline-none text-xs font-medium focus:border-indigo-500 shadow-sm">
+                  <input type="text" value="${state.auditLogSearch || ''}" onchange="window.handleAuditLogSearch(this.value)" placeholder="Search employee/manager name, username, action, details..." class="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-xl outline-none text-xs font-medium focus:border-indigo-500 shadow-sm">
                 </div>
               </div>
               <div>
@@ -10485,12 +10786,19 @@ function openAddExpenseModal() {
                   <option value="PROJECT_CREATE" ${state.auditLogFilterAction === 'PROJECT_CREATE' ? 'selected' : ''}>Project Create</option>
                   <option value="PROJECT_UPDATE" ${state.auditLogFilterAction === 'PROJECT_UPDATE' ? 'selected' : ''}>Project Update</option>
                   <option value="PROJECT_DELETE" ${state.auditLogFilterAction === 'PROJECT_DELETE' ? 'selected' : ''}>Project Delete</option>
+                  <option value="EMPLOYEE_CREATE" ${state.auditLogFilterAction === 'EMPLOYEE_CREATE' ? 'selected' : ''}>Employee Create</option>
+                  <option value="profile_update" ${state.auditLogFilterAction === 'profile_update' ? 'selected' : ''}>Employee Profile Update</option>
                   <option value="EMPLOYEE_ASSIGN" ${state.auditLogFilterAction === 'EMPLOYEE_ASSIGN' ? 'selected' : ''}>Employee Assign</option>
                   <option value="EMPLOYEE_REMOVE" ${state.auditLogFilterAction === 'EMPLOYEE_REMOVE' ? 'selected' : ''}>Employee Remove</option>
+                  <option value="EMPLOYEE_DELETE" ${state.auditLogFilterAction === 'EMPLOYEE_DELETE' ? 'selected' : ''}>Employee Delete</option>
+                  <option value="MANAGER_UPDATE" ${state.auditLogFilterAction === 'MANAGER_UPDATE' ? 'selected' : ''}>Manager Update</option>
+                  <option value="MANAGER_DELETE" ${state.auditLogFilterAction === 'MANAGER_DELETE' ? 'selected' : ''}>Manager Delete</option>
+                  <option value="ADMIN_UPDATE" ${state.auditLogFilterAction === 'ADMIN_UPDATE' ? 'selected' : ''}>Admin Update</option>
+                  <option value="ADMIN_DELETE" ${state.auditLogFilterAction === 'ADMIN_DELETE' ? 'selected' : ''}>Admin Delete</option>
                   <option value="ASSIGNMENT_RATE_UPDATE" ${state.auditLogFilterAction === 'ASSIGNMENT_RATE_UPDATE' ? 'selected' : ''}>Assignment Rate Update</option>
-                  <option value="profile_update" ${state.auditLogFilterAction === 'profile_update' ? 'selected' : ''}>Profile Update</option>
                   <option value="CLIENT_CREATE" ${state.auditLogFilterAction === 'CLIENT_CREATE' ? 'selected' : ''}>Client Create</option>
                   <option value="UPDATE_LEAVE_STATUS" ${state.auditLogFilterAction === 'UPDATE_LEAVE_STATUS' ? 'selected' : ''}>Leave Status Update</option>
+                  <option value="LEAVE_QUOTA_UPDATE" ${state.auditLogFilterAction === 'LEAVE_QUOTA_UPDATE' ? 'selected' : ''}>Leave Quota Update</option>
                   <option value="SUBMIT_LEAVE_REQUEST" ${state.auditLogFilterAction === 'SUBMIT_LEAVE_REQUEST' ? 'selected' : ''}>Submit Leave Request</option>
                   <option value="CANCEL_LEAVE_REQUEST" ${state.auditLogFilterAction === 'CANCEL_LEAVE_REQUEST' ? 'selected' : ''}>Cancel Leave Request</option>
                   <option value="REQUEST_LEAVE_CANCELLATION" ${state.auditLogFilterAction === 'REQUEST_LEAVE_CANCELLATION' ? 'selected' : ''}>Request Leave Cancellation</option>
@@ -10511,9 +10819,9 @@ function openAddExpenseModal() {
                 <thead>
                   <tr class="bg-slate-50 border-b border-slate-200 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
                     <th class="px-4 py-3">Timestamp</th>
-                    <th class="px-4 py-3">User</th>
+                    <th class="px-4 py-3">User (Actor)</th>
                     <th class="px-4 py-3">Action</th>
-                    <th class="px-4 py-3">Target ID</th>
+                    <th class="px-4 py-3">Target / Personnel</th>
                     <th class="px-4 py-3">Details Summary</th>
                     <th class="px-4 py-3 text-right">Payload</th>
                   </tr>
@@ -10568,47 +10876,86 @@ function openAddExpenseModal() {
             </div>
             
             <form id="leaveQuotaForm" onsubmit="window.saveEmployeeLeaveQuotas(event, '${emp.id}')" class="mt-4 space-y-4">
+              <!-- Helper functions for recalculation -->
+              <div class="bg-indigo-50/70 p-2.5 rounded-xl border border-indigo-100/80 text-[11px] text-indigo-900 flex items-center gap-2">
+                <i data-lucide="info" class="w-4 h-4 text-indigo-600 shrink-0"></i>
+                <span>Unused leaves carry forward automatically each month. You can adjust the monthly rate or the carried-forward balance below.</span>
+              </div>
+
               <!-- Paid Leaves -->
-              <div class="bg-emerald-50/60 p-3 rounded-xl border border-emerald-100">
-                <label class="block text-xs font-bold text-emerald-800 uppercase tracking-wider mb-2">Paid Leaves Inventory</label>
-                <div class="grid grid-cols-2 gap-3">
+              <div class="bg-emerald-50/60 p-3 rounded-xl border border-emerald-100 space-y-2">
+                <div class="flex items-center justify-between">
+                  <label class="text-xs font-bold text-emerald-800 uppercase tracking-wider">Paid Leaves</label>
+                  <span class="text-[10px] font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-md">Default: 1.5/mo</span>
+                </div>
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
                   <div>
-                    <span class="block text-[10px] font-semibold text-slate-500">Total Allocated</span>
-                    <input type="number" step="0.5" id="q_total_paid" value="${emp.total_paid_leaves !== undefined && emp.total_paid_leaves !== null ? emp.total_paid_leaves : 18.0}" required class="w-full mt-1 px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-bold outline-none focus:border-indigo-500 shadow-2xs">
+                    <span class="block text-[10px] font-semibold text-slate-500">Monthly Quota</span>
+                    <input type="number" step="0.1" id="q_monthly_paid" value="${emp.monthly_paid_leaves !== undefined && emp.monthly_paid_leaves !== null ? emp.monthly_paid_leaves : 1.5}" oninput="window.calcLeaveTotal('paid')" required class="w-full mt-1 px-2.5 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-bold outline-none focus:border-indigo-500 shadow-2xs">
                   </div>
                   <div>
-                    <span class="block text-[10px] font-semibold text-slate-500">Consumed / Used</span>
-                    <input type="number" step="0.5" id="q_used_paid" value="${emp.used_paid_leaves || 0.0}" required class="w-full mt-1 px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-bold outline-none focus:border-indigo-500 shadow-2xs">
+                    <span class="block text-[10px] font-semibold text-slate-500">Carried Forward</span>
+                    <input type="number" step="0.5" id="q_cf_paid" value="${emp.carried_forward_paid_leaves || 0.0}" oninput="window.calcLeaveTotal('paid')" required class="w-full mt-1 px-2.5 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-bold outline-none focus:border-indigo-500 shadow-2xs">
+                  </div>
+                  <div>
+                    <span class="block text-[10px] font-semibold text-slate-500">Total Available</span>
+                    <input type="number" step="0.1" id="q_total_paid" value="${emp.total_paid_leaves !== undefined && emp.total_paid_leaves !== null ? emp.total_paid_leaves : 18.0}" required class="w-full mt-1 px-2.5 py-1.5 bg-emerald-100/50 border border-emerald-200 rounded-lg text-xs font-black text-emerald-900 outline-none">
+                  </div>
+                  <div>
+                    <span class="block text-[10px] font-semibold text-slate-500">Used This Month</span>
+                    <input type="number" step="0.5" id="q_used_paid" value="${emp.used_paid_leaves || 0.0}" required class="w-full mt-1 px-2.5 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-bold outline-none focus:border-indigo-500 shadow-2xs">
                   </div>
                 </div>
               </div>
 
               <!-- Casual Leaves -->
-              <div class="bg-blue-50/60 p-3 rounded-xl border border-blue-100">
-                <label class="block text-xs font-bold text-blue-800 uppercase tracking-wider mb-2">Casual Leaves Inventory</label>
-                <div class="grid grid-cols-2 gap-3">
+              <div class="bg-blue-50/60 p-3 rounded-xl border border-blue-100 space-y-2">
+                <div class="flex items-center justify-between">
+                  <label class="text-xs font-bold text-blue-800 uppercase tracking-wider">Casual Leaves</label>
+                  <span class="text-[10px] font-bold text-blue-700 bg-blue-100 px-2 py-0.5 rounded-md">Default: 0.5/mo</span>
+                </div>
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
                   <div>
-                    <span class="block text-[10px] font-semibold text-slate-500">Total Allocated</span>
-                    <input type="number" step="0.5" id="q_total_casual" value="${emp.total_casual_leaves !== undefined && emp.total_casual_leaves !== null ? emp.total_casual_leaves : 6.0}" required class="w-full mt-1 px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-bold outline-none focus:border-indigo-500 shadow-2xs">
+                    <span class="block text-[10px] font-semibold text-slate-500">Monthly Quota</span>
+                    <input type="number" step="0.1" id="q_monthly_casual" value="${emp.monthly_casual_leaves !== undefined && emp.monthly_casual_leaves !== null ? emp.monthly_casual_leaves : 0.5}" oninput="window.calcLeaveTotal('casual')" required class="w-full mt-1 px-2.5 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-bold outline-none focus:border-indigo-500 shadow-2xs">
                   </div>
                   <div>
-                    <span class="block text-[10px] font-semibold text-slate-500">Consumed / Used</span>
-                    <input type="number" step="0.5" id="q_used_casual" value="${emp.used_casual_leaves || 0.0}" required class="w-full mt-1 px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-bold outline-none focus:border-indigo-500 shadow-2xs">
+                    <span class="block text-[10px] font-semibold text-slate-500">Carried Forward</span>
+                    <input type="number" step="0.5" id="q_cf_casual" value="${emp.carried_forward_casual_leaves || 0.0}" oninput="window.calcLeaveTotal('casual')" required class="w-full mt-1 px-2.5 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-bold outline-none focus:border-indigo-500 shadow-2xs">
+                  </div>
+                  <div>
+                    <span class="block text-[10px] font-semibold text-slate-500">Total Available</span>
+                    <input type="number" step="0.1" id="q_total_casual" value="${emp.total_casual_leaves !== undefined && emp.total_casual_leaves !== null ? emp.total_casual_leaves : 6.0}" required class="w-full mt-1 px-2.5 py-1.5 bg-blue-100/50 border border-blue-200 rounded-lg text-xs font-black text-blue-900 outline-none">
+                  </div>
+                  <div>
+                    <span class="block text-[10px] font-semibold text-slate-500">Used This Month</span>
+                    <input type="number" step="0.5" id="q_used_casual" value="${emp.used_casual_leaves || 0.0}" required class="w-full mt-1 px-2.5 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-bold outline-none focus:border-indigo-500 shadow-2xs">
                   </div>
                 </div>
               </div>
 
               <!-- Sick Leaves -->
-              <div class="bg-purple-50/60 p-3 rounded-xl border border-purple-100">
-                <label class="block text-xs font-bold text-purple-800 uppercase tracking-wider mb-2">Sick Leaves Inventory</label>
-                <div class="grid grid-cols-2 gap-3">
+              <div class="bg-purple-50/60 p-3 rounded-xl border border-purple-100 space-y-2">
+                <div class="flex items-center justify-between">
+                  <label class="text-xs font-bold text-purple-800 uppercase tracking-wider">Sick Leaves</label>
+                  <span class="text-[10px] font-bold text-purple-700 bg-purple-100 px-2 py-0.5 rounded-md">Default: 0.5/mo</span>
+                </div>
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
                   <div>
-                    <span class="block text-[10px] font-semibold text-slate-500">Total Allocated</span>
-                    <input type="number" step="0.5" id="q_total_sick" value="${emp.total_sick_leaves !== undefined && emp.total_sick_leaves !== null ? emp.total_sick_leaves : 6.0}" required class="w-full mt-1 px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-bold outline-none focus:border-indigo-500 shadow-2xs">
+                    <span class="block text-[10px] font-semibold text-slate-500">Monthly Quota</span>
+                    <input type="number" step="0.1" id="q_monthly_sick" value="${emp.monthly_sick_leaves !== undefined && emp.monthly_sick_leaves !== null ? emp.monthly_sick_leaves : 0.5}" oninput="window.calcLeaveTotal('sick')" required class="w-full mt-1 px-2.5 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-bold outline-none focus:border-indigo-500 shadow-2xs">
                   </div>
                   <div>
-                    <span class="block text-[10px] font-semibold text-slate-500">Consumed / Used</span>
-                    <input type="number" step="0.5" id="q_used_sick" value="${emp.used_sick_leaves || 0.0}" required class="w-full mt-1 px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-bold outline-none focus:border-indigo-500 shadow-2xs">
+                    <span class="block text-[10px] font-semibold text-slate-500">Carried Forward</span>
+                    <input type="number" step="0.5" id="q_cf_sick" value="${emp.carried_forward_sick_leaves || 0.0}" oninput="window.calcLeaveTotal('sick')" required class="w-full mt-1 px-2.5 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-bold outline-none focus:border-indigo-500 shadow-2xs">
+                  </div>
+                  <div>
+                    <span class="block text-[10px] font-semibold text-slate-500">Total Available</span>
+                    <input type="number" step="0.1" id="q_total_sick" value="${emp.total_sick_leaves !== undefined && emp.total_sick_leaves !== null ? emp.total_sick_leaves : 6.0}" required class="w-full mt-1 px-2.5 py-1.5 bg-purple-100/50 border border-purple-200 rounded-lg text-xs font-black text-purple-900 outline-none">
+                  </div>
+                  <div>
+                    <span class="block text-[10px] font-semibold text-slate-500">Used This Month</span>
+                    <input type="number" step="0.5" id="q_used_sick" value="${emp.used_sick_leaves || 0.0}" required class="w-full mt-1 px-2.5 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-bold outline-none focus:border-indigo-500 shadow-2xs">
                   </div>
                 </div>
               </div>
@@ -10625,16 +10972,33 @@ function openAddExpenseModal() {
       if (window.lucide) lucide.createIcons();
     };
 
+    window.calcLeaveTotal = function(cat) {
+      const m = parseFloat(document.getElementById(`q_monthly_${cat}`)?.value) || 0.0;
+      const cf = parseFloat(document.getElementById(`q_cf_${cat}`)?.value) || 0.0;
+      const totInput = document.getElementById(`q_total_${cat}`);
+      if (totInput) {
+        totInput.value = (m + cf).toFixed(1);
+      }
+    };
+
     window.saveEmployeeLeaveQuotas = async function(event, empId) {
       event.preventDefault();
       try {
         const payload = {
-          total_paid_leaves: parseFloat(document.getElementById('q_total_paid').value) || 0.0,
-          used_paid_leaves: parseFloat(document.getElementById('q_used_paid').value) || 0.0,
-          total_casual_leaves: parseFloat(document.getElementById('q_total_casual').value) || 0.0,
-          used_casual_leaves: parseFloat(document.getElementById('q_used_casual').value) || 0.0,
-          total_sick_leaves: parseFloat(document.getElementById('q_total_sick').value) || 0.0,
-          used_sick_leaves: parseFloat(document.getElementById('q_used_sick').value) || 0.0,
+          monthly_paid_leaves: parseFloat(document.getElementById('q_monthly_paid')?.value) || 1.5,
+          carried_forward_paid_leaves: parseFloat(document.getElementById('q_cf_paid')?.value) || 0.0,
+          total_paid_leaves: parseFloat(document.getElementById('q_total_paid')?.value) || 0.0,
+          used_paid_leaves: parseFloat(document.getElementById('q_used_paid')?.value) || 0.0,
+
+          monthly_casual_leaves: parseFloat(document.getElementById('q_monthly_casual')?.value) || 0.5,
+          carried_forward_casual_leaves: parseFloat(document.getElementById('q_cf_casual')?.value) || 0.0,
+          total_casual_leaves: parseFloat(document.getElementById('q_total_casual')?.value) || 0.0,
+          used_casual_leaves: parseFloat(document.getElementById('q_used_casual')?.value) || 0.0,
+
+          monthly_sick_leaves: parseFloat(document.getElementById('q_monthly_sick')?.value) || 0.5,
+          carried_forward_sick_leaves: parseFloat(document.getElementById('q_cf_sick')?.value) || 0.0,
+          total_sick_leaves: parseFloat(document.getElementById('q_total_sick')?.value) || 0.0,
+          used_sick_leaves: parseFloat(document.getElementById('q_used_sick')?.value) || 0.0,
         };
 
         const updated = await apiFetch(`/employees/update-leave-quota/${empId}`, {
@@ -10695,8 +11059,11 @@ function openAddExpenseModal() {
       window.renderAdminNotificationList();
     };
 
+    let isLoadingAdminNotifications = false;
     window.loadAdminNotifications = async function() {
+      if (isLoadingAdminNotifications) return;
       try {
+        isLoadingAdminNotifications = true;
         const data = await apiFetch('/attendance/notifications');
         state.adminNotifications = Array.isArray(data) ? data : [];
         
@@ -10712,9 +11079,10 @@ function openAddExpenseModal() {
               
               if (existingIndex === -1) {
                 state.adminNotifications.push({
-                  id: `leave_notif_${l.id}`,
+                  id: `leave-pending-${l.id}`,
+                  user_id: state.user?.id || 'admin',
                   title: refTitle,
-                  message: `${empName} requested ${l.leave_type || 'Leave'} (${l.total_days || 1.0} d: ${l.start_date} to ${l.end_date}). Reason: ${l.reason}`,
+                  message: `Employee: ${empName} | Type: ${l.leave_type || 'Leave'} | Duration: ${l.total_days || 1.0} Day(s) | Reason: ${l.reason || 'N/A'}`,
                   is_read: false,
                   is_leave_pending: true,
                   leave_id: l.id,
@@ -10756,6 +11124,8 @@ function openAddExpenseModal() {
         window.renderAdminNotificationList();
       } catch (err) {
         console.error("Failed to load admin notifications:", err);
+      } finally {
+        isLoadingAdminNotifications = false;
       }
     };
 
@@ -11153,14 +11523,18 @@ function openAddExpenseModal() {
     // Auto-fetch notifications on initial load & poll every 60s
     setTimeout(() => {
       window.loadAdminNotifications();
-      window.checkAndShowClientBillingReminder();
+      // Suppressed automatic popup in favor of contextual table highlighting (PRB-090 Phase 2)
+      // window.checkAndShowClientBillingReminder();
       setInterval(() => window.loadAdminNotifications(), 60000);
     }, 1000);
 
     // --- CLIENT PAYMENT REMINDER POPUP MECHANISM ---
+    let isBillingReminderChecking = false;
     window.checkAndShowClientBillingReminder = async function() {
+      if (isBillingReminderChecking) return;
       try {
         if (document.getElementById('clientBillingReminderModal')) return;
+        isBillingReminderChecking = true;
 
         const recs = await apiFetch('/projects/receivables/pending');
         if (!Array.isArray(recs) || recs.length === 0) return;
@@ -11172,6 +11546,8 @@ function openAddExpenseModal() {
         window.renderClientBillingReminderModal(targetRec);
       } catch (err) {
         console.error("Failed to fetch pending client receivables for reminder popup:", err);
+      } finally {
+        isBillingReminderChecking = false;
       }
     };
 
