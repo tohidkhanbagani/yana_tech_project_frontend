@@ -3,7 +3,7 @@
          */
 
         const CONFIG = {
-            API_BASE_URL: 'http://localhost:8000',
+            API_BASE_URL: 'https://yana-tech-project-backend-d0sj.onrender.com',
             TOKEN_KEY: 'yana_os_token',
             LOGIN_URL: '../login.html'
         };
