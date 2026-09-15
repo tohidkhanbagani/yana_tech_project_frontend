@@ -6,7 +6,7 @@
     const CONFIG = {
       API_BASE_URL: "https://yana-tech-project-backend-d0sj.onrender.com",
       TOKEN_KEY: "yana_os_token",
-      LOGIN_URL: "../login.html",
+      LOGIN_URL: "/",
     };
 
     // --- State Management ---
@@ -7250,7 +7250,7 @@
       }
 
       if (state.user.role.toLowerCase() === "employee") {
-        window.location.replace("../employee/employee.html");
+        window.location.replace("/employee");
         return;
       }
 

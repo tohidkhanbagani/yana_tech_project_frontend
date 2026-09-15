@@ -5,7 +5,7 @@
         const CONFIG = {
             API_BASE_URL: 'https://yana-tech-project-backend-d0sj.onrender.com',
             TOKEN_KEY: 'yana_os_token',
-            LOGIN_URL: '../login.html'
+            LOGIN_URL: '/'
         };
 
         const state = {
@@ -5082,9 +5082,9 @@ window.addConTaskRow = function () {
 
             if (state.user.role.toLowerCase() === 'admin') {
                 if (state.user.access_level === 'ManagerAdmin') {
-                    window.location.replace('../manager/manager.html');
+                    window.location.replace('/manager');
                 } else {
-                    window.location.replace('../admin/admin.html');
+                    window.location.replace('/admin');
                 }
                 return;
             }

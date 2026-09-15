@@ -298,12 +298,12 @@
                     setTimeout(() => {
                         if (decoded && decoded.role && decoded.role.toLowerCase() === 'admin') {
                             if (decoded.access_level === 'ManagerAdmin') {
-                                window.location.href = 'manager/manager.html';
+                                window.location.href = '/manager';
                             } else {
-                                window.location.href = 'admin/admin.html';
+                                window.location.href = '/admin';
                             }
                         } else {
-                            window.location.href = 'employee/employee.html';
+                            window.location.href = '/employee';
                         }
                     }, 800);
                 }
@@ -328,12 +328,12 @@
                             const verifiedUser = await response.json();
                             if (verifiedUser.role && verifiedUser.role.toLowerCase() === 'admin') {
                                 if (verifiedUser.access_level === 'ManagerAdmin') {
-                                    window.location.replace('manager/manager.html');
+                                    window.location.replace('/manager');
                                 } else {
-                                    window.location.replace('admin/admin.html');
+                                    window.location.replace('/admin');
                                 }
                             } else {
-                                window.location.replace('employee/employee.html');
+                                window.location.replace('/employee');
                             }
                             return;
                         } else {
