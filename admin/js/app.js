@@ -6,7 +6,7 @@
     const CONFIG = {
       API_BASE_URL: "https://yana-tech-project-backend-d0sj.onrender.com",
       TOKEN_KEY: "yana_os_token",
-      LOGIN_URL: "../login.html",
+      LOGIN_URL: "/",
     };
 
     // --- State Management ---
@@ -9864,13 +9864,13 @@ function openAddExpenseModal() {
 
         if (!state.user.role || state.user.role.toLowerCase() !== "admin") {
           console.warn("User role is not admin. Redirecting to employee portal.");
-          window.location.replace("../employee/employee.html");
+          window.location.replace("/employee");
           return;
         }
 
         if (state.user.access_level === "ManagerAdmin") {
           console.warn("User access level is ManagerAdmin. Redirecting to manager portal.");
-          window.location.replace("../manager/manager.html");
+          window.location.replace("/manager");
           return;
         }
 
