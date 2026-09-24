@@ -6,7 +6,7 @@
     const CONFIG = {
       API_BASE_URL: "https://yana-tech-project-backend-d0sj.onrender.com",
       TOKEN_KEY: "yana_os_token",
-      LOGIN_URL: "/",
+      LOGIN_URL: "../login.html",
     };
 
     // --- State Management ---
@@ -2057,7 +2057,7 @@
                             <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold ${p.status === "Completed" ? "bg-emerald-50 text-emerald-700 border-emerald-200" : p.status === "In Progress" || p.status === "Active" ? "bg-blue-50 text-blue-700 border-blue-200" : "bg-slate-100 text-slate-700 border-slate-200"} border">
                                 ${p.status}
                             </span>
-                            <div class="text-xs font-bold text-slate-900 mt-1.5">₹${formatNumber(p.budget || p.total_cost || 0)}</div>
+                            <div class="text-xs font-bold text-slate-900 mt-1.5 blur-financial">${formatCurrency(p.budget || p.total_cost || 0)}</div>
                         </div>
                     </div>
                 `,
@@ -2494,7 +2494,7 @@
                             <i data-lucide="alert-circle" class="w-5 h-5 shrink-0 mt-0.5"></i>
                             <div>
                                 <h4 class="text-sm font-bold tracking-tight">Budget Warning</h4>
-                                <p class="text-xs mt-1">Project is nearing its budget limit (${burnPct}% burned).</p>
+                                <p class="text-xs mt-1">Project is nearing its budget limit (<span class="blur-financial font-mono">${burnPct}%</span> burned).</p>
                             </div>
                         </div>
                     `;
@@ -2508,7 +2508,7 @@
                         <i data-lucide="trending-up" class="w-5 h-5 shrink-0 mt-0.5"></i>
                         <div>
                             <h4 class="text-sm font-bold tracking-tight">Project Equilibrium</h4>
-                            <p class="text-xs mt-1">The project is currently profitable with a net margin of ${margin}%.</p>
+                            <p class="text-xs mt-1">The project is currently profitable with a net margin of <span class="blur-financial font-mono">${margin}%</span>.</p>
                         </div>
                     </div>
                 `;
@@ -2933,11 +2933,11 @@
                       <div class="grid grid-cols-2 gap-x-2 gap-y-3 w-full bg-slate-50/70 p-3 rounded-xl border border-slate-100/50">
                           <div class="min-w-0">
                               <p class="text-[9px] text-slate-400 font-extrabold uppercase tracking-widest">Billed</p>
-                              <p class="text-[13px] font-black text-indigo-600 truncate mt-0.5" title="${formatCurrencyPlain(emp.billed)}">${formatCurrency(emp.billed)}</p>
+                              <p class="text-[13px] font-black text-indigo-600 truncate mt-0.5 blur-financial" title="${formatCurrencyPlain(emp.billed)}">${formatCurrency(emp.billed)}</p>
                           </div>
                           <div class="min-w-0 border-l border-slate-200/60 pl-2">
                               <p class="text-[9px] text-slate-400 font-extrabold uppercase tracking-widest">Margin</p>
-                              <p class="text-[13px] font-black text-emerald-600 truncate mt-0.5" title="${formatCurrencyPlain(emp.profit)}">${formatCurrency(emp.profit)}</p>
+                              <p class="text-[13px] font-black text-emerald-600 truncate mt-0.5 blur-financial" title="${formatCurrencyPlain(emp.profit)}">${formatCurrency(emp.profit)}</p>
                           </div>
                       </div>
 
@@ -2975,7 +2975,7 @@
                                 <p class="text-[11px] font-extrabold text-slate-500 uppercase tracking-wider shrink-0">Client Cost</p>
                                 <span class="w-2 h-2 rounded-full bg-emerald-500 shrink-0"></span>
                             </div>
-                            <h3 class="text-lg sm:text-xl font-black text-emerald-600 tracking-tight truncate" title="${formatCurrencyPlain(clientCost)}">${formatCurrency(clientCost)}</h3>
+                            <h3 class="text-lg sm:text-xl font-black text-emerald-600 tracking-tight truncate blur-financial" title="${formatCurrencyPlain(clientCost)}">${formatCurrency(clientCost)}</h3>
                         </div>
                         <p class="text-[10px] text-slate-400 font-semibold uppercase tracking-wider mt-2">Actual Project Revenue</p>
                     </div>
@@ -2987,7 +2987,7 @@
                                 <p class="text-[11px] font-extrabold text-slate-500 uppercase tracking-wider shrink-0">Total Budget</p>
                                 <span class="w-2 h-2 rounded-full bg-slate-400 shrink-0"></span>
                             </div>
-                            <h3 class="text-lg sm:text-xl font-black text-slate-800 tracking-tight truncate" title="${formatCurrencyPlain(budget)}">${formatCurrency(budget)}</h3>
+                            <h3 class="text-lg sm:text-xl font-black text-slate-800 tracking-tight truncate blur-financial" title="${formatCurrencyPlain(budget)}">${formatCurrency(budget)}</h3>
                         </div>
                         <p class="text-[10px] text-slate-400 font-semibold uppercase tracking-wider mt-2">Max Allowed Burn</p>
                     </div>
@@ -2997,13 +2997,13 @@
                         <div>
                             <div class="flex items-center justify-between gap-1 mb-1.5">
                                 <p class="text-[11px] font-extrabold text-slate-500 uppercase tracking-wider shrink-0">Accumulated Cost</p>
-                                <span class="px-1.5 py-0.5 rounded text-[9px] font-black bg-rose-50 text-rose-600 border border-rose-100 shrink-0">${burnPct}% Burn</span>
+                                <span class="px-1.5 py-0.5 rounded text-[9px] font-black bg-rose-50 text-rose-600 border border-rose-100 shrink-0 blur-financial">${burnPct}% Burn</span>
                             </div>
-                            <h3 class="text-lg sm:text-xl font-black text-rose-600 tracking-tight truncate" title="${formatCurrencyPlain(totalCost)} (${burnPct}%)">${formatCurrency(totalCost)}</h3>
+                            <h3 class="text-lg sm:text-xl font-black text-rose-600 tracking-tight truncate blur-financial" title="${formatCurrencyPlain(totalCost)} (${burnPct}%)">${formatCurrency(totalCost)}</h3>
                         </div>
                         <div class="flex items-center justify-between text-[10px] text-slate-500 font-bold mt-2 pt-1.5 border-t border-slate-100/80 gap-1 truncate">
-                            <span class="truncate">Emp: <strong class="text-slate-700">${formatCurrency(employeeCost)}</strong></span>
-                            <span class="truncate">Ext: <strong class="text-slate-700">${formatCurrency(extraExpenses)}</strong></span>
+                            <span class="truncate blur-financial">Emp: <strong class="text-slate-700">${formatCurrency(employeeCost)}</strong></span>
+                            <span class="truncate blur-financial">Ext: <strong class="text-slate-700">${formatCurrency(extraExpenses)}</strong></span>
                         </div>
                     </div>
 
@@ -3014,7 +3014,7 @@
                                 <p class="text-[11px] font-extrabold text-slate-500 uppercase tracking-wider shrink-0">Task Value (Internal)</p>
                                 <span class="w-2 h-2 rounded-full bg-indigo-500 shrink-0"></span>
                             </div>
-                            <h3 class="text-lg sm:text-xl font-black text-indigo-600 tracking-tight truncate" title="${formatCurrencyPlain(totalBilled)}">${formatCurrency(totalBilled)}</h3>
+                            <h3 class="text-lg sm:text-xl font-black text-indigo-600 tracking-tight truncate blur-financial" title="${formatCurrencyPlain(totalBilled)}">${formatCurrency(totalBilled)}</h3>
                         </div>
                         <p class="text-[10px] text-slate-400 font-semibold uppercase tracking-wider mt-2">Aggregated Internal Billing</p>
                     </div>
@@ -3024,9 +3024,9 @@
                         <div>
                             <div class="flex items-center justify-between gap-1 mb-1.5">
                                 <p class="text-[11px] font-extrabold text-slate-500 uppercase tracking-wider shrink-0">Net Profit Margin</p>
-                                <span class="px-1.5 py-0.5 rounded text-[9px] font-black ${profit >= 0 ? "bg-emerald-50 text-emerald-700 border border-emerald-200" : "bg-rose-50 text-rose-700 border border-rose-200"} shrink-0">${profit >= 0 ? '+' : ''}${margin}%</span>
+                                <span class="px-1.5 py-0.5 rounded text-[9px] font-black ${profit >= 0 ? "bg-emerald-50 text-emerald-700 border border-emerald-200" : "bg-rose-50 text-rose-700 border border-rose-200"} shrink-0 blur-financial">${profit >= 0 ? '+' : ''}${margin}%</span>
                             </div>
-                            <h3 class="text-lg sm:text-xl font-black ${profit >= 0 ? "text-emerald-600" : "text-brand-alert"} tracking-tight truncate" title="${formatCurrencyPlain(profit)} (${margin}%)">${formatCurrency(profit)}</h3>
+                            <h3 class="text-lg sm:text-xl font-black ${profit >= 0 ? "text-emerald-600" : "text-brand-alert"} tracking-tight truncate blur-financial" title="${formatCurrencyPlain(profit)} (${margin}%)">${formatCurrency(profit)}</h3>
                         </div>
                         <p class="text-[10px] text-slate-400 font-semibold uppercase tracking-wider mt-2">Based on Client Cost</p>
                     </div>
@@ -3037,7 +3037,7 @@
                     <div class="bg-white rounded-2xl p-4 border border-slate-200 shadow-2xs flex items-center justify-between hover:border-slate-300 transition-all">
                         <div>
                             <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">Allocated Budget</p>
-                            <h3 class="text-xl font-extrabold text-slate-800 font-mono">${formatCurrency(budget)}</h3>
+                            <h3 class="text-xl font-extrabold text-slate-800 font-mono blur-financial">${formatCurrency(budget)}</h3>
                         </div>
                         <div class="w-10 h-10 rounded-xl bg-indigo-50 flex items-center justify-center text-brand-primary border border-indigo-100">
                             <i data-lucide="wallet" class="w-5 h-5"></i>
@@ -3047,8 +3047,8 @@
                     <div class="bg-white rounded-2xl p-4 border border-slate-200 shadow-2xs flex items-center justify-between hover:border-slate-300 transition-all">
                         <div>
                             <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">Total Expenses & Cost</p>
-                            <h3 class="text-xl font-extrabold text-slate-800 font-mono">${formatCurrency(totalCost)}</h3>
-                            <p class="text-[10px] font-medium text-slate-400 mt-0.5">${burnPct}% of budget</p>
+                            <h3 class="text-xl font-extrabold text-slate-800 font-mono blur-financial">${formatCurrency(totalCost)}</h3>
+                            <p class="text-[10px] font-medium text-slate-400 mt-0.5 blur-financial">${burnPct}% of budget</p>
                         </div>
                         <div class="w-10 h-10 rounded-xl bg-rose-50 flex items-center justify-center text-rose-600 border border-rose-100">
                             <i data-lucide="trending-up" class="w-5 h-5"></i>
@@ -3058,7 +3058,7 @@
                     <div class="bg-white rounded-2xl p-4 border border-slate-200 shadow-2xs flex items-center justify-between hover:border-slate-300 transition-all">
                         <div>
                             <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">Remaining Variance</p>
-                            <h3 class="text-xl font-extrabold ${budget - totalCost < 0 ? 'text-rose-600' : 'text-emerald-600'} font-mono">${formatCurrency(budget - totalCost)}</h3>
+                            <h3 class="text-xl font-extrabold ${budget - totalCost < 0 ? 'text-rose-600' : 'text-emerald-600'} font-mono blur-financial">${formatCurrency(budget - totalCost)}</h3>
                         </div>
                         <div class="w-10 h-10 rounded-xl ${budget - totalCost < 0 ? 'bg-rose-50 text-rose-600 border-rose-100' : 'bg-emerald-50 text-emerald-600 border-emerald-100'} flex items-center justify-center border">
                             <i data-lucide="pie-chart" class="w-5 h-5"></i>
@@ -3308,14 +3308,14 @@
                     <h4 class="font-bold text-slate-800 text-sm truncate w-full">${e.full_name}</h4>
                     <p class="text-xs text-slate-500 mb-4">${e.job_title || e.department || "Employee"}</p>
                     
-                    <div class="w-full bg-slate-50 rounded-lg p-3 text-left border border-slate-100">
+                    <div class="w-full bg-slate-50 rounded-lg p-3 text-left border border-slate-100 blur-financial">
                         <div class="flex justify-between items-center mb-1 text-xs">
                             <span class="text-slate-500 font-medium">Cost Rate</span>
-                            <span class="font-bold text-slate-800">${e.custom_hourly_cost !== null && e.custom_hourly_cost !== undefined ? formatCurrency(e.custom_hourly_cost) : formatCurrency(e.hourly_cost_rate)} <span class="font-normal text-[10px] text-slate-400">/hr</span></span>
+                            <span class="font-bold text-slate-800 blur-financial">${e.custom_hourly_cost !== null && e.custom_hourly_cost !== undefined ? formatCurrency(e.custom_hourly_cost) : formatCurrency(e.hourly_cost_rate)} <span class="font-normal text-[10px] text-slate-400">/hr</span></span>
                         </div>
                         <div class="flex justify-between items-center text-xs">
                             <span class="text-slate-500 font-medium">Billing Rate</span>
-                            <span class="font-bold text-brand-primary">${e.custom_hourly_billing !== null && e.custom_hourly_billing !== undefined ? formatCurrency(e.custom_hourly_billing) : formatCurrency(e.hourly_billing_rate)} <span class="font-normal text-[10px] text-brand-primary/50">/hr</span></span>
+                            <span class="font-bold text-brand-primary blur-financial">${e.custom_hourly_billing !== null && e.custom_hourly_billing !== undefined ? formatCurrency(e.custom_hourly_billing) : formatCurrency(e.hourly_billing_rate)} <span class="font-normal text-[10px] text-brand-primary/50">/hr</span></span>
                         </div>
                     </div>
                     <div class="mt-3 flex items-center justify-between w-full gap-2">
@@ -3395,9 +3395,9 @@
                             <div class="text-sm text-slate-700 line-clamp-2 w-64" title="${t.task_performed}">${t.task_performed}</div>
                         </td>
                         <td class="px-4 py-3 whitespace-nowrap text-sm font-medium text-slate-800 text-center">${parseFloat(t.hours_logged).toFixed(1)}</td>
-                        <td class="px-4 py-3 whitespace-nowrap text-sm text-rose-600 text-right">${formatCurrency(t.employee_cost)}</td>
-                        <td class="px-4 py-3 whitespace-nowrap text-sm font-medium text-indigo-600 text-right">${formatCurrency(t.billing_amount)}</td>
-                        <td class="px-4 py-3 whitespace-nowrap text-sm font-bold text-right"><span class="px-2 py-1 rounded ${profitClass}">${formatCurrency(profit)}</span></td>
+                        <td class="px-4 py-3 whitespace-nowrap text-sm text-rose-600 text-right blur-financial">${formatCurrency(t.employee_cost)}</td>
+                        <td class="px-4 py-3 whitespace-nowrap text-sm font-medium text-indigo-600 text-right blur-financial">${formatCurrency(t.billing_amount)}</td>
+                        <td class="px-4 py-3 whitespace-nowrap text-sm font-bold text-right blur-financial"><span class="px-2 py-1 rounded ${profitClass}">${formatCurrency(profit)}</span></td>
                     </tr>
                 `;
           })
@@ -3725,7 +3725,7 @@
               <span class="text-[9px] font-black tracking-widest text-rose-500 uppercase">Expense Record</span>
               <h4 class="text-lg font-black text-slate-800 mt-0.5">${e.expense_name}</h4>
             </div>
-            <div class="px-4 py-2 bg-rose-50 border border-rose-100 rounded-2xl text-rose-600 text-lg font-extrabold shadow-sm">
+            <div class="px-4 py-2 bg-rose-50 border border-rose-100 rounded-2xl text-rose-600 text-lg font-extrabold shadow-sm blur-financial">
               ${formatCurrency(e.amount)}
             </div>
           </div>
@@ -3773,7 +3773,7 @@
               <span class="text-[9px] font-black tracking-widest text-emerald-600 uppercase">Payment Receipt</span>
               <h4 class="text-lg font-black text-slate-800 mt-0.5">${pm.payment_method} Transfer</h4>
             </div>
-            <div class="px-4 py-2 bg-emerald-50 border border-emerald-100 rounded-2xl text-emerald-600 text-lg font-extrabold shadow-sm">
+            <div class="px-4 py-2 bg-emerald-50 border border-emerald-100 rounded-2xl text-emerald-600 text-lg font-extrabold shadow-sm blur-financial">
               ${formatCurrency(pm.amount)}
             </div>
           </div>
@@ -3826,7 +3826,7 @@
                     <tr class="hover:bg-slate-50 border-b border-slate-100 last:border-0 group cursor-pointer" onclick="showExpenseDetails('${e.id}')">
                         <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-800">${e.expense_name}</td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-600">${e.expense_date !== "N/A" ? new Date(e.expense_date).toLocaleDateString() : "N/A"}</td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-rose-600">${formatCurrency(e.amount)}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-rose-600 blur-financial">${formatCurrency(e.amount)}</td>
                         <td class="px-6 py-4 text-sm text-slate-500 line-clamp-1 max-w-[200px]" title="${e.description}">${e.description}</td>
                         <td class="px-6 py-4 whitespace-nowrap text-right">
                             <div class="flex items-center justify-end gap-1.5">
@@ -3860,7 +3860,7 @@
                 <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden mb-6">
                     <div class="p-5 border-b border-slate-100 flex items-center justify-between bg-slate-50">
                         <h4 class="font-bold text-slate-700 text-sm uppercase tracking-wider">Total Extra Expenses</h4>
-                        <span class="text-xl font-black text-rose-600">${formatCurrency(totalExpenses)}</span>
+                        <span class="text-xl font-black text-rose-600 blur-financial">${formatCurrency(totalExpenses)}</span>
                     </div>
                     <div class="overflow-x-auto">
                         <table class="min-w-full divide-y divide-slate-200">
@@ -3899,7 +3899,7 @@
         paymentHtml = payments.map(pm => `
                 <tr class="hover:bg-slate-50 border-b border-slate-100 last:border-0 group cursor-pointer" onclick="showPaymentDetails('${pm.id}')">
                     <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-800">${new Date(pm.payment_date).toLocaleDateString()}</td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm font-bold text-emerald-600">${formatCurrency(pm.amount)}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-bold text-emerald-600 blur-financial">${formatCurrency(pm.amount)}</td>
                     <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-600">${pm.payment_method}</td>
                     <td class="px-6 py-4 text-sm text-slate-500 truncate max-w-[150px]" title="${pm.reference_number}">${pm.reference_number}</td>
                     <td class="px-6 py-4 whitespace-nowrap text-right">
@@ -3951,7 +3951,7 @@
                         ` : (p.cost_type === "Monthly Retainer" || p.cost_type === "Time & Material" || p.cost_type === "Time and Material" || p.cost_type === "Hourly Billing") ? `
                         <div>
                             <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Recurrence & Rate</span>
-                            <span class="text-sm font-bold text-emerald-600">${formatCurrency(p.billing_rate || 0)} (${p.billing_cycle && p.billing_cycle !== "N/A" ? p.billing_cycle : "Monthly"})</span>
+                            <span class="text-sm font-bold text-emerald-600 blur-financial">${formatCurrency(p.billing_rate || 0)} (${p.billing_cycle && p.billing_cycle !== "N/A" ? p.billing_cycle : "Monthly"})</span>
                         </div>
                         <div>
                             <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Next Invoice Date & Time</span>
@@ -3989,15 +3989,15 @@
                   return `
                 <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
                     <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Contract Value</p>
-                    <p class="text-xl font-black text-slate-800">${formatCurrency(contractValue)}</p>
+                    <p class="text-xl font-black text-slate-800 blur-financial">${formatCurrency(contractValue)}</p>
                 </div>
                 <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
                     <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Total Paid</p>
-                    <p class="text-xl font-black text-emerald-600">${formatCurrency(computedTotalPaid)}</p>
+                    <p class="text-xl font-black text-emerald-600 blur-financial">${formatCurrency(computedTotalPaid)}</p>
                 </div>
                 <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
                     <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Outstanding</p>
-                    <p class="text-xl font-black text-rose-600">${formatCurrency(computedPending)}</p>
+                    <p class="text-xl font-black text-rose-600 blur-financial">${formatCurrency(computedPending)}</p>
                 </div>
                   `;
                 })()}
@@ -4062,7 +4062,7 @@
                                             <td class="px-6 py-4 whitespace-nowrap text-sm font-semibold text-slate-800">${r.item_name}</td>
                                             <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-600">${r.frequency}</td>
                                             <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-600 font-medium ${isDue ? 'text-rose-600' : ''}">${new Date(r.due_date).toLocaleDateString()}</td>
-                                            <td class="px-6 py-4 whitespace-nowrap text-sm font-bold text-slate-700">${formatCurrency(r.amount)}</td>
+                                            <td class="px-6 py-4 whitespace-nowrap text-sm font-bold text-slate-700 blur-financial">${formatCurrency(r.amount)}</td>
                                             <td class="px-6 py-4 whitespace-nowrap">${statusBadge}</td>
                                             <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                                                 <div class="flex items-center justify-end gap-2">
@@ -5253,11 +5253,11 @@ function openAddExpenseModal() {
                     <div class="grid grid-cols-2 gap-4">
                         <div>
                             <label class="block text-sm font-semibold text-slate-700 mb-1">Fixed Cost Rate (₹/hr)</label>
-                            <input type="text" id="assign_cost_display" readonly value="-" class="input-field w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg outline-none text-sm shadow-sm cursor-not-allowed text-slate-500">
+                            <input type="text" id="assign_cost_display" readonly value="-" class="input-field w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg outline-none text-sm shadow-sm cursor-not-allowed text-slate-500 blur-financial">
                         </div>
                         <div>
                             <label class="block text-sm font-semibold text-slate-700 mb-1">Custom Billing Rate (₹/hr)</label>
-                            <input type="number" id="assign_billing" step="0.01" min="0" placeholder="Optional" class="input-field w-full px-4 py-2 bg-white border border-slate-200 rounded-lg outline-none text-sm shadow-sm">
+                            <input type="number" id="assign_billing" step="0.01" min="0" placeholder="Optional" class="input-field w-full px-4 py-2 bg-white border border-slate-200 rounded-lg outline-none text-sm shadow-sm blur-financial">
                         </div>
                     </div>
                     <p class="text-xs text-slate-500">Billing rate blank will default to the employee's standard profile rates.</p>
@@ -5326,11 +5326,11 @@ function openAddExpenseModal() {
             <div class="grid grid-cols-2 gap-4">
                 <div>
                     <label class="block text-xs font-bold text-slate-700 mb-1">Custom Cost Rate (₹/hr)</label>
-                    <input type="number" step="0.01" min="0" id="edit_assign_cost" value="${currentCost}" placeholder="Standard profile rate" class="input-field w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm outline-none shadow-sm focus:border-indigo-500">
+                    <input type="number" step="0.01" min="0" id="edit_assign_cost" value="${currentCost}" placeholder="Standard profile rate" class="input-field w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm outline-none shadow-sm focus:border-indigo-500 blur-financial">
                 </div>
                 <div>
                     <label class="block text-xs font-bold text-slate-700 mb-1">Custom Billing Rate (₹/hr)</label>
-                    <input type="number" step="0.01" min="0" id="edit_assign_billing" value="${currentBilling}" placeholder="Standard profile rate" class="input-field w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm outline-none shadow-sm focus:border-indigo-500">
+                    <input type="number" step="0.01" min="0" id="edit_assign_billing" value="${currentBilling}" placeholder="Standard profile rate" class="input-field w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm outline-none shadow-sm focus:border-indigo-500 blur-financial">
                 </div>
             </div>
             <p class="text-[11px] text-slate-500">Leave fields blank to use employee standard profile rates.</p>
@@ -6205,11 +6205,11 @@ function openAddExpenseModal() {
                             </div>
                             <div>
                                 <label class="block text-sm font-semibold text-slate-700 mb-1">Budget (₹) *</label>
-                                <input type="number" id="p_budget" value="${p && p.budget ? p.budget : "0"}" step="0.01" min="0" required class="input-field w-full px-4 py-2 bg-white border border-slate-200 rounded-lg outline-none text-sm shadow-sm">
+                                <input type="number" id="p_budget" value="${p && p.budget ? p.budget : "0"}" step="0.01" min="0" required class="input-field w-full px-4 py-2 bg-white border border-slate-200 rounded-lg outline-none text-sm shadow-sm blur-financial">
                             </div>
                             <div>
                                 <label class="block text-sm font-semibold text-slate-700 mb-1">Client Cost (₹)</label>
-                                <input type="number" id="p_client_cost" value="${p && p.client_cost ? p.client_cost : "0"}" step="0.01" min="0" class="input-field w-full px-4 py-2 bg-white border border-slate-200 rounded-lg outline-none text-sm shadow-sm">
+                                <input type="number" id="p_client_cost" value="${p && p.client_cost ? p.client_cost : "0"}" step="0.01" min="0" class="input-field w-full px-4 py-2 bg-white border border-slate-200 rounded-lg outline-none text-sm shadow-sm blur-financial">
                             </div>
 
                         </div>
@@ -6353,14 +6353,14 @@ function openAddExpenseModal() {
                                                     <label class="block text-[9px] font-bold text-slate-400 uppercase">Cost (₹/hr)</label>
                                                     <input type="number" id="p_custom_cost_${e.id}" step="0.01" min="0" placeholder="${e.hourly_cost_rate || 0}" 
                                                            value="${existingCost}"
-                                                           class="w-full px-2 py-1 bg-white border border-slate-200 rounded text-xs outline-none shadow-sm focus:border-indigo-500"
+                                                           class="w-full px-2 py-1 bg-white border border-slate-200 rounded text-xs outline-none shadow-sm focus:border-indigo-500 blur-financial"
                                                            onclick="event.stopPropagation()">
                                                 </div>
                                                 <div>
                                                     <label class="block text-[9px] font-bold text-slate-400 uppercase">Billing (₹/hr)</label>
                                                     <input type="number" id="p_custom_billing_${e.id}" step="0.01" min="0" placeholder="${e.hourly_billing_rate || 0}" 
                                                            value="${existingBilling}"
-                                                           class="w-full px-2 py-1 bg-white border border-slate-200 rounded text-xs outline-none shadow-sm focus:border-indigo-500"
+                                                           class="w-full px-2 py-1 bg-white border border-slate-200 rounded text-xs outline-none shadow-sm focus:border-indigo-500 blur-financial"
                                                            onclick="event.stopPropagation()">
                                                 </div>
                                             </div>
@@ -6536,7 +6536,7 @@ function openAddExpenseModal() {
               </div>
               <div>
                   <label class="block text-xs font-bold text-slate-700 mb-1">Billing Rate (₹) *</label>
-                  <input type="number" step="0.01" min="0" id="p_billing_rate_input" value="${p ? p.billing_rate || 0 : 0}" class="input-field w-full px-3 py-1.5 bg-white border border-slate-200 rounded-lg outline-none text-xs shadow-sm">
+                  <input type="number" step="0.01" min="0" id="p_billing_rate_input" value="${p ? p.billing_rate || 0 : 0}" class="input-field w-full px-3 py-1.5 bg-white border border-slate-200 rounded-lg outline-none text-xs shadow-sm blur-financial">
               </div>
               <div>
                   <label class="block text-xs font-bold text-slate-700 mb-1">Next Billing Date *</label>
@@ -7763,44 +7763,44 @@ function openAddExpenseModal() {
                         </div>
                         <div class="bg-white border border-slate-200 rounded-xl p-3.5 shadow-2xs space-y-3">
                             <!-- 3 Metric Boxes Row (Matching Image 3) -->
-                            <div class="grid grid-cols-3 gap-3 bg-slate-50/50 p-2.5 rounded-xl border border-slate-100">
+                            <div class="grid grid-cols-3 gap-3 bg-slate-50/50 p-2.5 rounded-xl border border-slate-100 blur-financial">
                                 <div>
                                     <p class="text-[9px] font-bold text-slate-500 uppercase tracking-wider mb-0.5">Monthly Gross Remuneration</p>
                                     <div class="flex items-center text-sm font-extrabold text-slate-900">
                                         <span class="mr-1 text-slate-400">₹</span>
-                                        <input type="number" id="v_salary" value="${emp.salary || 0}" ${isEdit ? 'oninput="window.recalculateEmployeeDetailHourlyCost()"' : "readonly"} class="${inputClass} ${!isEdit ? "text-sm font-extrabold" : ""}">
+                                        <input type="number" id="v_salary" value="${emp.salary || 0}" ${isEdit ? 'oninput="window.recalculateEmployeeDetailHourlyCost()"' : "readonly"} class="${inputClass} ${!isEdit ? "text-sm font-extrabold" : ""} blur-financial">
                                     </div>
                                 </div>
                                 <div>
                                     <p class="text-[9px] font-bold text-slate-500 uppercase tracking-wider mb-0.5">Effective Hourly Cost</p>
                                     <div class="flex items-center text-sm font-extrabold text-slate-800">
                                         <span class="mr-1 text-slate-400">₹</span>
-                                        <input type="number" id="v_cost_rate" value="${formattedCostRate}" readonly class="w-full bg-transparent border-none p-0 outline-none cursor-not-allowed text-sm font-extrabold text-slate-800">
+                                        <input type="number" id="v_cost_rate" value="${formattedCostRate}" readonly class="w-full bg-transparent border-none p-0 outline-none cursor-not-allowed text-sm font-extrabold text-slate-800 blur-financial">
                                     </div>
                                 </div>
                                 <div>
                                     <p class="text-[9px] font-bold text-brand-primary uppercase tracking-wider mb-0.5">Standard Billing Rate</p>
                                     <div class="flex items-center text-sm font-extrabold text-brand-primary">
                                         <span class="mr-1 opacity-70">₹</span>
-                                        <input type="number" id="v_billing_rate" value="${emp.hourly_billing_rate || 0}" ${isEdit ? "" : "readonly"} class="${inputClass.replace("text-slate-800", "text-brand-primary")} font-extrabold text-sm">
+                                        <input type="number" id="v_billing_rate" value="${emp.hourly_billing_rate || 0}" ${isEdit ? "" : "readonly"} class="${inputClass.replace("text-slate-800", "text-brand-primary")} font-extrabold text-sm blur-financial">
                                     </div>
                                 </div>
                             </div>
 
-                            <div class="grid grid-cols-2 gap-3 pt-2 border-t border-slate-100">
+                            <div class="grid grid-cols-2 gap-3 pt-2 border-t border-slate-100 blur-financial">
                                 <div>
                                     <p class="text-[9px] font-bold text-slate-500 uppercase tracking-wider mb-1">Working Days / Month</p>
-                                    <input type="number" id="v_working_days" value="${currentDays}" min="1" max="31" ${isEdit ? 'oninput="window.recalculateEmployeeDetailHourlyCost()"' : "readonly"} class="${inputClass}">
+                                    <input type="number" id="v_working_days" value="${currentDays}" min="1" max="31" ${isEdit ? 'oninput="window.recalculateEmployeeDetailHourlyCost()"' : "readonly"} class="${inputClass} blur-financial">
                                 </div>
                                 <div>
                                     <p class="text-[9px] font-bold text-slate-500 uppercase tracking-wider mb-1">Shift Hours / Day</p>
-                                    <input type="number" id="v_shift_hours" value="${currentHours}" min="1" max="24" ${isEdit ? 'oninput="window.recalculateEmployeeDetailHourlyCost()"' : "readonly"} class="${inputClass}">
+                                    <input type="number" id="v_shift_hours" value="${currentHours}" min="1" max="24" ${isEdit ? 'oninput="window.recalculateEmployeeDetailHourlyCost()"' : "readonly"} class="${inputClass} blur-financial">
                                 </div>
                             </div>
 
-                            <div class="text-[10px] text-slate-600 bg-indigo-50/50 p-2.5 rounded-lg border border-indigo-100/70 leading-relaxed">
+                            <div class="text-[10px] text-slate-600 bg-indigo-50/50 p-2.5 rounded-lg border border-indigo-100/70 leading-relaxed blur-financial">
                                 <span class="font-bold text-slate-800">Calculation Formula:</span> <code class="bg-indigo-100/70 px-1 py-0.5 rounded text-indigo-700 font-mono text-[9px]">Salary / (Days * Hours)</code>
-                                <div class="mt-1 text-slate-500">Current Base: <span id="v_formula_example" class="font-semibold text-slate-700">₹${currentSalary} / (${currentDays} * ${currentHours}) = ₹${formattedCostRate} / hr</span></div>
+                                <div class="mt-1 text-slate-500">Current Base: <span id="v_formula_example" class="font-semibold text-slate-700 blur-financial">₹${currentSalary} / (${currentDays} * ${currentHours}) = ₹${formattedCostRate} / hr</span></div>
                             </div>
                             <p class="text-[10px] text-slate-400 flex items-center gap-1">
                                 <i data-lucide="info" class="w-3 h-3 text-slate-400"></i> These rates are invisible to the employee and drive all profit/loss calculations.
@@ -8250,7 +8250,7 @@ function openAddExpenseModal() {
                                     <p class="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Monthly Yield</p>
                                 </div>
                                 <h3 class="text-xl font-bold text-slate-900">${data.monthly?.hours || 0} <span class="text-xs font-normal text-slate-400 tracking-normal">hrs</span></h3>
-                                <p class="text-[9px] text-brand-accent font-bold mt-0.5">Generated: ${formatCurrency(data.monthly?.billed || 0)}</p>
+                                <p class="text-[9px] text-brand-accent font-bold mt-0.5 blur-financial">Generated: ${formatCurrency(data.monthly?.billed || 0)}</p>
                             </div>
 
                             <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm relative overflow-hidden group hover:border-amber-500 transition-all">
@@ -8273,7 +8273,7 @@ function openAddExpenseModal() {
                                     </div>
                                     <p class="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Lifelong Impact</p>
                                 </div>
-                                <h3 class="text-xl font-bold text-white">${formatNumber((data.lifelong?.total_revenue || 0) / 100000)} <span class="text-xs font-normal text-slate-400 tracking-normal">Lakhs</span></h3>
+                                <h3 class="text-xl font-bold text-white blur-financial">${formatNumber((data.lifelong?.total_revenue || 0) / 100000)} <span class="text-xs font-normal text-slate-400 tracking-normal">Lakhs</span></h3>
                                 <p class="text-[9px] text-brand-accent font-bold mt-0.5">Career Revenue</p>
                             </div>
                         </div>
@@ -8288,7 +8288,7 @@ function openAddExpenseModal() {
                                         <div>
                                             <div class="flex justify-between items-end mb-1">
                                                 <p class="text-[10px] font-bold text-slate-500">Efficiency Ratio (ROI)</p>
-                                                <p class="text-xs font-bold text-brand-accent">${(((data.lifelong?.total_revenue || 0) / (data.lifelong?.total_cost || 1)) * 100).toFixed(1)}%</p>
+                                                <p class="text-xs font-bold text-brand-accent blur-financial">${(((data.lifelong?.total_revenue || 0) / (data.lifelong?.total_cost || 1)) * 100).toFixed(1)}%</p>
                                             </div>
                                             <div class="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
                                                 <div class="h-full bg-brand-accent rounded-full" style="width: ${Math.min(((data.lifelong?.total_revenue || 0) / (data.lifelong?.total_cost || 1)) * 20, 100)}%"></div>
@@ -8302,7 +8302,7 @@ function openAddExpenseModal() {
                                             </div>
                                             <div>
                                                 <p class="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">Lifetime Cost-to-Company</p>
-                                                <p class="text-lg font-bold text-slate-900">${formatCurrency(data.lifelong?.total_cost || 0)}</p>
+                                                <p class="text-lg font-bold text-slate-900 blur-financial">${formatCurrency(data.lifelong?.total_cost || 0)}</p>
                                             </div>
                                         </div>
                                     </div>
@@ -8312,7 +8312,7 @@ function openAddExpenseModal() {
                                     <div class="absolute right-0 top-0 w-24 h-24 bg-white opacity-5 rounded-full -translate-y-1/2 translate-x-1/2"></div>
                                     <h4 class="text-xs font-bold text-indigo-300 uppercase tracking-wider mb-2">Strategic Insight</h4>
                                     <p class="text-sm font-medium leading-relaxed">
-                                        This employee generates <span class="text-brand-accent font-bold">${((data.lifelong?.total_revenue || 0) / (data.lifelong?.total_hours || 1)).toFixed(0)} INR</span> revenue per hour. 
+                                        This employee generates <span class="text-brand-accent font-bold blur-financial">${((data.lifelong?.total_revenue || 0) / (data.lifelong?.total_hours || 1)).toFixed(0)} INR</span> revenue per hour. 
                                         Based on their trajectory, they are a <span class="text-indigo-200 underline decoration-indigo-400 decoration-2 underline-offset-4 font-bold">High Yield Asset</span> with stable consistency.
                                     </p>
                                 </div>
@@ -8383,7 +8383,7 @@ function openAddExpenseModal() {
                         </div>
                         <div class="col-span-2 sm:col-span-1">
                             <label class="block text-sm font-semibold text-slate-700 mb-1">Monthly Salary (₹)</label>
-                            <input type="number" name="salary" id="emp_salary" min="0" step="1000" oninput="window.recalculateHourlyCost()" class="input-field w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg outline-none cursor-text">
+                            <input type="number" name="salary" id="emp_salary" min="0" step="1000" oninput="window.recalculateHourlyCost()" class="input-field w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg outline-none cursor-text blur-financial">
                         </div>
                         <div class="col-span-2 sm:col-span-1">
                             <label class="block text-sm font-semibold text-slate-700 mb-1">Department *</label>
@@ -8404,32 +8404,32 @@ function openAddExpenseModal() {
                             <input type="text" name="job_title_custom" id="emp_role_custom" placeholder="Enter new job role" class="hidden mt-2 input-field w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg outline-none">
                         </div>
                     </div>
-                    <div class="p-4 bg-slate-50 rounded-lg border border-slate-200 mt-4">
+                    <div class="p-4 bg-slate-50 rounded-lg border border-slate-200 mt-4 blur-financial">
                         <h4 class="text-sm font-bold text-slate-700 mb-3 border-b border-slate-200 pb-2">Financial Rates (Auto-Calculation)</h4>
                         <div class="grid grid-cols-2 gap-4">
                             <div>
                                 <label class="block text-xs uppercase tracking-wider font-semibold text-slate-500 mb-1">Hourly Cost (₹) - Auto</label>
-                                <input type="number" name="hourly_cost_rate" id="emp_hourly_cost" min="0" step="0.5" value="0" class="input-field w-full px-4 py-2 bg-white border border-slate-200 rounded-lg outline-none cursor-text">
+                                <input type="number" name="hourly_cost_rate" id="emp_hourly_cost" min="0" step="0.5" value="0" class="input-field w-full px-4 py-2 bg-white border border-slate-200 rounded-lg outline-none cursor-text blur-financial">
                             </div>
                             <div>
                                 <label class="block text-xs uppercase tracking-wider font-semibold text-brand-primary mb-1">Hourly Billing (₹)</label>
-                                <input type="number" name="hourly_billing_rate" min="0" step="0.5" value="0" class="input-field w-full px-4 py-2 bg-white border border-slate-200 rounded-lg outline-none">
+                                <input type="number" name="hourly_billing_rate" min="0" step="0.5" value="0" class="input-field w-full px-4 py-2 bg-white border border-slate-200 rounded-lg outline-none blur-financial">
                             </div>
                             
                             <div class="col-span-2 grid grid-cols-2 gap-4 mt-2">
                                 <div>
                                     <label class="block text-xs font-semibold text-slate-500 mb-1">Working Days / Month</label>
-                                    <input type="number" id="emp_calc_days" value="22" min="1" max="31" oninput="window.recalculateHourlyCost()" class="input-field w-full px-4 py-2 bg-white border border-slate-200 rounded-lg outline-none">
+                                    <input type="number" id="emp_calc_days" value="22" min="1" max="31" oninput="window.recalculateHourlyCost()" class="input-field w-full px-4 py-2 bg-white border border-slate-200 rounded-lg outline-none blur-financial">
                                 </div>
                                 <div>
                                     <label class="block text-xs font-semibold text-slate-500 mb-1">Shift Hours / Day</label>
-                                    <input type="number" id="emp_calc_hours" value="8" min="1" max="24" oninput="window.recalculateHourlyCost()" class="input-field w-full px-4 py-2 bg-white border border-slate-200 rounded-lg outline-none">
+                                    <input type="number" id="emp_calc_hours" value="8" min="1" max="24" oninput="window.recalculateHourlyCost()" class="input-field w-full px-4 py-2 bg-white border border-slate-200 rounded-lg outline-none blur-financial">
                                 </div>
                             </div>
                             
                             <div class="col-span-2 mt-2 text-[11px] text-slate-500 bg-white p-3 rounded-xl border border-slate-200 shadow-sm leading-relaxed">
                                 <span class="font-bold text-slate-700">Calculation Formula:</span> <code class="bg-slate-100 px-1.5 py-0.5 rounded text-indigo-600 font-mono">Salary / (Days * Hours)</code>
-                                <div class="mt-1.5 text-slate-400">Current Base: <span id="formula-example" class="font-medium text-slate-600">₹0 / (22 * 8) = ₹0.00 / hr</span></div>
+                                <div class="mt-1.5 text-slate-400">Current Base: <span id="formula-example" class="font-medium text-slate-600 blur-financial">₹0 / (22 * 8) = ₹0.00 / hr</span></div>
                             </div>
                         </div>
                         <p class="text-xs text-slate-400 mt-3">These rates are invisible to the employee and drive all profit/loss calculations.</p>
@@ -9864,13 +9864,13 @@ function openAddExpenseModal() {
 
         if (!state.user.role || state.user.role.toLowerCase() !== "admin") {
           console.warn("User role is not admin. Redirecting to employee portal.");
-          window.location.replace("/employee");
+          window.location.replace("../employee/employee.html");
           return;
         }
 
         if (state.user.access_level === "ManagerAdmin") {
           console.warn("User access level is ManagerAdmin. Redirecting to manager portal.");
-          window.location.replace("/manager");
+          window.location.replace("../manager/manager.html");
           return;
         }
 

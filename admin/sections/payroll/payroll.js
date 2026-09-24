@@ -187,7 +187,7 @@ function getAdminPayrollTemplate() {
                         <div class="text-base font-black text-indigo-900 mt-0.5 blur-financial">₹${formatCurrency(totalPayout)}</div>
                         <div class="text-[10px] ${(data?.total_penalties_deducted || 0) > 0 ? 'text-rose-600 font-bold' : 'text-emerald-700 font-bold'} flex items-center gap-1">
                             ${(data?.total_penalties_deducted || 0) > 0 
-                                ? `<span class="w-1.5 h-1.5 rounded-full bg-rose-500"></span> -₹${formatCurrency(data.total_penalties_deducted)} penalties`
+                                ? `<span class="w-1.5 h-1.5 rounded-full bg-rose-500"></span> <span class="blur-financial font-mono">-₹${formatCurrency(data.total_penalties_deducted)}</span> penalties`
                                 : `<span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Salary Protected`}
                         </div>
                     </div>
@@ -566,7 +566,7 @@ window.openPayrollDetailModal = function(employeeId) {
         `;
     } else {
         benefitDiffBadge = `
-            <span class="px-1.5 py-0.2 rounded-full text-[9px] font-bold bg-rose-100 text-rose-800 border border-rose-200/80">
+            <span class="px-1.5 py-0.2 rounded-full text-[9px] font-bold bg-rose-100 text-rose-800 border border-rose-200/80 blur-financial">
                 -₹${formatCurrency(c.total_penalties || 0)} Deductions
             </span>
         `;
@@ -648,14 +648,14 @@ window.openPayrollDetailModal = function(employeeId) {
             <div class="px-2 py-0.5 rounded-lg ${ab.late_days > 0 ? 'bg-amber-50 border-amber-300' : 'bg-slate-50 border-slate-200/80'} border flex flex-col items-center text-center">
                 <span class="text-[8px] font-bold uppercase tracking-wider ${ab.late_days > 0 ? 'text-amber-800 font-extrabold' : 'text-slate-400'}">Late</span>
                 <span class="font-black ${ab.late_days > 0 ? 'text-amber-950' : 'text-slate-700'} text-xs mt-0.5">${ab.late_days}d</span>
-                <span class="text-[8px] ${ab.late_days > 0 ? 'text-amber-700 font-bold' : 'text-slate-400'}">${ab.late_days > 0 ? `-₹${formatCurrency(pb.late_penalty_total)}` : '0 late'}</span>
+                <span class="text-[8px] ${ab.late_days > 0 ? 'text-amber-700 font-bold blur-financial' : 'text-slate-400'}">${ab.late_days > 0 ? `-₹${formatCurrency(pb.late_penalty_total)}` : '0 late'}</span>
             </div>
 
             <!-- 3. Half-Day -->
             <div class="px-2 py-0.5 rounded-lg ${ab.half_days > 0 ? 'bg-orange-50 border-orange-300' : 'bg-slate-50 border-slate-200/80'} border flex flex-col items-center text-center">
                 <span class="text-[8px] font-bold uppercase tracking-wider ${ab.half_days > 0 ? 'text-orange-800 font-extrabold' : 'text-slate-400'}">Half-Day</span>
                 <span class="font-black ${ab.half_days > 0 ? 'text-orange-950' : 'text-slate-700'} text-xs mt-0.5">${ab.half_days}d</span>
-                <span class="text-[8px] ${ab.half_days_penalized > 0 ? 'text-rose-600 font-bold' : (ab.half_days_covered_by_leave > 0 ? 'text-emerald-700 font-bold' : 'text-slate-400')}">
+                <span class="text-[8px] ${ab.half_days_penalized > 0 ? 'text-rose-600 font-bold blur-financial' : (ab.half_days_covered_by_leave > 0 ? 'text-emerald-700 font-bold' : 'text-slate-400')}">
                     ${ab.half_days_penalized > 0 ? `-₹${formatCurrency(pb.half_day_penalty_total)} (${ab.half_days_penalized}p)` : (ab.half_days_covered_by_leave > 0 ? 'Leave Paid' : '0 HD')}
                 </span>
             </div>
@@ -664,7 +664,7 @@ window.openPayrollDetailModal = function(employeeId) {
             <div class="px-2 py-0.5 rounded-lg ${ab.absent_days > 0 ? 'bg-rose-50 border-rose-300' : 'bg-slate-50 border-slate-200/80'} border flex flex-col items-center text-center">
                 <span class="text-[8px] font-bold uppercase tracking-wider ${ab.absent_days > 0 ? 'text-rose-800 font-extrabold' : 'text-slate-400'}">Absent</span>
                 <span class="font-black ${ab.absent_days > 0 ? 'text-rose-950' : 'text-slate-700'} text-xs mt-0.5">${ab.absent_days}d</span>
-                <span class="text-[8px] ${ab.absent_days > 0 ? 'text-rose-700 font-bold' : 'text-slate-400'}">${ab.absent_days > 0 ? `-₹${formatCurrency(pb.absent_penalty_total)}` : '0 absent'}</span>
+                <span class="text-[8px] ${ab.absent_days > 0 ? 'text-rose-700 font-bold blur-financial' : 'text-slate-400'}">${ab.absent_days > 0 ? `-₹${formatCurrency(pb.absent_penalty_total)}` : '0 absent'}</span>
             </div>
 
             <!-- 5. On Leave -->
@@ -701,7 +701,7 @@ window.openPayrollDetailModal = function(employeeId) {
                         class="rounded text-indigo-600 focus:ring-0 cursor-pointer" />
                     <div class="min-w-0">
                         <span class="block font-bold text-slate-800 text-[10px]">Unworked Deficit</span>
-                        <span class="block text-[9px] ${deficitHours > 0 ? 'text-rose-600 font-bold' : 'text-slate-400'}">
+                        <span class="block text-[9px] ${deficitHours > 0 ? 'text-rose-600 font-bold blur-financial' : 'text-slate-400'}">
                             ${deficitHours > 0 ? `-${deficitHours}h (-₹${formatCurrency(unworkedDeduction)})` : '0h deficit (₹0)'}
                         </span>
                     </div>
@@ -715,7 +715,7 @@ window.openPayrollDetailModal = function(employeeId) {
                         class="rounded text-indigo-600 focus:ring-0 cursor-pointer" />
                     <div class="min-w-0">
                         <span class="block font-bold text-slate-800 text-[10px]">Late Arrival</span>
-                        <span class="block text-[9px] ${pb.late_penalty_total > 0 ? 'text-amber-700 font-bold' : 'text-slate-400'}">
+                        <span class="block text-[9px] ${pb.late_penalty_total > 0 ? 'text-amber-700 font-bold blur-financial' : 'text-slate-400'}">
                             ${ab.late_days > 0 ? `${ab.late_days}d (-₹${formatCurrency(pb.late_penalty_total)})` : '0 late (₹0)'}
                         </span>
                     </div>
@@ -729,7 +729,7 @@ window.openPayrollDetailModal = function(employeeId) {
                         class="rounded text-indigo-600 focus:ring-0 cursor-pointer" />
                     <div class="min-w-0">
                         <span class="block font-bold text-slate-800 text-[10px]">Unapproved Half-Day</span>
-                        <span class="block text-[9px] ${pb.half_day_penalty_total > 0 ? 'text-orange-700 font-bold' : 'text-slate-400'}">
+                        <span class="block text-[9px] ${pb.half_day_penalty_total > 0 ? 'text-orange-700 font-bold blur-financial' : 'text-slate-400'}">
                             ${ab.half_days_penalized > 0 ? `${ab.half_days_penalized}d (-₹${formatCurrency(pb.half_day_penalty_total)})` : '0 penalized (₹0)'}
                         </span>
                     </div>
@@ -743,7 +743,7 @@ window.openPayrollDetailModal = function(employeeId) {
                         class="rounded text-indigo-600 focus:ring-0 cursor-pointer" />
                     <div class="min-w-0">
                         <span class="block font-bold text-slate-800 text-[10px]">Unexcused Absence</span>
-                        <span class="block text-[9px] ${pb.absent_penalty_total > 0 ? 'text-rose-700 font-bold' : 'text-slate-400'}">
+                        <span class="block text-[9px] ${pb.absent_penalty_total > 0 ? 'text-rose-700 font-bold blur-financial' : 'text-slate-400'}">
                             ${ab.absent_days > 0 ? `${ab.absent_days}d (-₹${formatCurrency(pb.absent_penalty_total)})` : '0 absent (₹0)'}
                         </span>
                     </div>
@@ -757,7 +757,7 @@ window.openPayrollDetailModal = function(employeeId) {
                         class="rounded text-emerald-600 focus:ring-0 cursor-pointer" />
                     <div class="min-w-0">
                         <span class="block font-bold text-slate-800 text-[10px]">Include Overtime Bonus</span>
-                        <span class="block text-[9px] ${overtimeAmount > 0 ? 'text-emerald-700 font-bold' : 'text-slate-400'}">
+                        <span class="block text-[9px] ${overtimeAmount > 0 ? 'text-emerald-700 font-bold blur-financial' : 'text-slate-400'}">
                             ${c.hours_difference > 0 ? `+${c.hours_difference}h (+₹${formatCurrency(overtimeAmount)})` : '0h overtime (₹0)'}
                         </span>
                     </div>
@@ -820,7 +820,7 @@ window.openPayrollDetailModal = function(employeeId) {
                         </div>
                     </div>
                     <div class="text-[10px] text-slate-600 leading-snug mt-1 pt-1 border-t border-slate-200/60">
-                        <strong>Verdict:</strong> <span id="audit_verdict_text_${c.employee_id}">${c.why_paid_rationale}</span>
+                        <strong>Verdict:</strong> <span id="audit_verdict_text_${c.employee_id}" class="blur-financial">${c.why_paid_rationale}</span>
                     </div>
                 </div>
 
@@ -931,13 +931,13 @@ window.openPayrollDetailModal = function(employeeId) {
             <!-- 8. Admin Payout Control & Actions Footer (Zero-Scroll Ergonomics) -->
             <div class="flex flex-wrap items-center justify-between gap-2 pt-1 border-t border-slate-100 text-[10px]">
                 <!-- Left: Admin Final Payout Controller -->
-                <div class="flex items-center gap-1.5 bg-slate-50 border border-slate-200 rounded-lg px-2 py-0.5">
+                <div class="flex items-center gap-1.5 bg-slate-50 border border-slate-200 rounded-lg px-2 py-0.5 blur-financial">
                     <span class="font-bold text-slate-600 text-[9px] uppercase tracking-wide">Final Payout:</span>
-                    <div class="relative flex items-center">
+                    <div class="relative flex items-center blur-financial">
                         <span class="absolute left-1.5 text-slate-400 font-bold text-[10px]">₹</span>
                         <input type="number" step="1" id="audit_override_input_${c.employee_id}" 
                             value="${c.final_payable_amount}" 
-                            class="w-24 pl-4 pr-1 py-0.5 bg-white border border-slate-300 rounded font-black text-slate-900 text-xs outline-none focus:ring-1 focus:ring-indigo-500" />
+                            class="w-24 pl-4 pr-1 py-0.5 bg-white border border-slate-300 rounded font-black text-slate-900 text-xs outline-none focus:ring-1 focus:ring-indigo-500 blur-financial" />
                     </div>
                     <button onclick="saveAuditPayoutOverride('${c.employee_id}', '${state.selectedPayrollMonth || ''}')" 
                         class="px-2 py-0.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded font-bold text-[9px] cursor-pointer transition-all shadow-2xs">

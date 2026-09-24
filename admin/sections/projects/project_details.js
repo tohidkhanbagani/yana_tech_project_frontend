@@ -138,7 +138,7 @@ function getProjectCommandCenterTemplate() {
                         <div>
                             <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Billing & Cost Type</p>
                             <div class="flex items-center gap-2 mt-1.5">
-                                <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-slate-50 border border-slate-200 text-[10px] font-bold text-slate-600">
+                                <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-slate-50 border border-slate-200 text-[10px] font-bold text-slate-600 blur-financial">
                                     <i data-lucide="indian-rupee" class="w-3 h-3"></i> 
                                     ${(function () {
                                         if (p.cost_type === "Fixed Price") {

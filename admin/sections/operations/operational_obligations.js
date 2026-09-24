@@ -4,14 +4,14 @@
  */
 
 function safeFormatCurrency(val) {
-  if (typeof window.formatCurrencyPlain === 'function') {
-    return window.formatCurrencyPlain(val);
-  }
   if (typeof window.formatCurrency === 'function') {
     return window.formatCurrency(val);
   }
+  if (typeof window.formatCurrencyPlain === 'function') {
+    return `<span class="blur-financial font-mono">${window.formatCurrencyPlain(val)}</span>`;
+  }
   const n = parseFloat(val || 0);
-  return '₹' + (isNaN(n) ? '0.00' : n.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
+  return `<span class="blur-financial font-mono">₹${(isNaN(n) ? '0.00' : n.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }))}</span>`;
 }
 
 function getAdminObligationsTemplate() {
@@ -64,7 +64,7 @@ function getAdminObligationsTemplate() {
         <div class="bg-white rounded-2xl p-5 border border-slate-200 shadow-xs flex items-center justify-between">
           <div>
             <div class="text-xs font-bold uppercase tracking-wider text-slate-400">Total Monthly Commitments</div>
-            <div class="text-2xl font-black text-slate-800 mt-1 font-mono">${safeFormatCurrency(totalMonthlyCost)}</div>
+            <div class="text-2xl font-black text-slate-800 mt-1 font-mono blur-financial">${safeFormatCurrency(totalMonthlyCost)}</div>
             <div class="text-[11px] text-slate-500 mt-0.5">${obligations.length} Active Obligations</div>
           </div>
           <div class="w-12 h-12 rounded-2xl bg-indigo-50 text-brand-primary flex items-center justify-center">
@@ -149,7 +149,7 @@ function getAdminObligationsTemplate() {
                     <td class="py-3.5 px-6 font-semibold text-slate-600">
                       Day ${o.due_day} of month
                     </td>
-                    <td class="py-3.5 px-6 text-right font-mono font-bold text-slate-800">
+                    <td class="py-3.5 px-6 text-right font-mono font-bold text-slate-800 blur-financial">
                       ${safeFormatCurrency(o.amount)}
                     </td>
                     <td class="py-3.5 px-6 font-mono text-slate-600">
@@ -527,7 +527,7 @@ async function checkPendingObligationAlerts(role = "Admin") {
                           ${ob.status}
                         </span>
                       </div>
-                      <p class="text-xs text-slate-500 mt-1">Due Day: <span class="font-bold text-slate-700">Day ${ob.due_day} of month</span> • Amount: <span class="font-mono font-bold text-slate-900">${safeFormatCurrency(ob.amount)}</span></p>
+                      <p class="text-xs text-slate-500 mt-1">Due Day: <span class="font-bold text-slate-700">Day ${ob.due_day} of month</span> • Amount: <span class="font-mono font-bold text-slate-900 blur-financial">${safeFormatCurrency(ob.amount)}</span></p>
                     </div>
 
                     <button onclick="openCompleteObligationModal('${ob.id}', '${ob.title.replace(/'/g, "\\'")}', ${ob.amount}); document.getElementById('persistent-obligation-alert-modal')?.remove();" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-md shrink-0 flex items-center justify-center cursor-pointer transition-all hover:scale-102">

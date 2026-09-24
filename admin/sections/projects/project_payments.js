@@ -29,8 +29,9 @@
             project_breakdown: []
         };
 
-        const formatCurrency = window.formatCurrency || function (val) {
-            return "₹" + Number(val || 0).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        const formatCurrency = function (val) {
+            if (typeof window.formatCurrency === "function") return window.formatCurrency(val);
+            return `<span class="blur-financial font-mono">₹${Number(val || 0).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>`;
         };
 
         const activeTab = window.universalPaymentState.activeTab;
@@ -81,7 +82,7 @@
                             <i data-lucide="layers" class="w-4 h-4"></i>
                         </div>
                     </div>
-                    <div class="text-2xl font-black text-slate-800 tracking-tight">${formatCurrency(summary.total_contract_value)}</div>
+                    <div class="text-2xl font-black text-slate-800 tracking-tight blur-financial">${formatCurrency(summary.total_contract_value)}</div>
                     <div class="flex items-center gap-1.5 mt-2 text-[11px] text-slate-500 font-medium">
                         <span class="text-indigo-600 font-bold">${(state.allProjects || []).filter(p => p.cost_type !== "Internal / Non-Billable").length}</span> Billable Active Projects
                     </div>
@@ -95,7 +96,7 @@
                             <i data-lucide="arrow-down-left" class="w-4 h-4"></i>
                         </div>
                     </div>
-                    <div class="text-2xl font-black text-emerald-600 tracking-tight">${formatCurrency(summary.total_collected)}</div>
+                    <div class="text-2xl font-black text-emerald-600 tracking-tight blur-financial">${formatCurrency(summary.total_collected)}</div>
                     <div class="flex items-center gap-1.5 mt-2 text-[11px] text-slate-500 font-medium">
                         <span class="text-emerald-600 font-bold">${(state.universalPayments || []).length}</span> Completed Transactions
                     </div>
@@ -109,7 +110,7 @@
                             <i data-lucide="clock" class="w-4 h-4"></i>
                         </div>
                     </div>
-                    <div class="text-2xl font-black text-amber-600 tracking-tight">${formatCurrency(summary.total_outstanding)}</div>
+                    <div class="text-2xl font-black text-amber-600 tracking-tight blur-financial">${formatCurrency(summary.total_outstanding)}</div>
                     <div class="flex items-center gap-1.5 mt-2 text-[11px] text-slate-500 font-medium">
                         <span class="text-amber-600 font-bold">${summary.pending_receivables_count}</span> Pending Milestones / Retainers
                     </div>
@@ -123,7 +124,7 @@
                             <i data-lucide="alert-triangle" class="w-4 h-4"></i>
                         </div>
                     </div>
-                    <div class="text-2xl font-black text-rose-600 tracking-tight">${formatCurrency(summary.overdue_receivables_amount)}</div>
+                    <div class="text-2xl font-black text-rose-600 tracking-tight blur-financial">${formatCurrency(summary.overdue_receivables_amount)}</div>
                     <div class="flex items-center gap-1.5 mt-2 text-[11px] text-slate-500 font-medium">
                         <span class="text-rose-600 font-bold ${summary.overdue_receivables_count > 0 ? 'animate-pulse' : ''}">${summary.overdue_receivables_count}</span> Overdue Invoices Requiring Action
                     </div>
@@ -233,7 +234,7 @@
     function renderUniversalProjectOverview() {
         const summary = state.universalPaymentsSummary || {};
         const breakdown = summary.project_breakdown || [];
-        const formatCurrency = window.formatCurrency || (v => "₹" + Number(v || 0).toLocaleString("en-IN"));
+        const formatCurrency = window.formatCurrency || (v => `<span class="blur-financial font-mono">₹${Number(v || 0).toLocaleString("en-IN")}</span>`);
 
         const filtered = breakdown.filter(p => {
             const matchesSearch = !window.universalPaymentState.searchQuery ||
@@ -300,7 +301,7 @@
                                     </td>
                                     <td>
                                         ${isRetainer ? `
-                                            <span class="font-bold text-emerald-600 text-xs">${formatCurrency(p.billing_rate)}</span>
+                                            <span class="font-bold text-emerald-600 text-xs blur-financial">${formatCurrency(p.billing_rate)}</span>
                                             <span class="text-[10px] text-slate-400 uppercase">/${p.billing_cycle || 'Monthly'}</span>
                                         ` : `
                                             <span class="text-xs text-slate-600 font-medium">${p.billing_cycle || 'Milestone / Upfront'}</span>
@@ -316,11 +317,11 @@
                                             <span class="text-slate-400 text-xs italic">N/A</span>
                                         `}
                                     </td>
-                                    <td class="font-bold text-slate-800 text-xs">${formatCurrency(p.client_cost)}</td>
+                                    <td class="font-bold text-slate-800 text-xs blur-financial">${formatCurrency(p.client_cost)}</td>
                                     <td>
                                         <div class="w-40">
                                             <div class="flex justify-between text-[10px] font-bold mb-1">
-                                                <span class="text-emerald-600">${formatCurrency(p.total_paid)}</span>
+                                                <span class="text-emerald-600 blur-financial">${formatCurrency(p.total_paid)}</span>
                                                 <span class="text-slate-400">${percentCollected}%</span>
                                             </div>
                                             <div class="w-full bg-slate-100 rounded-full h-1.5 overflow-hidden">
@@ -352,7 +353,7 @@
     // =========================================================================
     function renderUniversalPaymentsTable() {
         const rawPmts = state.universalPayments || [];
-        const formatCurrency = window.formatCurrency || (v => "₹" + Number(v || 0).toLocaleString("en-IN"));
+        const formatCurrency = window.formatCurrency || (v => `<span class="blur-financial font-mono">₹${Number(v || 0).toLocaleString("en-IN")}</span>`);
 
         const filtered = rawPmts.filter(pm => {
             const matchesSearch = !window.universalPaymentState.searchQuery ||
@@ -409,7 +410,7 @@
                                     </a>
                                 </td>
                                 <td class="text-slate-600 text-xs text-left">${pm.client_name || 'Direct / Internal'}</td>
-                                <td class="font-black text-emerald-600 text-left whitespace-nowrap text-xs">
+                                <td class="font-black text-emerald-600 text-left whitespace-nowrap text-xs blur-financial">
                                     ${formatCurrency(pm.amount)}
                                 </td>
                                 <td class="text-left">
@@ -447,7 +448,7 @@
     // =========================================================================
     function renderUniversalScheduledPaymentsTable() {
         const rawRecs = state.universalReceivables || [];
-        const formatCurrency = window.formatCurrency || (v => "₹" + Number(v || 0).toLocaleString("en-IN"));
+        const formatCurrency = window.formatCurrency || (v => `<span class="blur-financial font-mono">₹${Number(v || 0).toLocaleString("en-IN")}</span>`);
         
         const today = new Date();
         today.setHours(0, 0, 0, 0);
@@ -560,7 +561,7 @@
                                     <td class="font-mono text-xs text-left whitespace-nowrap ${diffDays < 0 && !r.is_done ? 'text-rose-600 font-bold' : diffDays <= 7 && !r.is_done ? 'text-amber-700 font-bold' : 'text-slate-600'}">
                                         ${r.due_date ? new Date(r.due_date).toLocaleDateString() : 'N/A'}
                                     </td>
-                                    <td class="font-bold text-left whitespace-nowrap ${diffDays < 0 && !r.is_done ? 'text-rose-700' : 'text-slate-800'}">${formatCurrency(r.amount)}</td>
+                                    <td class="font-bold text-left whitespace-nowrap blur-financial ${diffDays < 0 && !r.is_done ? 'text-rose-700' : 'text-slate-800'}">${formatCurrency(r.amount)}</td>
                                     <td class="text-left whitespace-nowrap">${statusBadge}</td>
                                     <td class="text-right whitespace-nowrap">
                                         <div class="flex items-center justify-end gap-1.5" onclick="event.stopPropagation()">
@@ -594,7 +595,7 @@
             return;
         }
 
-        const formatCurrency = window.formatCurrency || (v => "₹" + Number(v || 0).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
+        const formatCurrency = window.formatCurrency || (v => `<span class="blur-financial font-mono">₹${Number(v || 0).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>`);
         const pDate = pm.payment_date ? new Date(pm.payment_date).toLocaleDateString("en-IN", { year: "numeric", month: "long", day: "numeric" }) : "N/A";
 
         const html = `
@@ -608,7 +609,7 @@
                         </span>
                         <span class="text-[10px] font-mono text-slate-400">ID: ${paymentId.substring(0, 8)}</span>
                     </div>
-                    <div class="text-3xl font-black text-emerald-400 tracking-tight mb-1">${formatCurrency(pm.amount)}</div>
+                    <div class="text-3xl font-black text-emerald-400 tracking-tight mb-1 blur-financial">${formatCurrency(pm.amount)}</div>
                     <p class="text-xs text-slate-300 font-medium">Logged on ${pDate}</p>
                 </div>
 
@@ -679,7 +680,7 @@
             return;
         }
 
-        const formatCurrency = window.formatCurrency || (v => "₹" + Number(v || 0).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
+        const formatCurrency = window.formatCurrency || (v => `<span class="blur-financial font-mono">₹${Number(v || 0).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>`);
         const dueDateStr = r.due_date ? new Date(r.due_date).toLocaleDateString("en-IN", { year: "numeric", month: "long", day: "numeric" }) : "N/A";
         
         const today = new Date();
@@ -706,7 +707,7 @@
                         </span>
                         <span class="text-[10px] font-mono text-slate-400">ID: ${receivableId.substring(0, 8)}</span>
                     </div>
-                    <div class="text-3xl font-black ${isOverdue ? 'text-rose-300' : isNearing ? 'text-amber-300' : 'text-emerald-400'} tracking-tight mb-1">${formatCurrency(r.amount)}</div>
+                    <div class="text-3xl font-black blur-financial ${isOverdue ? 'text-rose-300' : isNearing ? 'text-amber-300' : 'text-emerald-400'} tracking-tight mb-1">${formatCurrency(r.amount)}</div>
                     <p class="text-xs text-slate-200 font-medium">Due on ${dueDateStr}</p>
                 </div>
 

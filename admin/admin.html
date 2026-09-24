@@ -4,7 +4,6 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <base href="/admin/">
   <title>Yana OS | Executive Control Center</title>
 
   <!-- Google Fonts: Inter -->
@@ -326,13 +325,16 @@
       @apply px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider shadow-sm border;
     }
 
-    /* Privacy Mode: Financial Blur Utilities */
+    /* Privacy Mode: Financial Blur Utilities (PRB-092) */
     .blur-financial {
-      transition: filter 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      transition: filter 0.25s cubic-bezier(0.4, 0, 0.2, 1);
     }
 
-    body.hide-financials .blur-financial {
-      filter: blur(7px) !important;
+    body.hide-financials .blur-financial,
+    body.hide-financials .blur-financial-container .blur-target,
+    body.hide-financials input.blur-financial,
+    body.hide-financials .blur-financial input {
+      filter: blur(7.5px) !important;
       user-select: none !important;
       pointer-events: none !important;
     }
@@ -340,7 +342,7 @@
     body.hide-financials canvas {
       filter: blur(8px) !important;
       pointer-events: none !important;
-      transition: filter 0.3s ease;
+      transition: filter 0.25s ease;
     }
 
     /* All-in-One Non-Scrollable Admin Sidebar Rules (PRB-090) */

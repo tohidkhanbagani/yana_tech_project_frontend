@@ -4,7 +4,10 @@ async function loadDashboardData() {
   if (isDashboardLoading) return;
   isDashboardLoading = true;
   try {
-    const [summary, feed, analyticsSuite, projects, financials, workforce, managerSummary, metadataAnalytics] =
+    state.projectSettlementPeriod = state.projectSettlementPeriod || "month";
+    const settlementQuery = `?period=${state.projectSettlementPeriod}${state.projectSettlementTarget ? `&target_date=${state.projectSettlementTarget}` : ''}`;
+
+    const [summary, feed, analyticsSuite, projects, financials, workforce, managerSummary, metadataAnalytics, settlement] =
       await Promise.all([
         apiFetch("/dashboard/v2/summary").catch(() => null),
         apiFetch("/dashboard/live-feed").catch(() => null),
@@ -14,6 +17,7 @@ async function loadDashboardData() {
         apiFetch("/dashboard/workforce").catch(() => null),
         apiFetch("/dashboard/manager/summary").catch(() => null),
         apiFetch("/dashboard/metadata-analytics").catch(() => null),
+        apiFetch("/dashboard/project-settlement" + settlementQuery).catch(() => null),
       ]);
 
     state.dashboardData = {
@@ -25,6 +29,7 @@ async function loadDashboardData() {
       workforce: workforce || null,
       managerSummary: managerSummary || null,
       metadataAnalytics: metadataAnalytics || { sprints: [], modules: [], features: [] },
+      settlement: settlement || null,
     };
 
     // Pre-fetch daily report cache if currently viewing report or if not cached yet
@@ -108,6 +113,47 @@ function handleSidebarSearch(val) {
     if (typeof renderAdminApp === 'function') renderAdminApp();
   }
 }
+
+async function switchSettlementPeriod(period, targetDate = null) {
+  state.projectSettlementPeriod = period;
+  state.projectSettlementTarget = targetDate;
+  try {
+    const query = `?period=${period}${targetDate ? `&target_date=${targetDate}` : ''}`;
+    const data = await apiFetch("/dashboard/project-settlement" + query);
+    if (!state.dashboardData) state.dashboardData = {};
+    state.dashboardData.settlement = data;
+    if (typeof renderAdminApp === 'function') {
+      renderAdminApp();
+    }
+  } catch (err) {
+    console.error("Failed to switch settlement period:", err);
+    if (typeof showToast === 'function') showToast("Failed to load period settlement data.", "error");
+  }
+}
+window.switchSettlementPeriod = switchSettlementPeriod;
+
+function handleSettlementSearch(val) {
+  state.projectSettlementSearch = val;
+  const searchInput = document.getElementById("settlementSearch");
+  if (searchInput) {
+    const cursor = searchInput.selectionStart;
+    if (typeof renderAdminApp === 'function') renderAdminApp();
+    const updatedInput = document.getElementById("settlementSearch");
+    if (updatedInput) {
+      updatedInput.focus();
+      updatedInput.setSelectionRange(cursor, cursor);
+    }
+  } else {
+    if (typeof renderAdminApp === 'function') renderAdminApp();
+  }
+}
+window.handleSettlementSearch = handleSettlementSearch;
+
+function handleSettlementTypeFilter(val) {
+  state.projectSettlementTypeFilter = val;
+  if (typeof renderAdminApp === 'function') renderAdminApp();
+}
+window.handleSettlementTypeFilter = handleSettlementTypeFilter;
 
 async function fetchAndRenderDailyReport() {
   const dynamicArea = document.getElementById("daily-report-dynamic-area");
@@ -464,96 +510,226 @@ function getAdminDashboardTemplate() {
     `;
   }
 
-  const mainExecutionSectionHtml = `
-    <div class="grid grid-cols-1 lg:grid-cols-12 gap-5 mb-5">
-      <!-- Left: Active Portfolio Control Center (7 cols) -->
-      <div class="lg:col-span-7 bg-white rounded-2xl p-4 border border-slate-200/80 shadow-xs flex flex-col">
-        <div class="flex justify-between items-center mb-3">
-          <div>
-            <span class="text-[9px] font-black text-slate-400 uppercase tracking-widest">Portfolio Execution Matrix</span>
-            <h4 class="text-base font-black text-slate-800">Active Track Health & Costs</h4>
+  // 3. PROJECT SETTLEMENT & CASH-FLOW CONSOLE
+  const settlementData = state.dashboardData?.settlement || {
+    period: state.projectSettlementPeriod || 'month',
+    period_label: 'Current Month',
+    target_date: '',
+    prev_target: '',
+    next_target: '',
+    kpis: {
+      total_hours_logged: 0,
+      total_employee_burn: 0,
+      total_payments_received: 0,
+      total_scheduled_amount: 0,
+      net_period_cashflow: 0,
+      active_projects_count: 0
+    },
+    projects: []
+  };
+
+  const sKpis = settlementData.kpis || {};
+  const currentPeriod = settlementData.period || state.projectSettlementPeriod || 'month';
+  const settlementSearchQuery = (state.projectSettlementSearch || '').toLowerCase().trim();
+  const settlementTypeFilter = state.projectSettlementTypeFilter || 'ALL';
+
+  const filteredSettlementProjects = (settlementData.projects || []).filter(p => {
+    // Only show projects that have tasks logged into them (at least 1 entry)
+    if (!p.task_count || p.task_count <= 0) return false;
+
+    const matchesSearch = !settlementSearchQuery || 
+      (p.name || '').toLowerCase().includes(settlementSearchQuery) || 
+      (p.client || '').toLowerCase().includes(settlementSearchQuery);
+    const matchesType = settlementTypeFilter === 'ALL' || 
+      (settlementTypeFilter === 'Content' && p.project_type === 'Content') ||
+      (settlementTypeFilter === 'Engineering' && p.project_type !== 'Content');
+    return matchesSearch && matchesType;
+  });
+
+  const settlementConsoleHtml = `
+    <div class="lg:col-span-7 bg-white rounded-2xl p-4 border border-slate-200/80 shadow-xs flex flex-col">
+      <!-- Header & Period Switcher -->
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3 pb-3 border-b border-slate-100">
+        <div>
+          <div class="flex items-center gap-2 mb-0.5">
+            <span class="text-[9px] font-black text-slate-400 uppercase tracking-widest">Executive Settlement Matrix</span>
+            <span class="px-1.5 py-0.2 rounded text-[8px] font-black bg-indigo-50 text-indigo-700 border border-indigo-200 uppercase">Cash-Flow Ledger</span>
           </div>
-          <span class="px-2 py-0.5 bg-indigo-50 border border-indigo-100 text-indigo-700 text-[9px] font-black uppercase rounded-md">
-            ${activeControlCenter.length} Active Projects
-          </span>
+          <h4 class="text-base font-black text-slate-800 flex items-center gap-2">
+            <i data-lucide="calculator" class="w-4 h-4 text-indigo-600"></i> Project Work & Financial Settlement
+            <span class="text-[10px] font-bold text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">${filteredSettlementProjects.length} Active</span>
+          </h4>
         </div>
 
-        <div class="space-y-3 max-h-[520px] overflow-y-auto pr-1 custom-scrollbar flex-1">
-          ${activeControlCenter.map(p => {
-            const healthDetails = getHealthDetails(p.name);
-            const healthScore = healthDetails ? healthDetails.score : 75;
-            const budgetPct = p.budget > 0 ? Math.min(100, Math.round((p.accumulated_cost / p.budget) * 100)) : (p.accumulated_cost > 0 ? 100 : 0);
-
-            let ringColor = 'text-emerald-500';
-            if (healthScore < 50) ringColor = 'text-rose-500';
-            else if (healthScore < 80) ringColor = 'text-amber-500';
-
-            let healthPillColor = 'bg-emerald-50 text-emerald-700 border-emerald-100';
-            if (healthScore < 50) healthPillColor = 'bg-rose-50 text-rose-700 border-rose-100';
-            else if (healthScore < 80) healthPillColor = 'bg-amber-50 text-amber-700 border-amber-100';
-
-            let mathJustificationHtml = '';
-            if (healthDetails) {
-              const totalM = healthDetails.milestones_total || 0;
-              const completedM = healthDetails.milestones_completed || 0;
-              const compRate = healthDetails.completion_rate_percent || 0;
-              const budgetRatio = healthDetails.budget_ratio_percent || 0;
-              const budgetScore = healthDetails.budget_score_percent || 0;
-
-              mathJustificationHtml = `
-                <div class="mt-2.5 pt-2 border-t border-slate-100 flex flex-col gap-1 text-[9px]">
-                  <div class="flex justify-between items-center bg-slate-50 p-2 rounded-lg border border-slate-100">
-                    <span class="text-slate-500 font-semibold">Milestones: <strong>${completedM}/${totalM}</strong> (${(compRate * 0.5).toFixed(1)}%)</span>
-                    <span class="text-slate-500 font-semibold">Budget Spend Ratio: <strong>${budgetRatio}%</strong> (${(budgetScore * 0.5).toFixed(1)}%)</span>
-                    <code class="px-1.5 py-0.2 bg-slate-200/60 rounded text-slate-700 font-mono font-bold">Score = ${healthScore}%</code>
-                  </div>
-                </div>
-              `;
-            }
-
-            return `
-              <div class="bg-slate-50/70 hover:bg-slate-50 p-3.5 rounded-xl border border-slate-200/60 transition-all">
-                <div class="flex items-center justify-between gap-3 mb-2">
-                  <div class="flex items-center gap-3">
-                    <div class="relative w-9 h-9 shrink-0 flex items-center justify-center bg-white rounded-full border border-slate-200 shadow-2xs">
-                      <svg class="w-8 h-8 transform -rotate-90" viewBox="0 0 36 36">
-                        <path class="text-slate-100" stroke-width="3" stroke="currentColor" fill="none" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
-                        <path class="${ringColor} transition-all duration-700" stroke-dasharray="${healthScore}, 100" stroke-width="3.2" stroke-linecap="round" stroke="currentColor" fill="none" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
-                      </svg>
-                      <span class="absolute text-[9px] font-black text-slate-800">${healthScore}%</span>
-                    </div>
-                    <div>
-                      <div class="flex items-center gap-2">
-                        <h5 class="font-black text-slate-800 text-xs">${p.name}</h5>
-                        <span class="px-1.5 py-0.2 rounded text-[8px] font-black uppercase ${healthPillColor}">${healthScore >= 80 ? 'Optimized' : healthScore >= 50 ? 'Steady' : 'Vulnerable'}</span>
-                      </div>
-                      <p class="text-[9px] text-slate-400 font-bold uppercase">Client: ${p.client || 'Internal'} &bull; Phase: ${p.current_phase || 'General'}</p>
-                    </div>
-                  </div>
-
-                  <div class="text-right text-[9px]">
-                    <div class="font-bold text-slate-700">Cost: <span class="blur-financial font-mono">₹${formatNumber(p.accumulated_cost)}</span> / <span class="blur-financial font-mono">₹${formatNumber(p.budget)}</span></div>
-                    <div class="font-bold text-indigo-600">Billed: <span class="blur-financial font-mono">₹${formatNumber(p.billed_to_date)}</span> / <span class="blur-financial font-mono">₹${formatNumber(p.client_cost)}</span></div>
-                  </div>
-                </div>
-
-                <div>
-                  <div class="flex justify-between items-center text-[8px] font-black uppercase text-slate-400 mb-0.5">
-                    <span>Financial Burn</span>
-                    <span class="${budgetPct > 90 ? 'text-rose-500 font-black' : 'text-slate-600'}">${budgetPct}%</span>
-                  </div>
-                  <div class="h-1 bg-slate-200/80 rounded-full overflow-hidden">
-                    <div class="h-full ${budgetPct > 90 ? 'bg-rose-500' : 'bg-indigo-600'} transition-all duration-700" style="width: ${budgetPct}%"></div>
-                  </div>
-                </div>
-
-                ${mathJustificationHtml}
-              </div>
-            `;
-          }).join('')}
-          ${activeControlCenter.length === 0 ? '<p class="text-xs text-slate-400 font-bold uppercase text-center py-6">No active projects logged</p>' : ''}
+        <!-- Period Toggle Pill: Day / Week / Month -->
+        <div class="flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200/80 shrink-0">
+          <button type="button" onclick="switchSettlementPeriod('day')" class="px-2.5 py-1 text-[10px] font-black uppercase rounded-lg transition-all ${currentPeriod === 'day' ? 'bg-indigo-600 text-white shadow-xs' : 'text-slate-500 hover:text-slate-800'}">
+            Day
+          </button>
+          <button type="button" onclick="switchSettlementPeriod('week')" class="px-2.5 py-1 text-[10px] font-black uppercase rounded-lg transition-all ${currentPeriod === 'week' ? 'bg-indigo-600 text-white shadow-xs' : 'text-slate-500 hover:text-slate-800'}">
+            Week
+          </button>
+          <button type="button" onclick="switchSettlementPeriod('month')" class="px-2.5 py-1 text-[10px] font-black uppercase rounded-lg transition-all ${currentPeriod === 'month' ? 'bg-indigo-600 text-white shadow-xs' : 'text-slate-500 hover:text-slate-800'}">
+            Month
+          </button>
         </div>
       </div>
+
+      <!-- Date Navigator & Period KPIs -->
+      <div class="flex flex-wrap items-center justify-between gap-2 mb-3 bg-slate-50/80 p-2.5 rounded-xl border border-slate-100">
+        <!-- Date Navigator -->
+        <div class="flex items-center gap-1.5">
+          <button type="button" onclick="switchSettlementPeriod('${currentPeriod}', '${settlementData.prev_target}')" class="p-1 text-slate-500 hover:text-slate-900 bg-white hover:bg-slate-100 rounded-lg border border-slate-200 shadow-2xs cursor-pointer transition-colors" title="Previous ${currentPeriod}">
+            <i data-lucide="chevron-left" class="w-3.5 h-3.5"></i>
+          </button>
+          <span class="px-2.5 py-1 bg-white border border-slate-200 rounded-lg text-xs font-black text-slate-800 tracking-tight shadow-2xs">
+            ${settlementData.period_label || 'Current Period'}
+          </span>
+          <button type="button" onclick="switchSettlementPeriod('${currentPeriod}', '${settlementData.next_target}')" class="p-1 text-slate-500 hover:text-slate-900 bg-white hover:bg-slate-100 rounded-lg border border-slate-200 shadow-2xs cursor-pointer transition-colors" title="Next ${currentPeriod}">
+            <i data-lucide="chevron-right" class="w-3.5 h-3.5"></i>
+          </button>
+          <button type="button" onclick="switchSettlementPeriod('${currentPeriod}', null)" class="px-2 py-1 text-[9px] font-bold text-indigo-600 hover:text-indigo-800 hover:underline cursor-pointer">
+            Current
+          </button>
+        </div>
+
+        <!-- Period KPI Summary Badges -->
+        <div class="flex items-center gap-2 text-[10px]">
+          <div class="flex items-center gap-1 bg-white px-2 py-1 rounded-lg border border-slate-200">
+            <span class="text-slate-400 font-bold uppercase text-[8px]">Burn:</span>
+            <span class="font-black text-slate-800 font-mono blur-financial">₹${formatNumberPlain(sKpis.total_employee_burn)}</span>
+          </div>
+          <div class="flex items-center gap-1 bg-white px-2 py-1 rounded-lg border border-slate-200">
+            <span class="text-slate-400 font-bold uppercase text-[8px]">Inflow:</span>
+            <span class="font-black text-emerald-600 font-mono blur-financial">₹${formatNumberPlain(sKpis.total_payments_received)}</span>
+          </div>
+          <div class="flex items-center gap-1 bg-white px-2 py-1 rounded-lg border border-slate-200">
+            <span class="text-slate-400 font-bold uppercase text-[8px]">Net:</span>
+            <span class="font-black ${sKpis.net_period_cashflow >= 0 ? 'text-emerald-600' : 'text-rose-600'} font-mono blur-financial">
+              ${sKpis.net_period_cashflow >= 0 ? '+' : '-'}₹${formatNumberPlain(Math.abs(sKpis.net_period_cashflow))}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Filter & Search Bar -->
+      <div class="flex items-center gap-2 mb-3">
+        <div class="relative flex-1">
+          <span class="absolute inset-y-0 left-0 pl-2.5 flex items-center pointer-events-none text-slate-400">
+            <i data-lucide="search" class="w-3 h-3"></i>
+          </span>
+          <input type="text" id="settlementSearch" placeholder="Search project or client..." value="${state.projectSettlementSearch || ''}" oninput="handleSettlementSearch(this.value)" class="block w-full pl-7 pr-2.5 py-1.5 border border-slate-200 rounded-xl bg-slate-50 text-slate-800 text-xs focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-indigo-500">
+        </div>
+        <div class="flex items-center bg-slate-100 p-0.5 rounded-lg border border-slate-200 shrink-0 text-[9px] font-bold">
+          <button type="button" onclick="handleSettlementTypeFilter('ALL')" class="px-2 py-1 rounded transition-all ${settlementTypeFilter === 'ALL' ? 'bg-white text-slate-900 font-black shadow-2xs' : 'text-slate-500 hover:text-slate-800'}">All</button>
+          <button type="button" onclick="handleSettlementTypeFilter('Engineering')" class="px-2 py-1 rounded transition-all ${settlementTypeFilter === 'Engineering' ? 'bg-white text-slate-900 font-black shadow-2xs' : 'text-slate-500 hover:text-slate-800'}">Dev</button>
+          <button type="button" onclick="handleSettlementTypeFilter('Content')" class="px-2 py-1 rounded transition-all ${settlementTypeFilter === 'Content' ? 'bg-white text-slate-900 font-black shadow-2xs' : 'text-slate-500 hover:text-slate-800'}">Content</button>
+        </div>
+      </div>
+
+      <!-- Scrollable Project Cards List -->
+      <div class="space-y-2.5 max-h-[520px] overflow-y-auto pr-1 custom-scrollbar flex-1">
+        ${filteredSettlementProjects.map(p => {
+          const cd = p.content_deliverables || {};
+          const isContent = cd.is_content || cd.reels > 0 || cd.posters > 0 || cd.long_videos > 0 || (p.project_type || '').toLowerCase() === 'content';
+          const sched = p.scheduled_receivable || {};
+          const hasActivity = p.hours_logged > 0 || p.employee_cost > 0 || p.payments_received > 0;
+
+          return `
+            <div class="bg-slate-50/70 hover:bg-slate-50 p-3 rounded-xl border ${hasActivity ? 'border-slate-200' : 'border-slate-200/60 opacity-80'} transition-all">
+              <!-- Project Header -->
+              <div class="flex items-start justify-between gap-2 mb-2">
+                <div class="min-w-0 flex-1">
+                  <div class="flex items-center gap-2 flex-wrap mb-0.5">
+                    <h5 class="font-black text-slate-900 text-xs truncate">${p.name}</h5>
+                    ${isContent ? `
+                      <span class="px-1.5 py-0.2 rounded text-[8px] font-black uppercase bg-purple-50 text-purple-700 border border-purple-200 flex items-center gap-1">
+                        <i data-lucide="clapperboard" class="w-2.5 h-2.5"></i> Content
+                      </span>
+                    ` : `
+                      <span class="px-1.5 py-0.2 rounded text-[8px] font-black uppercase bg-blue-50 text-blue-700 border border-blue-200 flex items-center gap-1">
+                        <i data-lucide="code" class="w-2.5 h-2.5"></i> Engineering
+                      </span>
+                    `}
+                  </div>
+                  <p class="text-[9px] text-slate-400 font-bold uppercase">Client: <span class="text-slate-600">${p.client || 'N/A'}</span> &bull; Model: ${p.cost_type || 'Fixed'}</p>
+                </div>
+
+                <!-- Margin Tag -->
+                <div class="text-right shrink-0">
+                  <span class="px-2 py-0.5 rounded text-[9px] font-black uppercase font-mono blur-financial ${p.net_margin >= 0 ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-rose-50 text-rose-700 border border-rose-200'}">
+                    ${p.net_margin >= 0 ? '+' : '-'}₹${formatNumberPlain(Math.abs(p.net_margin))}
+                  </span>
+                </div>
+              </div>
+
+              <!-- Metrics Grid (3 Key Pillars: Work Done | Staff Burn | Inflow/Scheduled) -->
+              <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 text-[9px] bg-white p-2.5 rounded-lg border border-slate-100">
+                <!-- 1. Work Logged (Smart: Hours + Content Assets) -->
+                <div class="flex flex-col justify-between">
+                  <span class="text-[8px] font-black uppercase text-slate-400 tracking-wider">Work Logged</span>
+                  <div class="mt-1">
+                    <span class="font-black text-slate-800 text-xs">${p.hours_logged}h</span>
+                    <span class="text-slate-400 font-bold">(${p.task_count} entries)</span>
+                  </div>
+                  ${isContent ? `
+                    <div class="flex flex-wrap gap-1 mt-1.5 text-[8px] font-black">
+                      <span class="px-1.5 py-0.5 bg-purple-50 text-purple-700 rounded border border-purple-100">🎬 ${cd.reels || 0} Reels</span>
+                      <span class="px-1.5 py-0.5 bg-blue-50 text-blue-700 rounded border border-blue-100">🖼️ ${cd.posters || 0} Posters</span>
+                      ${cd.long_videos > 0 ? `<span class="px-1.5 py-0.5 bg-amber-50 text-amber-700 rounded border border-amber-100">📹 ${cd.long_videos} Videos</span>` : ''}
+                    </div>
+                  ` : ''}
+                </div>
+
+                <!-- 2. Staff Cost Incurred (Burn) -->
+                <div class="flex flex-col justify-between border-t sm:border-t-0 sm:border-l border-slate-100 pt-1.5 sm:pt-0 sm:pl-2.5">
+                  <span class="text-[8px] font-black uppercase text-slate-400 tracking-wider">Employee Burn</span>
+                  <div class="mt-1">
+                    <span class="font-black text-rose-600 text-xs font-mono blur-financial">₹${formatNumberPlain(p.employee_cost)}</span>
+                  </div>
+                  <span class="text-[8px] text-slate-400 font-medium">Actual staff expense</span>
+                </div>
+
+                <!-- 3. Payments Received & Scheduled Date -->
+                <div class="flex flex-col justify-between border-t sm:border-t-0 sm:border-l border-slate-100 pt-1.5 sm:pt-0 sm:pl-2.5">
+                  <span class="text-[8px] font-black uppercase text-slate-400 tracking-wider">Payments & Receivables</span>
+                  <div class="mt-1">
+                    ${p.payments_received > 0 ? `
+                      <span class="font-black text-emerald-600 text-xs font-mono blur-financial">₹${formatNumberPlain(p.payments_received)}</span>
+                      <span class="text-[8px] text-emerald-700 font-bold ml-1">Received (${p.payments_count})</span>
+                    ` : `
+                      <span class="font-black text-slate-400 text-xs font-mono blur-financial">₹0 Received</span>
+                    `}
+                  </div>
+                  <!-- Scheduled Payment Info with Day and Date -->
+                  <div class="mt-1">
+                    ${sched.has_scheduled ? `
+                      <div class="flex items-center gap-1 text-[8px] font-bold text-amber-800 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200/60">
+                        <i data-lucide="calendar" class="w-2.5 h-2.5 text-amber-600 shrink-0"></i>
+                        <span class="truncate">Due: <strong>${sched.formatted_date}</strong> (<span class="blur-financial font-mono">₹${formatNumberPlain(sched.amount)}</span>)</span>
+                      </div>
+                    ` : `
+                      <span class="text-[8px] text-slate-400 font-medium italic">No scheduled payment</span>
+                    `}
+                  </div>
+                </div>
+              </div>
+            </div>
+          `;
+        }).join('')}
+        ${filteredSettlementProjects.length === 0 ? `
+          <div class="text-center py-8 bg-slate-50 rounded-xl border border-slate-100">
+            <i data-lucide="inbox" class="w-6 h-6 text-slate-300 mx-auto mb-1"></i>
+            <p class="text-xs text-slate-400 font-bold uppercase">No projects with logged tasks for this period</p>
+          </div>
+        ` : ''}
+      </div>
+    </div>
+  `;
+
+  const mainExecutionSectionHtml = `
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-5 mb-5">
+      ${settlementConsoleHtml}
 
       <!-- Right: Operations & Capacity (5 cols) -->
       <div class="lg:col-span-5 bg-white rounded-2xl p-4 border border-slate-200/80 shadow-xs flex flex-col">
@@ -674,10 +850,8 @@ function getAdminDashboardTemplate() {
     </div>
 
     <div id="main-dashboard-content" class="transition-all duration-500 ${state.isDailyReportVisible ? 'opacity-0 h-0 overflow-hidden' : 'opacity-100'}">
-      ${alertsBoardHtml}
       ${kpiHtml}
       ${mainExecutionSectionHtml}
-      ${feedHtml}
     </div>
 
     <div id="daily-report-content" class="transition-all duration-500 ${state.isDailyReportVisible ? 'opacity-100' : 'opacity-0 h-0 overflow-hidden'}">

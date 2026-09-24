@@ -216,9 +216,9 @@ function getAdminTimesheetsTemplate() {
                             </div>
                         </td>
                         <td class="px-4 py-2.5 whitespace-nowrap overflow-hidden text-xs font-bold text-slate-800">${parseFloat(t.hours_logged).toFixed(1)} <span class="text-[10px] text-slate-400 font-normal">hrs</span></td>
-                        <td class="px-4 py-2.5 whitespace-nowrap overflow-hidden text-xs text-slate-650">${formatCurrency(t.employee_cost)}</td>
-                        <td class="px-4 py-2.5 whitespace-nowrap overflow-hidden text-xs font-bold text-slate-800">${formatCurrency(t.billing_amount)}</td>
-                        <td class="px-4 py-2.5 whitespace-nowrap overflow-hidden"><span class="px-2 py-0.5 rounded text-xs font-bold ${profitClass}">${profitSign}${formatCurrency(profit)}</span></td>
+                        <td class="px-4 py-2.5 whitespace-nowrap overflow-hidden text-xs text-slate-650 blur-financial">${formatCurrency(t.employee_cost)}</td>
+                        <td class="px-4 py-2.5 whitespace-nowrap overflow-hidden text-xs font-bold text-slate-800 blur-financial">${formatCurrency(t.billing_amount)}</td>
+                        <td class="px-4 py-2.5 whitespace-nowrap overflow-hidden blur-financial"><span class="px-2 py-0.5 rounded text-xs font-bold ${profitClass}">${profitSign}${formatCurrency(profit)}</span></td>
                     </tr>
                 `;
           })
@@ -292,7 +292,7 @@ function getAdminTimesheetsTemplate() {
                         </div>
                         <div>
                             <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Total Cost (Burn)</span>
-                            <span class="text-lg font-black text-rose-600">${formatCurrency(totalCost)}</span>
+                            <span class="text-lg font-black text-rose-600 blur-financial">${formatCurrency(totalCost)}</span>
                         </div>
                     </div>
                     <div class="bg-white p-5 rounded-2xl border border-slate-200/60 shadow-sm flex items-center gap-4">
@@ -301,7 +301,7 @@ function getAdminTimesheetsTemplate() {
                         </div>
                         <div>
                             <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Total Billed (Earn)</span>
-                            <span class="text-lg font-black text-emerald-600">${formatCurrency(totalBilled)}</span>
+                            <span class="text-lg font-black text-emerald-600 blur-financial">${formatCurrency(totalBilled)}</span>
                         </div>
                     </div>
                     <div class="bg-white p-5 rounded-2xl border border-slate-200/60 shadow-sm flex items-center gap-4">
@@ -310,7 +310,7 @@ function getAdminTimesheetsTemplate() {
                         </div>
                         <div>
                             <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Net Profit / Loss</span>
-                            <span class="text-lg font-black ${totalProfit >= 0 ? 'text-emerald-600' : 'text-rose-600'}">
+                            <span class="text-lg font-black ${totalProfit >= 0 ? 'text-emerald-600' : 'text-rose-600'} blur-financial">
                                 ${totalProfit >= 0 ? '+' : ''}${formatCurrency(totalProfit)}
                             </span>
                         </div>

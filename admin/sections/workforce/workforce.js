@@ -304,8 +304,8 @@ function getAdminWorkforceTemplate() {
                             <div class="text-xs text-slate-800 font-bold truncate" title="${title}">${title}</div>
                             <div class="text-[10px] text-slate-450 font-semibold truncate mt-0.5" title="${dept}">${dept}</div>
                         </td>
-                        <td class="py-2 px-3 whitespace-nowrap text-xs font-bold text-slate-800">${formatCurrency(e.hourly_cost_rate)}<span class="text-[9px] text-slate-400 font-normal">/hr</span></td>
-                        <td class="py-2 px-3 whitespace-nowrap text-xs font-bold text-brand-accent">${formatCurrency(e.hourly_billing_rate)}<span class="text-[9px] text-slate-400 font-normal">/hr</span></td>
+                        <td class="py-2 px-3 whitespace-nowrap text-xs font-bold text-slate-800 blur-financial">${formatCurrency(e.hourly_cost_rate)}<span class="text-[9px] text-slate-400 font-normal">/hr</span></td>
+                        <td class="py-2 px-3 whitespace-nowrap text-xs font-bold text-brand-accent blur-financial">${formatCurrency(e.hourly_billing_rate)}<span class="text-[9px] text-slate-400 font-normal">/hr</span></td>
                         <td class="py-2 px-3 whitespace-nowrap">
                             <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold ${e.is_active !== false ? "bg-emerald-50 text-emerald-700 border border-emerald-200" : "bg-rose-50 text-rose-700 border border-rose-200"}">
                                 <span class="w-1 h-1 mr-1 rounded-full ${e.is_active !== false ? "bg-emerald-500 animate-pulse" : "bg-rose-500"}"></span>

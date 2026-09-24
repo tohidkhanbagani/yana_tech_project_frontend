@@ -352,7 +352,7 @@ function renderAdminProjectsTable() {
                     </div>
                 </td>
                 <td class="py-2.5 px-4 whitespace-nowrap overflow-hidden">
-                    <div class="flex flex-col truncate">
+                    <div class="flex flex-col truncate blur-financial">
                         <span class="text-xs font-bold text-slate-800 truncate">${formatCurrencyLocal(budgetVal)} <span class="text-[9px] font-bold text-slate-400 uppercase tracking-wider">(Budget)</span></span>
                         <span class="text-[10px] text-slate-450 font-bold mt-0.5 truncate">Billing: ${formatCurrencyLocal(clientCostVal)}</span>
                     </div>
